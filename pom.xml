@@ -32,7 +32,7 @@
   <name>Vert.x Http Proxy</name>
 
   <properties>
-    <stack.version>4.0.0.Beta3</stack.version>
+    <stack.version>4.0.1-SNAPSHOT</stack.version>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
   </properties>
 

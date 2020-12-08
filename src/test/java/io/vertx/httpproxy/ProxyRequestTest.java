@@ -251,7 +251,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     });
     HttpClient httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
-      req.onComplete(ctx.asyncAssertSuccess(resp -> {
+      req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertEquals(502, resp.statusCode());
       }));
       if (chunked) {
@@ -498,7 +498,7 @@ public class ProxyRequestTest extends ProxyTestBase {
           req.write(chunk);
         }
       });
-      req.onComplete(ctx.asyncAssertSuccess(resp -> {
+      req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.body(ctx.asyncAssertSuccess(body -> {
           ctx.assertEquals("another-request", body.toString());
         }));

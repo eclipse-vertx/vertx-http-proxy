@@ -119,7 +119,7 @@ public class ProxyRequestImpl implements ProxyRequest {
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
 
-    edgeRequest.<ProxyResponse>map(r -> {
+    edgeRequest.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
       return new ProxyResponseImpl(this, edgeResponse, r);
     }).onComplete(responseHandler);
