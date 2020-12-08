@@ -54,13 +54,6 @@
       <artifactId>vertx-core</artifactId>
     </dependency>
 
-    <dependency>
-      <groupId>com.beust</groupId>
-      <artifactId>jcommander</artifactId>
-      <version>1.48</version>
-      <optional>true</optional>
-    </dependency>
-
     <!-- Only for fatjar -->
     <dependency>
       <!-- declare this dependency to force shiro to use this one. It is the version used by vert.x -->
