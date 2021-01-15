@@ -54,6 +54,22 @@ public class ProxyRequestTest extends ProxyTestBase {
   }
 
   @Test
+  public void testProxyRequestNoBackendReturnBadGatewayStatusCode(TestContext ctx) {
+    startProxy(SocketAddress.inetSocketAddress(7777, "localhost"));
+    HttpClient client = vertx.createHttpClient();
+    Async async = ctx.async();
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(req -> req.send().compose(res -> {
+        ctx.assertEquals(502, res.statusCode());
+        return res.body();
+      }))
+      .onComplete(ctx.asyncAssertSuccess(body -> {
+        ctx.assertEquals("", body.toString());
+        async.complete();
+      }));
+  }
+
+  @Test
   public void testBackendResponse(TestContext ctx) {
     runHttpTest(ctx, req -> req.response().end("Hello World"), ctx.asyncAssertSuccess());
     HttpClient httpClient = vertx.createHttpClient();

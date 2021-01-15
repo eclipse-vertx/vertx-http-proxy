@@ -78,8 +78,8 @@ public class HttpProxyImpl implements HttpProxy {
 
   private void end(ProxyRequest proxyRequest, int sc) {
     proxyRequest
-      .release()
       .response()
+      .release()
       .setStatusCode(sc)
       .putHeader(HttpHeaders.CONTENT_LENGTH, "0")
       .setBody(null)
@@ -132,7 +132,7 @@ public class HttpProxyImpl implements HttpProxy {
         frontRequest.exceptionHandler(promise::tryFail);
         frontRequest.endHandler(promise::tryComplete);
         promise.future().onComplete(ar2 -> {
-          end(proxyRequest, 404);
+          end(proxyRequest, 502);
         });
         handler.handle(Future.failedFuture(ar.cause()));
       }
