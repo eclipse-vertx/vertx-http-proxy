@@ -558,7 +558,7 @@ public class ProxyRequestTest extends ProxyTestBase {
 
   @Test
   public void testProxyRequestUnresolvedTarget(TestContext ctx) {
-    startProxy(request -> Future.succeededFuture(SocketAddress.inetSocketAddress(8088, "localhost")));
+    startProxy(request -> Future.succeededFuture(SocketAddress.inetSocketAddress(1234, "localhost")));
     HttpClient client = vertx.createHttpClient();
     Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
