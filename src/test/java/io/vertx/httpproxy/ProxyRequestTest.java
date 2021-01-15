@@ -11,6 +11,7 @@
 package io.vertx.httpproxy;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
@@ -551,6 +552,22 @@ public class ProxyRequestTest extends ProxyTestBase {
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
         ctx.assertEquals("hello world", body.toString());
+        async.complete();
+      }));
+  }
+
+  @Test
+  public void testProxyRequestUnresolvedTarget(TestContext ctx) {
+    startProxy(request -> Future.succeededFuture(SocketAddress.inetSocketAddress(1234, "localhost")));
+    HttpClient client = vertx.createHttpClient();
+    Async async = ctx.async();
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(req -> req.send().compose(res -> {
+        ctx.assertEquals(502, res.statusCode());
+        return res.body();
+      }))
+      .onComplete(ctx.asyncAssertSuccess(body -> {
+        ctx.assertEquals("", body.toString());
         async.complete();
       }));
   }
