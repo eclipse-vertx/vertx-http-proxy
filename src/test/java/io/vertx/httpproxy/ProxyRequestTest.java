@@ -535,6 +535,7 @@ public class ProxyRequestTest extends ProxyTestBase {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       proxyReq.response()
         .setStatusCode(302)
+        .setStatusMessage("some-status-message")
         .putHeader("some-header", "some-header-value")
         .setBody(Body.body(Buffer.buffer("hello world")))
         .send(ar -> {
@@ -546,6 +547,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     client.request(HttpMethod.GET, 8080, "localhost", "/somepath")
       .compose(req -> req.send().compose(resp -> {
         ctx.assertEquals(302, resp.statusCode());
+        ctx.assertEquals("some-status-message", resp.statusMessage());
         ctx.assertEquals("some-header-value", resp.getHeader("some-header"));
         ctx.assertNull(resp.getHeader(HttpHeaders.TRANSFER_ENCODING));
         return resp.body();

@@ -17,7 +17,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.streams.ReadStream;
 
 import java.util.function.Function;
@@ -48,6 +47,22 @@ public interface ProxyResponse {
    */
   @Fluent
   ProxyResponse setStatusCode(int sc);
+
+  /**
+   * @return the status message to be sent to the edge client
+   */
+  String getStatusMessage();
+
+  /**
+   * Set the status message to be sent to the edge client.
+   *
+   * <p> The initial value is the origin response status message.
+   *
+   * @param statusMessage the status message
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  ProxyResponse setStatusMessage(String statusMessage);
 
   /**
    * @return the headers that will be sent to the edge client, the returned headers can be modified. The headers

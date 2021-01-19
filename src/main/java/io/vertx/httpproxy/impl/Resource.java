@@ -22,6 +22,7 @@ class Resource {
 
   final String absoluteUri;
   final int statusCode;
+  final String statusMessage;
   final MultiMap headers;
   final long timestamp;
   final long maxAge;
@@ -29,10 +30,11 @@ class Resource {
   final String etag;
   final Buffer content = Buffer.buffer();
 
-  Resource(String absoluteUri, int statusCode, MultiMap headers, long timestamp, long maxAge) {
+  Resource(String absoluteUri, int statusCode, String statusMessage, MultiMap headers, long timestamp, long maxAge) {
     String lastModifiedHeader = headers.get(HttpHeaders.LAST_MODIFIED);
     this.absoluteUri = absoluteUri;
     this.statusCode = statusCode;
+    this.statusMessage = statusMessage;
     this.headers = headers;
     this.timestamp = timestamp;
     this.maxAge = maxAge;
@@ -42,6 +44,7 @@ class Resource {
 
   void sendTo(ProxyResponse proxyResponse) {
     proxyResponse.setStatusCode(200);
+    proxyResponse.setStatusMessage(statusMessage);
     proxyResponse.headers().addAll(headers);
     proxyResponse.setBody(Body.body(content));
     proxyResponse.send(ar -> {
