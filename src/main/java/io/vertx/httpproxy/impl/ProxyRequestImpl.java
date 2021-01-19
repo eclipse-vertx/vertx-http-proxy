@@ -83,7 +83,7 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
-  public ProxyRequestImpl setBody(Body body) {
+  public ProxyRequest setBody(Body body) {
     this.body = body;
     return this;
   }
@@ -157,7 +157,7 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
-  public ProxyRequestImpl putHeader(CharSequence name, CharSequence value) {
+  public ProxyRequest putHeader(CharSequence name, CharSequence value) {
     headers.set(name, value);
     return this;
   }

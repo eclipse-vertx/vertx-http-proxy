@@ -34,8 +34,9 @@ class ProxyResponseImpl implements ProxyResponse {
   private final ProxyRequestImpl request;
   private final HttpServerResponse edgeResponse;
   private int statusCode;
+  private String statusMessage;
   private Body body;
-  private MultiMap headers;
+  private final MultiMap headers;
   private HttpClientResponse originResponse;
   private long maxAge;
   private String etag;
@@ -67,6 +68,7 @@ class ProxyResponseImpl implements ProxyResponse {
     this.originResponse = originResponse;
     this.edgeResponse = edgeResponse;
     this.statusCode = originResponse.statusCode();
+    this.statusMessage = originResponse.statusMessage();
     this.body = Body.body(originResponse, contentLength);
 
     long maxAge = -1;
@@ -104,8 +106,19 @@ class ProxyResponseImpl implements ProxyResponse {
   }
 
   @Override
-  public ProxyResponseImpl setStatusCode(int sc) {
+  public ProxyResponse setStatusCode(int sc) {
     statusCode = sc;
+    return this;
+  }
+
+  @Override
+  public String getStatusMessage() {
+    return statusMessage;
+  }
+
+  @Override
+  public ProxyResponse setStatusMessage(String statusMessage) {
+    this.statusMessage = statusMessage;
     return this;
   }
 
@@ -115,7 +128,7 @@ class ProxyResponseImpl implements ProxyResponse {
   }
 
   @Override
-  public ProxyResponseImpl setBody(Body body) {
+  public ProxyResponse setBody(Body body) {
     this.body = body;
     return this;
   }
@@ -156,6 +169,10 @@ class ProxyResponseImpl implements ProxyResponse {
   public void send(Handler<AsyncResult<Void>> completionHandler) {
     // Set stuff
     edgeResponse.setStatusCode(statusCode);
+
+    if(statusMessage != null) {
+      edgeResponse.setStatusMessage(statusMessage);
+    }
 
     // Date header
     Date date = HttpUtils.dateHeader(headers);
@@ -214,7 +231,7 @@ class ProxyResponseImpl implements ProxyResponse {
   }
 
   @Override
-  public ProxyResponseImpl release() {
+  public ProxyResponse release() {
     if (originResponse != null) {
       originResponse.resume();
       originResponse = null;
