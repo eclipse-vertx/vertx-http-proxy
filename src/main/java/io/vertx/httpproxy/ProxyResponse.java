@@ -22,25 +22,33 @@ import io.vertx.core.streams.ReadStream;
 import java.util.function.Function;
 
 /**
+ *
+ * Handles the interoperability of the <b>response</b> between the <i><b>origin</b></i> and the <i><b>edge</b></i>.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 @VertxGen
 public interface ProxyResponse {
 
   /**
+   *
+   * Return ProxyRequest.
+   *
    * @return the proxy request
    */
   ProxyRequest request();
 
   /**
-   * @return the status code to be sent to the edge client
+   * Get the status code.
+   *
+   * @return the status code to be sent to the <i><b>edge</b></i> client
    */
   int getStatusCode();
 
   /**
-   * Set the status code to be sent to the edge client.
+   * Set the status code to be sent to the <i><b>edge</b></i> client.
    *
-   * <p> The initial value is the origin response status code.
+   * <p> The initial value is the <i><b>origin</b></i> response status code.
    *
    * @param sc the status code
    * @return a reference to this, so the API can be used fluently
@@ -49,14 +57,16 @@ public interface ProxyResponse {
   ProxyResponse setStatusCode(int sc);
 
   /**
-   * @return the status message to be sent to the edge client
+   * Get the status message.
+   *
+   * @return the status message to be sent to the <i><b>edge</b></i> client
    */
   String getStatusMessage();
 
   /**
-   * Set the status message to be sent to the edge client.
+   * Set the status message to be sent to the <i><b>edge</b></i> client.
    *
-   * <p> The initial value is the origin response status message.
+   * <p> The initial value is the <i><b>origin</b></i> response status message.
    *
    * @param statusMessage the status message
    * @return a reference to this, so the API can be used fluently
@@ -65,13 +75,13 @@ public interface ProxyResponse {
   ProxyResponse setStatusMessage(String statusMessage);
 
   /**
-   * @return the headers that will be sent to the edge client, the returned headers can be modified. The headers
-   *         map is populated with the origin response headers
+   * @return the headers that will be sent to the <i><b>edge</b></i> client, the returned headers can be modified. The headers
+   *         map is populated with the <i><b>origin</b></i> response headers
    */
   MultiMap headers();
 
   /**
-   * Put an HTTP header
+   * Put an HTTP header.
    *
    * @param name  The header name
    * @param value The header value
@@ -82,14 +92,16 @@ public interface ProxyResponse {
   ProxyResponse putHeader(CharSequence name, CharSequence value);
 
   /**
-   * @return the response body to be sent to the edge client
+   * Get the body of the response.
+   *
+   * @return the response body to be sent to the <i><b>edge</b></i> client
    */
   Body getBody();
 
   /**
-   * Set the request body to be sent to the edge client.
+   * Set the request body to be sent to the <i><b>edge</b></i> client.
    *
-   * <p>The initial request body value is the origin response body.
+   * <p>The initial request body value is the <i><b>origin</b></i> response body.
    *
    * @param body the new body
    * @return a reference to this, so the API can be used fluently
@@ -100,7 +112,7 @@ public interface ProxyResponse {
   /**
    * Set a body filter.
    *
-   * <p> The body filter can rewrite the response body sent to the edge client.
+   * <p> The body filter can rewrite the response body sent to the <i><b>edge</b></i> client.
    *
    * @param filter the filter
    * @return a reference to this, so the API can be used fluently
@@ -113,12 +125,12 @@ public interface ProxyResponse {
   long maxAge();
 
   /**
-   * @return the {@code etag} sent by the origin response
+   * @return the {@code etag} sent by the <i><b>origin</b></i> response
    */
   String etag();
 
   /**
-   * Send the proxy response to the edge client.
+   * Send the proxy response to the <i><b>edge</b></i> client.
    *
    * @param completionHandler the handler to be called when the response has been sent
    */

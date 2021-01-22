@@ -27,11 +27,19 @@ import io.vertx.httpproxy.impl.ProxyRequestImpl;
 import java.util.function.Function;
 
 /**
+ *
+ * Handles the interoperability of the <b>request</b> between the <i><b>edge</b></i> and the <i><b>origin</b></i>.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 @VertxGen
 public interface ProxyRequest {
-
+  /**
+   * Create a new {@code ProxyRequest} instance.
+   *
+   * @param request the {@code HttpServerRequest} of the <i><b>edge</b></i>
+   * @return a reference to this, so the API can be used fluently
+   */
   static ProxyRequest reverseProxy(HttpServerRequest request) {
     request.pause();
     ProxyRequestImpl proxyRequest = new ProxyRequestImpl(request);
@@ -39,40 +47,40 @@ public interface ProxyRequest {
   }
 
   /**
-   * @return the HTTP version of the edge request
+   * @return the HTTP version of the <i><b>edge</b></i> request
    */
   HttpVersion version();
 
   /**
-   * @return the edge request absolute URI
+   * @return the absolute URI of the <i><b>edge</b></i> request
    */
   String absoluteURI();
 
   /**
-   * @return the HTTP method to be sent to the origin server
+   * @return the HTTP method to be sent to the <i><b>origin</b></i> server.
    */
   HttpMethod getMethod();
 
   /**
-   * Set the HTTP method to be sent to the origin server.
+   * Set the HTTP method to be sent to the <i><b>origin</b></i> server.
    *
-   * <p>The initial HTTP method value is the edge request HTTP method.
+   * <p>The initial HTTP method value is the <i><b>edge</b></i> request HTTP method.
    *
-   * @param method the new method
+   * @param method the new HTTP method
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
   ProxyRequest setMethod(HttpMethod method);
 
   /**
-   * @return the request URI to be sent to the origin server
+   * @return the request URI to be sent to the <i><b>origin</b></i> server.
    */
   String getURI();
 
   /**
-   * Set the request URI to be sent to the origin server.
+   * Set the request URI to be sent to the <i><b>origin</b></i> server.
    *
-   * <p>The initial request URI value is the edge request URI.
+   * <p>The initial request URI value is the <i><b>edge</b></i> request URI.
    *
    * @param uri the new URI
    * @return a reference to this, so the API can be used fluently
@@ -81,14 +89,14 @@ public interface ProxyRequest {
   ProxyRequest setURI(String uri);
 
   /**
-   * @return the request body to be sent to the origin server
+   * @return the request body to be sent to the <i><b>origin</b></i> server.
    */
   Body getBody();
 
   /**
-   * Set the request body to be sent to the origin server.
+   * Set the request body to be sent to the <i><b>origin</b></i> server.
    *
-   * <p>The initial request body value is the edge request body.
+   * <p>The initial request body value is the <i><b>edge</b></i> request body.
    *
    * @param body the new body
    * @return a reference to this, so the API can be used fluently
@@ -116,7 +124,7 @@ public interface ProxyRequest {
   /**
    * Set a body filter.
    *
-   * <p> The body filter can rewrite the request body sent to the origin server.
+   * <p> The body filter can rewrite the request body sent to the <i><b>origin</b></i> server.
    *
    * @param filter the filter
    * @return a reference to this, so the API can be used fluently
@@ -125,9 +133,9 @@ public interface ProxyRequest {
   ProxyRequest bodyFilter(Function<ReadStream<Buffer>, ReadStream<Buffer>> filter);
 
   /**
-   * Proxy this request and response to the origin server using the specified request.
+   * Proxy this request and response to the <i><b>origin</b></i> server using the specified request.
    *
-   * @param request the request connected to the origin server
+   * @param request the request connected to the <i><b>origin</b></i> server
    * @param completionHandler the completion handler
    */
   default void proxy(HttpClientRequest request, Handler<AsyncResult<Void>> completionHandler) {
@@ -142,11 +150,11 @@ public interface ProxyRequest {
   }
 
   /**
-   * Send this request to the origin server using the specified request.
+   * Send this request to the <i><b>origin</b></i> server using the specified request.
    *
-   * <p> The {@code completionHandler} will be called with the proxy response sent by the origin server.
+   * <p> The {@code completionHandler} will be called with the proxy response sent by the <i><b>origin</b></i>.
    *
-   * @param request the request connected to the origin server
+   * @param request the request connected to the <i><b>origin</b></i> server
    * @param completionHandler the completion handler
    */
   void send(HttpClientRequest request, Handler<AsyncResult<ProxyResponse>> completionHandler);
