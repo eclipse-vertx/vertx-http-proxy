@@ -15,9 +15,20 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.impl.BufferedReadStream;
 
+/**
+ * Handles the HTTP proxy body.
+ * <p>
+ * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
+ */
 @VertxGen
 public interface Body {
-
+  /**
+   * Create a new {@code Body} instance.
+   *
+   * @param stream the {@code ReadStream} of the body
+   * @param len the determined length of the body
+   * @return a reference to this, so the API can be used fluently
+   */
   static Body body(ReadStream<Buffer> stream, long len) {
     return new Body() {
       @Override
@@ -30,11 +41,21 @@ public interface Body {
       }
     };
   }
-
+  /**
+   * Create a new {@code Body} instance.
+   *
+   * @param stream the {@link ReadStream} of the body
+   * @return a reference to this, so the API can be used fluently
+   */
   static Body body(ReadStream<Buffer> stream) {
     return body(stream, -1L);
   }
-
+  /**
+   * Create a new {@code Body} instance.
+   *
+   * @param buffer the {@link Buffer} of the body
+   * @return a reference to this, so the API can be used fluently
+   */
   static Body body(Buffer buffer) {
     return new Body() {
       @Override
@@ -49,11 +70,17 @@ public interface Body {
   }
 
   /**
+   *
+   * Get length of the {@code Body}.
+   *
    * @return the body length or {@code -1} if that can't be determined
    */
   long length();
 
   /**
+   *
+   * Get stream of the {@code Body}.
+   *
    * @return the body stream
    */
   ReadStream<Buffer> stream();

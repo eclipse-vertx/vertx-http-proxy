@@ -22,8 +22,8 @@
 
   <parent>
     <groupId>io.vertx</groupId>
-    <artifactId>vertx-parent</artifactId>
-    <version>12</version>
+    <artifactId>vertx-ext-parent</artifactId>
+    <version>37</version>
   </parent>
 
   <artifactId>vertx-http-proxy</artifactId>
@@ -34,6 +34,7 @@
   <properties>
     <stack.version>4.0.1-SNAPSHOT</stack.version>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
+    <doc.skip>true</doc.skip>
   </properties>
 
   <dependencyManagement>
