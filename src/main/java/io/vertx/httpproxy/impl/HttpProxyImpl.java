@@ -57,12 +57,12 @@ public class HttpProxyImpl implements HttpProxy {
   }
 
   @Override
-  public void handle(HttpServerRequest frontRequest) {
-    handleProxyRequest(frontRequest);
+  public void handle(HttpServerRequest outboundRequest) {
+    handleProxyRequest(outboundRequest);
   }
 
-  private Future<HttpClientRequest> resolveTarget(HttpServerRequest frontRequest) {
-    return selector.apply(frontRequest).flatMap(server -> {
+  private Future<HttpClientRequest> resolveTarget(HttpServerRequest outboundRequest) {
+    return selector.apply(outboundRequest).flatMap(server -> {
       RequestOptions requestOptions = new RequestOptions();
       requestOptions.setServer(server);
       return client.request(requestOptions);
@@ -87,32 +87,32 @@ public class HttpProxyImpl implements HttpProxy {
 
   }
 
-  private void handleProxyRequest(HttpServerRequest frontRequest) {
-    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(frontRequest);
+  private void handleProxyRequest(HttpServerRequest outboundRequest) {
+    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(outboundRequest);
 
     // Encoding check
-    Boolean chunked = HttpUtils.isChunked(frontRequest.headers());
+    Boolean chunked = HttpUtils.isChunked(outboundRequest.headers());
     if (chunked == null) {
       end(proxyRequest, 400);
       return;
     }
 
     // Handle from cache
-    HttpMethod method = frontRequest.method();
+    HttpMethod method = outboundRequest.method();
     if (method == HttpMethod.GET || method == HttpMethod.HEAD) {
       String cacheKey = proxyRequest.absoluteURI();
       Resource resource = cache.computeIfPresent(cacheKey, CACHE_GET_AND_VALIDATE);
       if (resource != null) {
-        if (tryHandleProxyRequestFromCache(proxyRequest, frontRequest, resource)) {
+        if (tryHandleProxyRequestFromCache(proxyRequest, outboundRequest, resource)) {
           return;
         }
       }
     }
-    handleProxyRequestAndProxyResponse(proxyRequest, frontRequest);
+    handleProxyRequestAndProxyResponse(proxyRequest, outboundRequest);
   }
 
-  private void handleProxyRequestAndProxyResponse(ProxyRequest proxyRequest, HttpServerRequest frontRequest) {
-    handleProxyRequest(proxyRequest, frontRequest, ar -> {
+  private void handleProxyRequestAndProxyResponse(ProxyRequest proxyRequest, HttpServerRequest outboundRequest) {
+    handleProxyRequest(proxyRequest, outboundRequest, ar -> {
       if (ar.succeeded()) {
         handleProxyResponse(ar.result(), ar2 -> {});
       } else {
@@ -121,16 +121,16 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
-  private void handleProxyRequest(ProxyRequest proxyRequest, HttpServerRequest frontRequest, Handler<AsyncResult<ProxyResponse>> handler) {
-    Future<HttpClientRequest> f = resolveTarget(frontRequest);
+  private void handleProxyRequest(ProxyRequest proxyRequest, HttpServerRequest outboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
+    Future<HttpClientRequest> f = resolveTarget(outboundRequest);
     f.onComplete(ar -> {
       if (ar.succeeded()) {
-        handleProxyRequest(proxyRequest, frontRequest, ar.result(), handler);
+        handleProxyRequest(proxyRequest, outboundRequest, ar.result(), handler);
       } else {
-        frontRequest.resume();
+        outboundRequest.resume();
         Promise<Void> promise = Promise.promise();
-        frontRequest.exceptionHandler(promise::tryFail);
-        frontRequest.endHandler(promise::tryComplete);
+        outboundRequest.exceptionHandler(promise::tryFail);
+        outboundRequest.endHandler(promise::tryComplete);
         promise.future().onComplete(ar2 -> {
           end(proxyRequest, 502);
         });
@@ -139,12 +139,12 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
-  private void handleProxyRequest(ProxyRequest proxyRequest, HttpServerRequest frontRequest, HttpClientRequest backRequest, Handler<AsyncResult<ProxyResponse>> handler) {
-    proxyRequest.send(backRequest, ar2 -> {
+  private void handleProxyRequest(ProxyRequest proxyRequest, HttpServerRequest outboundRequest, HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
+    proxyRequest.send(inboundRequest, ar2 -> {
       if (ar2.succeeded()) {
         handler.handle(ar2);
       } else {
-        frontRequest.response().setStatusCode(502).end();
+        outboundRequest.response().setStatusCode(502).end();
         handler.handle(Future.failedFuture(ar2.cause()));
       }
     });
@@ -222,8 +222,8 @@ public class HttpProxyImpl implements HttpProxy {
     response.send(handler);
   }
 
-  private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest, HttpServerRequest frontRequest, Resource resource) {
-    String cacheControlHeader = frontRequest.getHeader(HttpHeaders.CACHE_CONTROL);
+  private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest, HttpServerRequest outboundRequest, Resource resource) {
+    String cacheControlHeader = outboundRequest.getHeader(HttpHeaders.CACHE_CONTROL);
     if (cacheControlHeader != null) {
       CacheControl cacheControl = new CacheControl().parse(cacheControlHeader);
       if (cacheControl.maxAge() >= 0) {
@@ -233,7 +233,7 @@ public class HttpProxyImpl implements HttpProxy {
           String etag = resource.headers.get(HttpHeaders.ETAG);
           if (etag != null) {
             proxyRequest.headers().set(HttpHeaders.IF_NONE_MATCH, resource.etag);
-            handleProxyRequest(proxyRequest, frontRequest, ar -> {
+            handleProxyRequest(proxyRequest, outboundRequest, ar -> {
               if (ar.succeeded()) {
                 ProxyResponse proxyResp = ar.result();
                 int sc = proxyResp.getStatusCode();
@@ -263,11 +263,11 @@ public class HttpProxyImpl implements HttpProxy {
     }
 
     //
-    String ifModifiedSinceHeader = frontRequest.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
-    if ((frontRequest.method() == HttpMethod.GET || frontRequest.method() == HttpMethod.HEAD) && ifModifiedSinceHeader != null && resource.lastModified != null) {
+    String ifModifiedSinceHeader = outboundRequest.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
+    if ((outboundRequest.method() == HttpMethod.GET || outboundRequest.method() == HttpMethod.HEAD) && ifModifiedSinceHeader != null && resource.lastModified != null) {
       Date ifModifiedSince = ParseUtils.parseHeaderDate(ifModifiedSinceHeader);
       if (resource.lastModified.getTime() <= ifModifiedSince.getTime()) {
-        frontRequest.response().setStatusCode(304).end();
+        outboundRequest.response().setStatusCode(304).end();
         return true;
       }
     }

@@ -36,14 +36,14 @@ public class ProxyRequestImpl implements ProxyRequest {
   private String absoluteURI;
   private Body body;
   private MultiMap headers;
-  HttpClientRequest edgeRequest;
-  private HttpServerResponse edgeResponse;
+  HttpClientRequest inboundRequest;
+  private HttpServerResponse outboundResponse;
 
-  public ProxyRequestImpl(HttpServerRequest edgeRequest) {
+  public ProxyRequestImpl(HttpServerRequest inboundRequest) {
 
     // Determine content length
     long contentLength = -1L;
-    String contentLengthHeader = edgeRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
+    String contentLengthHeader = inboundRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
     if (contentLengthHeader != null) {
       try {
         contentLength = Long.parseLong(contentLengthHeader);
@@ -52,13 +52,13 @@ public class ProxyRequestImpl implements ProxyRequest {
       }
     }
 
-    this.method = edgeRequest.method();
-    this.version = edgeRequest.version();
-    this.body = Body.body(edgeRequest, contentLength);
-    this.uri = edgeRequest.uri();
-    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(edgeRequest.headers());
-    this.absoluteURI = edgeRequest.absoluteURI();
-    this.edgeResponse = edgeRequest.response();
+    this.method = inboundRequest.method();
+    this.version = inboundRequest.version();
+    this.body = Body.body(inboundRequest, contentLength);
+    this.uri = inboundRequest.uri();
+    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(inboundRequest.headers());
+    this.absoluteURI = inboundRequest.absoluteURI();
+    this.outboundResponse = inboundRequest.response();
   }
 
   @Override
@@ -114,19 +114,19 @@ public class ProxyRequestImpl implements ProxyRequest {
 
   @Override
   public ProxyResponse response() {
-    return new ProxyResponseImpl(this, edgeResponse);
+    return new ProxyResponseImpl(this, outboundResponse);
   }
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
 
-    edgeRequest.response().<ProxyResponse>map(r -> {
+    inboundRequest.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
-      return new ProxyResponseImpl(this, edgeResponse, r);
+      return new ProxyResponseImpl(this, outboundResponse, r);
     }).onComplete(responseHandler);
 
 
-    edgeRequest.setMethod(method);
-    edgeRequest.setURI(uri);
+    inboundRequest.setMethod(method);
+    inboundRequest.setURI(uri);
 
     // Add all end-to-end headers
     headers.forEach(header -> {
@@ -135,23 +135,23 @@ public class ProxyRequestImpl implements ProxyRequest {
       if (name.equalsIgnoreCase("host")) {
         // Skip
       } else {
-        edgeRequest.headers().add(name, value);
+        inboundRequest.headers().add(name, value);
       }
     });
 
     long len = body.length();
     if (len >= 0) {
-      edgeRequest.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
+      inboundRequest.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
     } else {
-      edgeRequest.setChunked(true);
+      inboundRequest.setChunked(true);
     }
 
     Pipe<Buffer> pipe = body.stream().pipe();
     pipe.endOnComplete(true);
     pipe.endOnFailure(false);
-    pipe.to(edgeRequest, ar -> {
+    pipe.to(inboundRequest, ar -> {
       if (ar.failed()) {
-        edgeRequest.reset();
+        inboundRequest.reset();
       }
     });
   }
@@ -173,8 +173,8 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
-  public void send(HttpClientRequest request, Handler<AsyncResult<ProxyResponse>> completionHandler) {
-    edgeRequest = request;
+  public void send(HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> completionHandler) {
+    this.inboundRequest = inboundRequest;
     sendRequest(completionHandler);
   }
 }

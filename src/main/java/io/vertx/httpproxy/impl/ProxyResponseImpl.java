@@ -32,7 +32,7 @@ import java.util.function.Function;
 class ProxyResponseImpl implements ProxyResponse {
 
   private final ProxyRequestImpl request;
-  private final HttpServerResponse edgeResponse;
+  private final HttpServerResponse outboundResponse;
   private int statusCode;
   private String statusMessage;
   private Body body;
@@ -43,15 +43,15 @@ class ProxyResponseImpl implements ProxyResponse {
   private boolean publicCacheControl;
   private Function<ReadStream<Buffer>, ReadStream<Buffer>> bodyFilter = Function.identity();
 
-  ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse edgeResponse) {
+  ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse outboundResponse) {
     this.originResponse = null;
     this.statusCode = 200;
     this.headers = MultiMap.caseInsensitiveMultiMap();
     this.request = request;
-    this.edgeResponse = edgeResponse;
+    this.outboundResponse = outboundResponse;
   }
 
-  ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse edgeResponse, HttpClientResponse originResponse) {
+  ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse outboundResponse, HttpClientResponse originResponse) {
 
     // Determine content length
     long contentLength = -1L;
@@ -66,7 +66,7 @@ class ProxyResponseImpl implements ProxyResponse {
 
     this.request = request;
     this.originResponse = originResponse;
-    this.edgeResponse = edgeResponse;
+    this.outboundResponse = outboundResponse;
     this.statusCode = originResponse.statusCode();
     this.statusMessage = originResponse.statusMessage();
     this.body = Body.body(originResponse, contentLength);
@@ -168,10 +168,10 @@ class ProxyResponseImpl implements ProxyResponse {
   @Override
   public void send(Handler<AsyncResult<Void>> completionHandler) {
     // Set stuff
-    edgeResponse.setStatusCode(statusCode);
+    outboundResponse.setStatusCode(statusCode);
 
     if(statusMessage != null) {
-      edgeResponse.setStatusMessage(statusMessage);
+      outboundResponse.setStatusMessage(statusMessage);
     }
 
     // Date header
@@ -180,7 +180,7 @@ class ProxyResponseImpl implements ProxyResponse {
       date = new Date();
     }
     try {
-      edgeResponse.putHeader("date", ParseUtils.formatHttpDate(date));
+      outboundResponse.putHeader("date", ParseUtils.formatHttpDate(date));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -201,7 +201,7 @@ class ProxyResponseImpl implements ProxyResponse {
         }
       }
     }
-    edgeResponse.putHeader("warning", warningHeaders);
+    outboundResponse.putHeader("warning", warningHeaders);
 
     // Handle other headers
     headers.forEach(header -> {
@@ -210,21 +210,21 @@ class ProxyResponseImpl implements ProxyResponse {
       if (name.equalsIgnoreCase("date") || name.equalsIgnoreCase("warning") || name.equalsIgnoreCase("transfer-encoding")) {
         // Skip
       } else {
-        edgeResponse.headers().add(name, value);
+        outboundResponse.headers().add(name, value);
       }
     });
 
     //
     if (body == null) {
-      edgeResponse.end();
+      outboundResponse.end();
       return;
     }
 
     long len = body.length();
     if (len >= 0) {
-      edgeResponse.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
+      outboundResponse.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
     } else {
-      edgeResponse.setChunked(true);
+      outboundResponse.setChunked(true);
     }
     ReadStream<Buffer> bodyStream = bodyFilter.apply(body.stream());
     sendResponse(bodyStream, completionHandler);
@@ -245,10 +245,10 @@ class ProxyResponseImpl implements ProxyResponse {
     Pipe<Buffer> pipe = body.pipe();
     pipe.endOnSuccess(true);
     pipe.endOnFailure(false);
-    pipe.to(edgeResponse, ar -> {
+    pipe.to(outboundResponse, ar -> {
       if (ar.failed()) {
-        request.edgeRequest.reset();
-        edgeResponse.reset();
+        request.inboundRequest.reset();
+        outboundResponse.reset();
       }
       completionHandler.handle(ar);
     });

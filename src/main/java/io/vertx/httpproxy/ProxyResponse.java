@@ -23,7 +23,7 @@ import java.util.function.Function;
 
 /**
  *
- * Handles the interoperability of the <b>response</b> between the <i><b>origin</b></i> and the <i><b>edge</b></i>.
+ * Handles the interoperability of the <b>response</b> between the <i><b>origin</b></i> and the <i><b>user agent</b></i>.
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
@@ -32,7 +32,7 @@ public interface ProxyResponse {
 
   /**
    *
-   * Return ProxyRequest.
+   * Return the corresponding {@code ProxyRequest}.
    *
    * @return the proxy request
    */
@@ -41,14 +41,14 @@ public interface ProxyResponse {
   /**
    * Get the status code.
    *
-   * @return the status code to be sent to the <i><b>edge</b></i> client
+   * @return the status code to be sent to the <i><b>user agent</b></i>
    */
   int getStatusCode();
 
   /**
-   * Set the status code to be sent to the <i><b>edge</b></i> client.
+   * Set the status code to be sent to the <i><b>user agent</b></i>.
    *
-   * <p> The initial value is the <i><b>origin</b></i> response status code.
+   * <p> The initial value is the inbound response status code.
    *
    * @param sc the status code
    * @return a reference to this, so the API can be used fluently
@@ -59,14 +59,14 @@ public interface ProxyResponse {
   /**
    * Get the status message.
    *
-   * @return the status message to be sent to the <i><b>edge</b></i> client
+   * @return the status message to be sent to the <i><b>user agent</b></i>
    */
   String getStatusMessage();
 
   /**
-   * Set the status message to be sent to the <i><b>edge</b></i> client.
+   * Set the status message to be sent to the <i><b>user agent</b></i>.
    *
-   * <p> The initial value is the <i><b>origin</b></i> response status message.
+   * <p> The initial value is the inbound response status message.
    *
    * @param statusMessage the status message
    * @return a reference to this, so the API can be used fluently
@@ -75,8 +75,8 @@ public interface ProxyResponse {
   ProxyResponse setStatusMessage(String statusMessage);
 
   /**
-   * @return the headers that will be sent to the <i><b>edge</b></i> client, the returned headers can be modified. The headers
-   *         map is populated with the <i><b>origin</b></i> response headers
+   * @return the headers that will be sent to the <i><b>user agent</b></i>, the returned headers can be modified. The headers
+   *         map is populated with the inbound response headers
    */
   MultiMap headers();
 
@@ -94,14 +94,14 @@ public interface ProxyResponse {
   /**
    * Get the body of the response.
    *
-   * @return the response body to be sent to the <i><b>edge</b></i> client
+   * @return the response body to be sent to the <i><b>user agent</b></i>
    */
   Body getBody();
 
   /**
-   * Set the request body to be sent to the <i><b>edge</b></i> client.
+   * Set the request body to be sent to the <i><b>user agent</b></i>.
    *
-   * <p>The initial request body value is the <i><b>origin</b></i> response body.
+   * <p>The initial request body value is the outbound response body.
    *
    * @param body the new body
    * @return a reference to this, so the API can be used fluently
@@ -112,7 +112,7 @@ public interface ProxyResponse {
   /**
    * Set a body filter.
    *
-   * <p> The body filter can rewrite the response body sent to the <i><b>edge</b></i> client.
+   * <p> The body filter can rewrite the response body sent to the <i><b>user agent</b></i>.
    *
    * @param filter the filter
    * @return a reference to this, so the API can be used fluently
@@ -130,7 +130,7 @@ public interface ProxyResponse {
   String etag();
 
   /**
-   * Send the proxy response to the <i><b>edge</b></i> client.
+   * Send the proxy response to the <i><b>user agent</b></i>.
    *
    * @param completionHandler the handler to be called when the response has been sent
    */
@@ -139,7 +139,7 @@ public interface ProxyResponse {
   /**
    * Release the proxy response.
    *
-   * <p> The HTTP client response is resumed, no HTTP server response is sent.
+   * <p> The HTTP client inbound response is resumed, no HTTP inbound server response is sent.
    */
   @Fluent
   ProxyResponse release();

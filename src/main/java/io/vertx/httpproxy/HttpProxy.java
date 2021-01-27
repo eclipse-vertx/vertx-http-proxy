@@ -21,7 +21,7 @@ import io.vertx.core.net.SocketAddress;
 import java.util.function.Function;
 
 /**
- * Handles the HTTP reverse proxy logic between the <i><b>edge</b></i> and the <i><b>origin</b></i>.
+ * Handles the HTTP reverse proxy logic between the <i><b>user agent</b></i> and the <i><b>origin</b></i>.
  * <p>
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
@@ -31,7 +31,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   /**
    * Create a new {@code HttpProxy} instance.
    *
-   * @param client the {@code HttpClient} that forwards <i><b>edge</b></i> request to the <i><b>origin</b></i>.
+   * @param client the {@code HttpClient} that forwards <i><b>outbound</b></i> requests to the <i><b>origin</b></i>.
    * @return a reference to this, so the API can be used fluently.
    */
   static HttpProxy reverseProxy2(HttpClient client) {
@@ -62,21 +62,19 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   }
 
   /**
-   * Select the {@code HttpServerRequest} of the <i><b>edge</b></i> with future {@code SocketAddress} of the
-   * <i><b>origin</b></i>.
+   * Set a selector that resolves the <i><b>origin</b></i> address based on the <i><b>outbound</b></i> request.
    *
-   * @param selector a function that selects {@code HttpServerRequest} of the <i><b>edge</b></i>
-   *                 with future {@code SocketAddress} of the <i><b>origin</b></i>
+   * @param selector the selector
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
   HttpProxy selector(Function<HttpServerRequest, Future<SocketAddress>> selector);
 
   /**
-   * Handle the {@code HttpServerRequest} of the <i><b>edge</b></i>.
+   * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
    *
-   * @param request the front {@code HttpServerRequest}
+   * @param outboundRequest the outbound {@code HttpServerRequest}
    */
-  void handle(HttpServerRequest request);
+  void handle(HttpServerRequest outboundRequest);
 
 }
