@@ -27,6 +27,7 @@ import java.util.function.Function;
  */
 @VertxGen
 public interface HttpProxy extends Handler<HttpServerRequest> {
+
   /**
    * Create a new {@code HttpProxy} instance.
    *
@@ -36,6 +37,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   static HttpProxy reverseProxy2(HttpClient client) {
     return new io.vertx.httpproxy.impl.HttpProxyImpl(client);
   }
+
   /**
    * Set the {@code SocketAddress} of the <i><b>origin</b></i>.
    *
@@ -46,6 +48,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   default HttpProxy target(SocketAddress address) {
     return selector(req -> Future.succeededFuture(address));
   }
+
   /**
    * Set the host name and port number of the <i><b>origin</b></i>.
    *
@@ -57,6 +60,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   default HttpProxy target(int port, String host) {
     return target(SocketAddress.inetSocketAddress(port, host));
   }
+
   /**
    * Select the {@code HttpServerRequest} of the <i><b>edge</b></i> with future {@code SocketAddress} of the
    * <i><b>origin</b></i>.
@@ -67,6 +71,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    */
   @Fluent
   HttpProxy selector(Function<HttpServerRequest, Future<SocketAddress>> selector);
+
   /**
    * Handle the {@code HttpServerRequest} of the <i><b>edge</b></i>.
    *

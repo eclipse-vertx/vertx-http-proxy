@@ -34,6 +34,7 @@ import java.util.function.Function;
  */
 @VertxGen
 public interface ProxyRequest {
+
   /**
    * Create a new {@code ProxyRequest} instance.
    *

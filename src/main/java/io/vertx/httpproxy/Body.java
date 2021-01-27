@@ -22,6 +22,7 @@ import io.vertx.httpproxy.impl.BufferedReadStream;
  */
 @VertxGen
 public interface Body {
+
   /**
    * Create a new {@code Body} instance.
    *
@@ -41,6 +42,7 @@ public interface Body {
       }
     };
   }
+
   /**
    * Create a new {@code Body} instance.
    *
@@ -50,6 +52,7 @@ public interface Body {
   static Body body(ReadStream<Buffer> stream) {
     return body(stream, -1L);
   }
+  
   /**
    * Create a new {@code Body} instance.
    *
