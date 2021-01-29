@@ -37,25 +37,25 @@ class ProxyResponseImpl implements ProxyResponse {
   private String statusMessage;
   private Body body;
   private final MultiMap headers;
-  private HttpClientResponse originResponse;
+  private HttpClientResponse inboundResponse;
   private long maxAge;
   private String etag;
   private boolean publicCacheControl;
   private Function<ReadStream<Buffer>, ReadStream<Buffer>> bodyFilter = Function.identity();
 
   ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse outboundResponse) {
-    this.originResponse = null;
+    this.inboundResponse = null;
     this.statusCode = 200;
     this.headers = MultiMap.caseInsensitiveMultiMap();
     this.request = request;
     this.outboundResponse = outboundResponse;
   }
 
-  ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse outboundResponse, HttpClientResponse originResponse) {
+  ProxyResponseImpl(ProxyRequestImpl request, HttpServerResponse outboundResponse, HttpClientResponse inboundResponse) {
 
     // Determine content length
     long contentLength = -1L;
-    String contentLengthHeader = originResponse.getHeader(HttpHeaders.CONTENT_LENGTH);
+    String contentLengthHeader = inboundResponse.getHeader(HttpHeaders.CONTENT_LENGTH);
     if (contentLengthHeader != null) {
       try {
         contentLength = Long.parseLong(contentLengthHeader);
@@ -65,15 +65,15 @@ class ProxyResponseImpl implements ProxyResponse {
     }
 
     this.request = request;
-    this.originResponse = originResponse;
+    this.inboundResponse = inboundResponse;
     this.outboundResponse = outboundResponse;
-    this.statusCode = originResponse.statusCode();
-    this.statusMessage = originResponse.statusMessage();
-    this.body = Body.body(originResponse, contentLength);
+    this.statusCode = inboundResponse.statusCode();
+    this.statusMessage = inboundResponse.statusMessage();
+    this.body = Body.body(inboundResponse, contentLength);
 
     long maxAge = -1;
     boolean publicCacheControl = false;
-    String cacheControlHeader = originResponse.getHeader(HttpHeaders.CACHE_CONTROL);
+    String cacheControlHeader = inboundResponse.getHeader(HttpHeaders.CACHE_CONTROL);
     if (cacheControlHeader != null) {
       CacheControl cacheControl = new CacheControl().parse(cacheControlHeader);
       if (cacheControl.isPublic()) {
@@ -81,8 +81,8 @@ class ProxyResponseImpl implements ProxyResponse {
         if (cacheControl.maxAge() > 0) {
           maxAge = (long)cacheControl.maxAge() * 1000;
         } else {
-          String dateHeader = originResponse.getHeader(HttpHeaders.DATE);
-          String expiresHeader = originResponse.getHeader(HttpHeaders.EXPIRES);
+          String dateHeader = inboundResponse.getHeader(HttpHeaders.DATE);
+          String expiresHeader = inboundResponse.getHeader(HttpHeaders.EXPIRES);
           if (dateHeader != null && expiresHeader != null) {
             maxAge = ParseUtils.parseHeaderDate(expiresHeader).getTime() - ParseUtils.parseHeaderDate(dateHeader).getTime();
           }
@@ -91,8 +91,8 @@ class ProxyResponseImpl implements ProxyResponse {
     }
     this.maxAge = maxAge;
     this.publicCacheControl = publicCacheControl;
-    this.etag = originResponse.getHeader(HttpHeaders.ETAG);
-    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(originResponse.headers());
+    this.etag = inboundResponse.getHeader(HttpHeaders.ETAG);
+    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(inboundResponse.headers());
   }
 
   @Override
@@ -232,9 +232,9 @@ class ProxyResponseImpl implements ProxyResponse {
 
   @Override
   public ProxyResponse release() {
-    if (originResponse != null) {
-      originResponse.resume();
-      originResponse = null;
+    if (inboundResponse != null) {
+      inboundResponse.resume();
+      inboundResponse = null;
       body = null;
       headers.clear();
     }
