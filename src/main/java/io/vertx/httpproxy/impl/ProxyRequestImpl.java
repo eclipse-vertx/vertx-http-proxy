@@ -37,13 +37,13 @@ public class ProxyRequestImpl implements ProxyRequest {
   private Body body;
   private MultiMap headers;
   HttpClientRequest inboundRequest;
-  private HttpServerResponse outboundResponse;
+  private HttpServerRequest outboundRequest;
 
-  public ProxyRequestImpl(HttpServerRequest inboundRequest) {
+  public ProxyRequestImpl(HttpServerRequest outboundRequest) {
 
     // Determine content length
     long contentLength = -1L;
-    String contentLengthHeader = inboundRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
+    String contentLengthHeader = outboundRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
     if (contentLengthHeader != null) {
       try {
         contentLength = Long.parseLong(contentLengthHeader);
@@ -52,13 +52,13 @@ public class ProxyRequestImpl implements ProxyRequest {
       }
     }
 
-    this.method = inboundRequest.method();
-    this.version = inboundRequest.version();
-    this.body = Body.body(inboundRequest, contentLength);
-    this.uri = inboundRequest.uri();
-    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(inboundRequest.headers());
-    this.absoluteURI = inboundRequest.absoluteURI();
-    this.outboundResponse = inboundRequest.response();
+    this.method = outboundRequest.method();
+    this.version = outboundRequest.version();
+    this.body = Body.body(outboundRequest, contentLength);
+    this.uri = outboundRequest.uri();
+    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(outboundRequest.headers());
+    this.absoluteURI = outboundRequest.absoluteURI();
+    this.outboundRequest = outboundRequest;
   }
 
   @Override
@@ -105,6 +105,11 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
+  public HttpServerRequest outboundRequest() {
+    return outboundRequest;
+  }
+
+  @Override
   public ProxyRequest release() {
     body.stream().resume();
     headers.clear();
@@ -114,14 +119,14 @@ public class ProxyRequestImpl implements ProxyRequest {
 
   @Override
   public ProxyResponse response() {
-    return new ProxyResponseImpl(this, outboundResponse);
+    return new ProxyResponseImpl(this, outboundRequest.response());
   }
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
 
     inboundRequest.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
-      return new ProxyResponseImpl(this, outboundResponse, r);
+      return new ProxyResponseImpl(this, outboundRequest.response(), r);
     }).onComplete(responseHandler);
 
 

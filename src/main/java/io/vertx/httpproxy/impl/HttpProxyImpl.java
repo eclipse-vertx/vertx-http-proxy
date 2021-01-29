@@ -103,16 +103,16 @@ public class HttpProxyImpl implements HttpProxy {
       String cacheKey = proxyRequest.absoluteURI();
       Resource resource = cache.computeIfPresent(cacheKey, CACHE_GET_AND_VALIDATE);
       if (resource != null) {
-        if (tryHandleProxyRequestFromCache(proxyRequest, outboundRequest, resource)) {
+        if (tryHandleProxyRequestFromCache(proxyRequest, resource)) {
           return;
         }
       }
     }
-    handleProxyRequestAndProxyResponse(proxyRequest, outboundRequest);
+    handleProxyRequestAndProxyResponse(proxyRequest);
   }
 
-  private void handleProxyRequestAndProxyResponse(ProxyRequest proxyRequest, HttpServerRequest outboundRequest) {
-    handleProxyRequest(proxyRequest, outboundRequest, ar -> {
+  private void handleProxyRequestAndProxyResponse(ProxyRequest proxyRequest) {
+    handleProxyRequest(proxyRequest, ar -> {
       if (ar.succeeded()) {
         handleProxyResponse(ar.result(), ar2 -> {});
       } else {
@@ -121,12 +121,13 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
-  private void handleProxyRequest(ProxyRequest proxyRequest, HttpServerRequest outboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
-    Future<HttpClientRequest> f = resolveTarget(outboundRequest);
+  private void handleProxyRequest(ProxyRequest proxyRequest, Handler<AsyncResult<ProxyResponse>> handler) {
+    Future<HttpClientRequest> f = resolveTarget(proxyRequest.outboundRequest());
     f.onComplete(ar -> {
       if (ar.succeeded()) {
-        handleProxyRequest(proxyRequest, outboundRequest, ar.result(), handler);
+        handleProxyRequest(proxyRequest, ar.result(), handler);
       } else {
+        HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
         outboundRequest.resume();
         Promise<Void> promise = Promise.promise();
         outboundRequest.exceptionHandler(promise::tryFail);
@@ -139,12 +140,12 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
-  private void handleProxyRequest(ProxyRequest proxyRequest, HttpServerRequest outboundRequest, HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
+  private void handleProxyRequest(ProxyRequest proxyRequest, HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
     proxyRequest.send(inboundRequest, ar2 -> {
       if (ar2.succeeded()) {
         handler.handle(ar2);
       } else {
-        outboundRequest.response().setStatusCode(502).end();
+        proxyRequest.outboundRequest().response().setStatusCode(502).end();
         handler.handle(Future.failedFuture(ar2.cause()));
       }
     });
@@ -222,7 +223,8 @@ public class HttpProxyImpl implements HttpProxy {
     response.send(handler);
   }
 
-  private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest, HttpServerRequest outboundRequest, Resource resource) {
+  private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest, Resource resource) {
+    HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
     String cacheControlHeader = outboundRequest.getHeader(HttpHeaders.CACHE_CONTROL);
     if (cacheControlHeader != null) {
       CacheControl cacheControl = new CacheControl().parse(cacheControlHeader);
@@ -233,7 +235,7 @@ public class HttpProxyImpl implements HttpProxy {
           String etag = resource.headers.get(HttpHeaders.ETAG);
           if (etag != null) {
             proxyRequest.headers().set(HttpHeaders.IF_NONE_MATCH, resource.etag);
-            handleProxyRequest(proxyRequest, outboundRequest, ar -> {
+            handleProxyRequest(proxyRequest, ar -> {
               if (ar.succeeded()) {
                 ProxyResponse proxyResp = ar.result();
                 int sc = proxyResp.getStatusCode();

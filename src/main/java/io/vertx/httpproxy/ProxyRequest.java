@@ -170,6 +170,11 @@ public interface ProxyRequest {
   ProxyRequest release();
 
   /**
+   * @return the outbound HTTP server request
+   */
+  HttpServerRequest outboundRequest();
+
+  /**
    * Create and return the proxy response.
    *
    * @return the proxy response
