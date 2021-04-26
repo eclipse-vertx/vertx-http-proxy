@@ -47,8 +47,6 @@ class Resource {
     proxyResponse.setStatusMessage(statusMessage);
     proxyResponse.headers().addAll(headers);
     proxyResponse.setBody(Body.body(content));
-    proxyResponse.send(ar -> {
-
-    });
+    proxyResponse.send();
   }
 }

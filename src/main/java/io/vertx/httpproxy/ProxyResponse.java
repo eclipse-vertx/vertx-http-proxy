@@ -13,8 +13,7 @@ package io.vertx.httpproxy;
 import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.VertxGen;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.ReadStream;
@@ -131,10 +130,8 @@ public interface ProxyResponse {
 
   /**
    * Send the proxy response to the <i><b>user agent</b></i>.
-   *
-   * @param completionHandler the handler to be called when the response has been sent
    */
-  void send(Handler<AsyncResult<Void>> completionHandler);
+  Future<Void> send();
 
   /**
    * Release the proxy response.

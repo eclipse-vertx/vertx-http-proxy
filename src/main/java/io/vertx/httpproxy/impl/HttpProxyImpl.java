@@ -83,12 +83,12 @@ public class HttpProxyImpl implements HttpProxy {
       .setStatusCode(sc)
       .putHeader(HttpHeaders.CONTENT_LENGTH, "0")
       .setBody(null)
-      .send(ar -> {});
+      .send();
 
   }
 
   private void handleProxyRequest(HttpServerRequest outboundRequest) {
-    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(outboundRequest);
+    ProxyRequestImpl proxyRequest = (ProxyRequestImpl) ProxyRequest.reverseProxy(outboundRequest);
 
     // Encoding check
     Boolean chunked = HttpUtils.isChunked(outboundRequest.headers());
@@ -141,7 +141,7 @@ public class HttpProxyImpl implements HttpProxy {
   }
 
   private void handleProxyRequest(ProxyRequest proxyRequest, HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
-    proxyRequest.send(inboundRequest, ar2 -> {
+    ((ProxyRequestImpl)proxyRequest).send(inboundRequest, ar2 -> {
       if (ar2.succeeded()) {
         handler.handle(ar2);
       } else {
@@ -220,10 +220,10 @@ public class HttpProxyImpl implements HttpProxy {
       handler = completionHandler;
     }
 
-    response.send(handler);
+    ((ProxyResponseImpl)response).send(handler);
   }
 
-  private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest, Resource resource) {
+  private boolean tryHandleProxyRequestFromCache(ProxyRequestImpl proxyRequest, Resource resource) {
     HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
     String cacheControlHeader = outboundRequest.getHeader(HttpHeaders.CACHE_CONTROL);
     if (cacheControlHeader != null) {

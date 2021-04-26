@@ -11,15 +11,18 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.http.HttpVersion;
+import io.vertx.core.http.impl.HttpServerRequestInternal;
+import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.Pipe;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.Body;
@@ -30,6 +33,7 @@ import java.util.function.Function;
 
 public class ProxyRequestImpl implements ProxyRequest {
 
+  final ContextInternal context;
   private HttpMethod method;
   private HttpVersion version;
   private String uri;
@@ -59,6 +63,7 @@ public class ProxyRequestImpl implements ProxyRequest {
     this.headers = MultiMap.caseInsensitiveMultiMap().addAll(outboundRequest.headers());
     this.absoluteURI = outboundRequest.absoluteURI();
     this.outboundRequest = outboundRequest;
+    this.context = (ContextInternal) ((HttpServerRequestInternal) outboundRequest).context();
   }
 
   @Override
@@ -178,7 +183,13 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
-  public void send(HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> completionHandler) {
+  public Future<ProxyResponse> send(HttpClientRequest inboundRequest) {
+    Promise<ProxyResponse> promise = context.promise();
+    send(inboundRequest, promise);
+    return promise.future();
+  }
+
+  void send(HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> completionHandler) {
     this.inboundRequest = inboundRequest;
     sendRequest(completionHandler);
   }

@@ -11,12 +11,16 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.impl.HttpServerRequestInternal;
 import io.vertx.core.streams.Pipe;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.Body;
@@ -166,6 +170,12 @@ class ProxyResponseImpl implements ProxyResponse {
   }
 
   @Override
+  public Future<Void> send() {
+    Promise<Void> promise = request.context.promise();
+    send(promise);
+    return promise.future();
+  }
+
   public void send(Handler<AsyncResult<Void>> completionHandler) {
     // Set stuff
     outboundResponse.setStatusCode(statusCode);

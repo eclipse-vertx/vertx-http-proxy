@@ -14,6 +14,7 @@ import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -136,17 +137,9 @@ public interface ProxyRequest {
    * Proxy this outbound request and response to the <i><b>origin</b></i> server using the specified inbound request.
    *
    * @param inboundRequest the request connected to the <i><b>origin</b></i> server
-   * @param completionHandler the completion handler
    */
-  default void proxy(HttpClientRequest inboundRequest, Handler<AsyncResult<Void>> completionHandler) {
-    send(inboundRequest, ar -> {
-      if (ar.succeeded()) {
-        ProxyResponse resp = ar.result();
-        resp.send(completionHandler);
-      } else {
-        completionHandler.handle(ar.mapEmpty());
-      }
-    });
+  default Future<Void> proxy(HttpClientRequest inboundRequest) {
+    return send(inboundRequest).flatMap(resp -> resp.send());
   }
 
   /**
@@ -155,9 +148,8 @@ public interface ProxyRequest {
    * <p> The {@code completionHandler} will be called with the proxy response sent by the <i><b>origin</b></i>.
    *
    * @param inboundRequest the request connected to the <i><b>origin</b></i> server
-   * @param completionHandler the completion handler
    */
-  void send(HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> completionHandler);
+  Future<ProxyResponse> send(HttpClientRequest inboundRequest);
 
   /**
    * Release the proxy request.
