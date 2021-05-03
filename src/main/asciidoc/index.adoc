@@ -7,6 +7,7 @@ higher concerns.
 WARNING: This module has _Tech Preview_ status, this means the API can change between versions.
 
 == Using Vert.x Http Proxy
+
 To use Vert.x Http Proxy, add the following dependency to the _dependencies_ section of your build descriptor:
 
 * Maven (in your `pom.xml`):
@@ -31,15 +32,15 @@ dependencies {
 
 == Basic Http Proxy
 
-In order to accomplish local reverse proxy with Vert.x Http Proxy you need the following:
+In order to accomplish a reverse proxy with Vert.x Http Proxy you need the following:
 
-1. *Proxy Server* that handles front requests and forward them to the *origin server* using `HttpProxy` instance.
+1. *Proxy Server* that handles outbound requests and forward them to the *origin server* using `HttpProxy` instance.
 2. *Origin Server* that handles requests from the *proxy server* and handles responses accordingly.
 
 Now, you have the overall concept so let's dive in implementation and begin with *origin server* then
 the *proxy server* with `HttpProxy`:
 
-== Origin Server (Backend)
+== Origin Server
 
 You simply create the *origin server* that listens to port `7070`
 
@@ -58,4 +59,4 @@ accordingly.
 {@link examples.HttpProxyExamples#proxy}
 ----
 
-Finally, all front requests will be forwarded as a reverse proxy to the *origin server* conveniently.
+Finally, all outbound requests will be forwarded as a reverse proxy to the *origin server* conveniently.

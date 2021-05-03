@@ -12,9 +12,9 @@ import io.vertx.httpproxy.HttpProxy;
 public class HttpProxyExamples {
 
   public void origin(Vertx vertx) {
-    HttpServer backendServer = vertx.createHttpServer();
+    HttpServer originServer = vertx.createHttpServer();
 
-    backendServer.requestHandler(req -> {
+    originServer.requestHandler(req -> {
       req.response()
         .putHeader("content-type", "text/html")
         .end("<html><body><h1>I'm the target resource!</h1></body></html>");
@@ -24,12 +24,12 @@ public class HttpProxyExamples {
   public void proxy(Vertx vertx) {
     HttpClient proxyClient = vertx.createHttpClient();
 
-    HttpProxy backend = HttpProxy.reverseProxy2(proxyClient);
-    backend.target(7070, "localhost");
+    HttpProxy proxy = HttpProxy.reverseProxy(proxyClient);
+    proxy.origin(7070, "localhost");
 
     HttpServer proxyServer = vertx.createHttpServer();
 
-    proxyServer.requestHandler(backend).listen(8080);
+    proxyServer.requestHandler(proxy).listen(8080);
   }
 
 }

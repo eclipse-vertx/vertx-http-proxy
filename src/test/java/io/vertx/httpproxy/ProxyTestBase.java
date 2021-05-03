@@ -70,8 +70,8 @@ public class ProxyTestBase {
       public void start(Promise<Void> startFuture) {
         HttpClient proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
         HttpServer proxyServer = vertx.createHttpServer(new HttpServerOptions(proxyOptions));
-        HttpProxy proxy = HttpProxy.reverseProxy2(proxyClient);
-        proxy.selector(selector);
+        HttpProxy proxy = HttpProxy.reverseProxy(proxyClient);
+        proxy.originSelector(selector);
         proxyServer.requestHandler(proxy);
         proxyServer.listen(ar -> startFuture.handle(ar.mapEmpty()));
       }

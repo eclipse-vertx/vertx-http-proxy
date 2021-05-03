@@ -43,7 +43,7 @@ public class HttpProxyImpl implements HttpProxy {
   };
 
   private final HttpClient client;
-  private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No target available");
+  private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
   private final Map<String, Resource> cache = new HashMap<>();
 
   public HttpProxyImpl(HttpClient client) {
@@ -51,7 +51,7 @@ public class HttpProxyImpl implements HttpProxy {
   }
 
   @Override
-  public HttpProxy selector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
+  public HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
     this.selector = selector;
     return this;
   }
@@ -61,7 +61,7 @@ public class HttpProxyImpl implements HttpProxy {
     handleProxyRequest(outboundRequest);
   }
 
-  private Future<HttpClientRequest> resolveTarget(HttpServerRequest outboundRequest) {
+  private Future<HttpClientRequest> resolveOrigin(HttpServerRequest outboundRequest) {
     return selector.apply(outboundRequest).flatMap(server -> {
       RequestOptions requestOptions = new RequestOptions();
       requestOptions.setServer(server);
@@ -122,7 +122,7 @@ public class HttpProxyImpl implements HttpProxy {
   }
 
   private void handleProxyRequest(ProxyRequest proxyRequest, Handler<AsyncResult<ProxyResponse>> handler) {
-    Future<HttpClientRequest> f = resolveTarget(proxyRequest.outboundRequest());
+    Future<HttpClientRequest> f = resolveOrigin(proxyRequest.outboundRequest());
     f.onComplete(ar -> {
       if (ar.succeeded()) {
         handleProxyRequest(proxyRequest, ar.result(), handler);

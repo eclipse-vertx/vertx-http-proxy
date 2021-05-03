@@ -34,7 +34,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @param client the {@code HttpClient} that forwards <i><b>outbound</b></i> requests to the <i><b>origin</b></i>.
    * @return a reference to this, so the API can be used fluently.
    */
-  static HttpProxy reverseProxy2(HttpClient client) {
+  static HttpProxy reverseProxy(HttpClient client) {
     return new io.vertx.httpproxy.impl.HttpProxyImpl(client);
   }
 
@@ -45,8 +45,8 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  default HttpProxy target(SocketAddress address) {
-    return selector(req -> Future.succeededFuture(address));
+  default HttpProxy origin(SocketAddress address) {
+    return originSelector(req -> Future.succeededFuture(address));
   }
 
   /**
@@ -57,8 +57,8 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  default HttpProxy target(int port, String host) {
-    return target(SocketAddress.inetSocketAddress(port, host));
+  default HttpProxy origin(int port, String host) {
+    return origin(SocketAddress.inetSocketAddress(port, host));
   }
 
   /**
@@ -68,7 +68,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HttpProxy selector(Function<HttpServerRequest, Future<SocketAddress>> selector);
+  HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
 
   /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
