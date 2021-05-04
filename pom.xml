@@ -34,7 +34,7 @@
   <properties>
     <stack.version>4.1.0-SNAPSHOT</stack.version>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
-    <doc.skip>true</doc.skip>
+    <doc.skip>false</doc.skip>
   </properties>
 
   <dependencyManagement>
