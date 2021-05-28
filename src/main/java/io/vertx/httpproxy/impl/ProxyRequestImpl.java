@@ -10,17 +10,9 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Promise;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpVersion;
+import io.vertx.core.http.*;
 import io.vertx.core.http.impl.HttpServerRequestInternal;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.Pipe;
@@ -192,5 +184,15 @@ public class ProxyRequestImpl implements ProxyRequest {
   void send(HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> completionHandler) {
     this.inboundRequest = inboundRequest;
     sendRequest(completionHandler);
+  }
+
+  void websocket(WebSocket inboundWebSocket) {
+    Future<ServerWebSocket> fut = outboundRequest.toWebSocket();
+    fut.onSuccess(ws -> {
+      ws.frameHandler(inboundWebSocket::writeFrame);
+      ws.closeHandler(x -> inboundWebSocket.close());
+      inboundWebSocket.frameHandler(ws::writeFrame);
+      inboundWebSocket.closeHandler(x -> ws.close());
+    });
   }
 }

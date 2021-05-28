@@ -35,6 +35,23 @@ class HttpUtils {
     }
   }
 
+  static boolean isWebsocketUpgrade(MultiMap headers) {
+    List<String> h = headers.getAll("upgrade");
+    if (h != null) {
+      boolean upgrade = false;
+      for (String val : h) {
+        if (val.equals("websocket")) {
+          upgrade = true;
+        } else {
+          return false;
+        }
+      }
+      return upgrade;
+    } else {
+      return false;
+    }
+  }
+
   static Date dateHeader(MultiMap headers) {
     String dateHeader = headers.get(HttpHeaders.DATE);
     if (dateHeader == null) {

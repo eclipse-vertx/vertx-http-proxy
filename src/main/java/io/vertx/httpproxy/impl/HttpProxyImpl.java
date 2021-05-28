@@ -15,13 +15,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpVersion;
-import io.vertx.core.http.RequestOptions;
+import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.HttpProxy;
@@ -69,6 +63,14 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
+  private Future<WebSocket> resolveOriginWS(HttpServerRequest outboundRequest) {
+    return selector.apply(outboundRequest).flatMap(server -> {
+      WebSocketConnectOptions webSocketConnectOptions = new WebSocketConnectOptions();
+      webSocketConnectOptions.setServer(server);
+      return client.webSocket(webSocketConnectOptions);
+    });
+  }
+
   boolean revalidateResource(ProxyResponse response, Resource resource) {
     if (resource.etag != null && response.etag() != null) {
       return resource.etag.equals(response.etag());
@@ -89,6 +91,12 @@ public class HttpProxyImpl implements HttpProxy {
 
   private void handleProxyRequest(HttpServerRequest outboundRequest) {
     ProxyRequestImpl proxyRequest = (ProxyRequestImpl) ProxyRequest.reverseProxy(outboundRequest);
+
+    // Check Websocket
+    if (HttpUtils.isWebsocketUpgrade(outboundRequest.headers())) {
+      handleProxyWebsocket(proxyRequest);
+      return;
+    }
 
     // Encoding check
     Boolean chunked = HttpUtils.isChunked(outboundRequest.headers());
@@ -114,11 +122,25 @@ public class HttpProxyImpl implements HttpProxy {
   private void handleProxyRequestAndProxyResponse(ProxyRequest proxyRequest) {
     handleProxyRequest(proxyRequest, ar -> {
       if (ar.succeeded()) {
-        handleProxyResponse(ar.result(), ar2 -> {});
+        handleProxyResponse(ar.result(), ar2 -> {
+        });
       } else {
         // TODO ???
       }
     });
+  }
+
+  private void failOutboundRequest(ProxyRequest proxyRequest, Handler<AsyncResult<ProxyResponse>> handler, Throwable cause) {
+    HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
+    outboundRequest.resume();
+    Promise<Void> promise = Promise.promise();
+    outboundRequest.exceptionHandler(promise::tryFail);
+    outboundRequest.endHandler(promise::tryComplete);
+    promise.future().onComplete(ar2 -> end(proxyRequest, 502));
+    if (handler != null) {
+      handler.handle(Future.failedFuture(cause));
+    }
+
   }
 
   private void handleProxyRequest(ProxyRequest proxyRequest, Handler<AsyncResult<ProxyResponse>> handler) {
@@ -127,26 +149,29 @@ public class HttpProxyImpl implements HttpProxy {
       if (ar.succeeded()) {
         handleProxyRequest(proxyRequest, ar.result(), handler);
       } else {
-        HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
-        outboundRequest.resume();
-        Promise<Void> promise = Promise.promise();
-        outboundRequest.exceptionHandler(promise::tryFail);
-        outboundRequest.endHandler(promise::tryComplete);
-        promise.future().onComplete(ar2 -> {
-          end(proxyRequest, 502);
-        });
-        handler.handle(Future.failedFuture(ar.cause()));
+        failOutboundRequest(proxyRequest, handler, ar.cause());
       }
     });
   }
 
   private void handleProxyRequest(ProxyRequest proxyRequest, HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> handler) {
-    ((ProxyRequestImpl)proxyRequest).send(inboundRequest, ar2 -> {
+    ((ProxyRequestImpl) proxyRequest).send(inboundRequest, ar2 -> {
       if (ar2.succeeded()) {
         handler.handle(ar2);
       } else {
         proxyRequest.outboundRequest().response().setStatusCode(502).end();
         handler.handle(Future.failedFuture(ar2.cause()));
+      }
+    });
+  }
+
+  private void handleProxyWebsocket(ProxyRequest proxyRequest) {
+    Future<WebSocket> f = resolveOriginWS(proxyRequest.outboundRequest());
+    f.onComplete(ar -> {
+      if (ar.succeeded()) {
+        ((ProxyRequestImpl) proxyRequest).websocket(ar.result());
+      } else {
+        failOutboundRequest(proxyRequest, null, ar.cause());
       }
     });
   }
@@ -220,7 +245,7 @@ public class HttpProxyImpl implements HttpProxy {
       handler = completionHandler;
     }
 
-    ((ProxyResponseImpl)response).send(handler);
+    ((ProxyResponseImpl) response).send(handler);
   }
 
   private boolean tryHandleProxyRequestFromCache(ProxyRequestImpl proxyRequest, Resource resource) {
