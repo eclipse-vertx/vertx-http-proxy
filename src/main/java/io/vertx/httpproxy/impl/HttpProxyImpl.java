@@ -63,10 +63,13 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
-  private Future<WebSocket> resolveOriginWS(HttpServerRequest outboundRequest) {
+  private Future<WebSocket> buildInboundWebsocket(HttpServerRequest outboundRequest) {
     return selector.apply(outboundRequest).flatMap(server -> {
       WebSocketConnectOptions webSocketConnectOptions = new WebSocketConnectOptions();
       webSocketConnectOptions.setServer(server);
+      webSocketConnectOptions.setURI(outboundRequest.uri());
+      webSocketConnectOptions.setMethod(outboundRequest.method());
+      webSocketConnectOptions.setHeaders(outboundRequest.headers().remove("host"));
       return client.webSocket(webSocketConnectOptions);
     });
   }
@@ -93,7 +96,7 @@ public class HttpProxyImpl implements HttpProxy {
     ProxyRequestImpl proxyRequest = (ProxyRequestImpl) ProxyRequest.reverseProxy(outboundRequest);
 
     // Check Websocket
-    if (HttpUtils.isWebsocketUpgrade(outboundRequest.headers())) {
+    if (HttpUtils.isWebSocketUpgrade(outboundRequest.headers())) {
       handleProxyWebsocket(proxyRequest);
       return;
     }
@@ -130,26 +133,19 @@ public class HttpProxyImpl implements HttpProxy {
     });
   }
 
-  private void failOutboundRequest(ProxyRequest proxyRequest, Handler<AsyncResult<ProxyResponse>> handler, Throwable cause) {
-    HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
-    outboundRequest.resume();
-    Promise<Void> promise = Promise.promise();
-    outboundRequest.exceptionHandler(promise::tryFail);
-    outboundRequest.endHandler(promise::tryComplete);
-    promise.future().onComplete(ar2 -> end(proxyRequest, 502));
-    if (handler != null) {
-      handler.handle(Future.failedFuture(cause));
-    }
-
-  }
-
   private void handleProxyRequest(ProxyRequest proxyRequest, Handler<AsyncResult<ProxyResponse>> handler) {
     Future<HttpClientRequest> f = resolveOrigin(proxyRequest.outboundRequest());
     f.onComplete(ar -> {
       if (ar.succeeded()) {
         handleProxyRequest(proxyRequest, ar.result(), handler);
       } else {
-        failOutboundRequest(proxyRequest, handler, ar.cause());
+        HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
+        outboundRequest.resume();
+        Promise<Void> promise = Promise.promise();
+        outboundRequest.exceptionHandler(promise::tryFail);
+        outboundRequest.endHandler(promise::tryComplete);
+        promise.future().onComplete(ar2 -> end(proxyRequest, 502));
+        handler.handle(Future.failedFuture(ar.cause()));
       }
     });
   }
@@ -166,14 +162,15 @@ public class HttpProxyImpl implements HttpProxy {
   }
 
   private void handleProxyWebsocket(ProxyRequest proxyRequest) {
-    Future<WebSocket> f = resolveOriginWS(proxyRequest.outboundRequest());
-    f.onComplete(ar -> {
-      if (ar.succeeded()) {
-        ((ProxyRequestImpl) proxyRequest).websocket(ar.result());
-      } else {
-        failOutboundRequest(proxyRequest, null, ar.cause());
-      }
-    });
+    buildInboundWebsocket(proxyRequest.outboundRequest())
+      .onSuccess(ws -> handleProxyWebsocket(proxyRequest, ws))
+      .onFailure(err -> end(proxyRequest, 502));
+  }
+
+  private void handleProxyWebsocket(ProxyRequest proxyRequest, WebSocket inboundWebSocket) {
+    proxyRequest.outboundRequest().toWebSocket()
+      .onSuccess(serverWebSocket -> ((ProxyRequestImpl) proxyRequest).sendWebSocket(inboundWebSocket, serverWebSocket))
+      .onFailure(err -> end(proxyRequest, 502));
   }
 
   private void handleProxyResponse(ProxyResponse response, Handler<AsyncResult<Void>> completionHandler) {
@@ -266,7 +263,8 @@ public class HttpProxyImpl implements HttpProxy {
                 int sc = proxyResp.getStatusCode();
                 switch (sc) {
                   case 200:
-                    handleProxyResponse(proxyResp, ar2 -> {});
+                    handleProxyResponse(proxyResp, ar2 -> {
+                    });
                     break;
                   case 304:
                     // Warning: this relies on the fact that HttpServerRequest will not send a body for HEAD

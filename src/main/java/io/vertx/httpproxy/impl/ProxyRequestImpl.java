@@ -186,13 +186,10 @@ public class ProxyRequestImpl implements ProxyRequest {
     sendRequest(completionHandler);
   }
 
-  void websocket(WebSocket inboundWebSocket) {
-    Future<ServerWebSocket> fut = outboundRequest.toWebSocket();
-    fut.onSuccess(ws -> {
-      ws.frameHandler(inboundWebSocket::writeFrame);
-      ws.closeHandler(x -> inboundWebSocket.close());
-      inboundWebSocket.frameHandler(ws::writeFrame);
-      inboundWebSocket.closeHandler(x -> ws.close());
-    });
+  void sendWebSocket(WebSocket inboundWebSocket, ServerWebSocket outboundWebSocket) {
+    outboundWebSocket.frameHandler(inboundWebSocket::writeFrame);
+    outboundWebSocket.closeHandler(x -> inboundWebSocket.close());
+    inboundWebSocket.frameHandler(outboundWebSocket::writeFrame);
+    inboundWebSocket.closeHandler(x -> outboundWebSocket.close());
   }
 }

@@ -35,7 +35,7 @@ class HttpUtils {
     }
   }
 
-  static boolean isWebsocketUpgrade(MultiMap headers) {
+  static boolean isWebSocketUpgrade(MultiMap headers) {
     List<String> h = headers.getAll("upgrade");
     if (h != null) {
       boolean upgrade = false;
