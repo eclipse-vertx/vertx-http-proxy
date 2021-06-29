@@ -18,6 +18,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
@@ -31,7 +32,6 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.httpproxy.impl.BufferedReadStream;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -78,13 +78,41 @@ public class ProxyRequestTest extends ProxyTestBase {
     HttpClient httpClient = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
         .compose(req -> req.send().compose(HttpClientResponse::body))
-        .onComplete(result -> {
-          if (version == HttpVersion.HTTP_1_0) {
-            ctx.assertFalse(result.succeeded());
-          } else {
-            ctx.assertTrue(result.succeeded());
-          }
-        });
+        .onComplete(result -> ctx.assertEquals(result.succeeded(), version == HttpVersion.HTTP_1_1));
+  }
+
+  @Test
+  public void testChunkedFrontendRequest(TestContext ctx) {
+    runHttpTest(ctx, req -> {
+      String te = req.getHeader(HttpHeaders.TRANSFER_ENCODING);
+      if (te != null && te.equalsIgnoreCase("chunked")) {
+        ctx.fail("got chunked request");
+      }
+      req.response().end("Hello World");
+    }, ctx.asyncAssertSuccess());
+    HttpClient httpClient = vertx.createHttpClient();
+    httpClient
+        .request(HttpMethod.GET, 8080, "localhost", "/somepath")
+        .compose(HttpClientRequest::send)
+        .compose(HttpClientResponse::body)
+        .onComplete(ctx.asyncAssertSuccess());
+  }
+
+  @Test
+  public void testNonChunkedFrontendRequest(TestContext ctx) {
+    runHttpTest(ctx, req -> {
+      String te = req.getHeader(HttpHeaders.TRANSFER_ENCODING);
+      if (te == null || !te.equalsIgnoreCase("chunked")) {
+        ctx.fail("got non chunked request");
+      }
+      req.response().end("Hello World");
+    }, ctx.asyncAssertSuccess());
+    HttpClient httpClient = vertx.createHttpClient();
+    httpClient
+        .request(HttpMethod.POST, 8080, "localhost", "/somepath")
+        .compose(req -> req.setChunked(true).send("chunk"))
+        .compose(HttpClientResponse::body)
+        .onComplete(ctx.asyncAssertSuccess());
   }
 
   @Ignore
