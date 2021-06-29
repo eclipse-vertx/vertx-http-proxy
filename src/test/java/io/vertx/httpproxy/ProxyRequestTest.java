@@ -68,7 +68,6 @@ public class ProxyRequestTest extends ProxyTestBase {
     testChunkedBackendResponse(ctx, HttpVersion.HTTP_1_1);
   }
 
-  @Ignore
   @Test
   public void testChunkedBackendResponseToHttp1_0Client(TestContext ctx) {
     testChunkedBackendResponse(ctx, HttpVersion.HTTP_1_0);
@@ -79,7 +78,13 @@ public class ProxyRequestTest extends ProxyTestBase {
     HttpClient httpClient = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
         .compose(req -> req.send().compose(HttpClientResponse::body))
-        .onComplete(ctx.asyncAssertSuccess());
+        .onComplete(result -> {
+          if (version == HttpVersion.HTTP_1_0) {
+            ctx.assertFalse(result.succeeded());
+          } else {
+            ctx.assertTrue(result.succeeded());
+          }
+        });
   }
 
   @Ignore
