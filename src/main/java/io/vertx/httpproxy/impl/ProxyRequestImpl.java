@@ -153,7 +153,8 @@ public class ProxyRequestImpl implements ProxyRequest {
     if (len >= 0) {
       inboundRequest.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
     } else {
-      inboundRequest.setChunked(true);
+      Boolean isChunked = HttpUtils.isChunked(outboundRequest.headers());
+      inboundRequest.setChunked(len == -1 && Boolean.TRUE == isChunked);
     }
 
     Pipe<Buffer> pipe = body.stream().pipe();
