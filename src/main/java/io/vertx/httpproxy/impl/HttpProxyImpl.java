@@ -69,7 +69,7 @@ public class HttpProxyImpl implements HttpProxy {
       webSocketConnectOptions.setServer(server);
       webSocketConnectOptions.setURI(outboundRequest.uri());
       webSocketConnectOptions.setMethod(outboundRequest.method());
-      webSocketConnectOptions.setHeaders(outboundRequest.headers().remove("host"));
+      webSocketConnectOptions.setHeaders(outboundRequest.headers().remove("host").remove("sec-websocket-extensions"));
       return client.webSocket(webSocketConnectOptions);
     });
   }
