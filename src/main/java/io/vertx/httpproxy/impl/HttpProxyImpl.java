@@ -43,6 +43,7 @@ public class HttpProxyImpl implements HttpProxy {
   };
 
   private final HttpClient client;
+  private Handler<ProxyRequest> requestRewriter = t -> {};
   private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
   private final Map<String, Resource> cache = new HashMap<>();
 
@@ -53,6 +54,12 @@ public class HttpProxyImpl implements HttpProxy {
   @Override
   public HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
     this.selector = selector;
+    return this;
+  }
+
+  @Override
+  public HttpProxy requestRewriter(Handler<ProxyRequest> rewriter) {
+    this.requestRewriter = rewriter;
     return this;
   }
 
@@ -89,6 +96,7 @@ public class HttpProxyImpl implements HttpProxy {
 
   private void handleProxyRequest(HttpServerRequest outboundRequest) {
     ProxyRequestImpl proxyRequest = (ProxyRequestImpl) ProxyRequest.reverseProxy(outboundRequest);
+    requestRewriter.handle(proxyRequest);
 
     // Encoding check
     Boolean chunked = HttpUtils.isChunked(outboundRequest.headers());

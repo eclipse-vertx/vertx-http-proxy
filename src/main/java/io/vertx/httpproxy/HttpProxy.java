@@ -71,6 +71,15 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
 
   /**
+   * Set a request rewriter to change proxy request.
+   *
+   * @param rewriter the rewriter
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  HttpProxy requestRewriter(Handler<ProxyRequest> rewriter);
+
+  /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
    *
    * @param outboundRequest the outbound {@code HttpServerRequest}
