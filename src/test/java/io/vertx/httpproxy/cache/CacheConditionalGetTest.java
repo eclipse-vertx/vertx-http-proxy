@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.httpproxy.cache;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.http.HttpClient;
@@ -34,7 +34,7 @@ import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class CacheConditionalGetTest extends ProxyTestBase {
+public class CacheConditionalGetTest extends CacheTestBase {
 
   private AtomicInteger hits = new AtomicInteger();
   private HttpClient client;

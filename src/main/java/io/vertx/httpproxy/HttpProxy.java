@@ -35,7 +35,17 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently.
    */
   static HttpProxy reverseProxy(HttpClient client) {
-    return new io.vertx.httpproxy.impl.HttpProxyImpl(client);
+    return new io.vertx.httpproxy.impl.HttpProxyImpl(new ProxyOptions(), client);
+  }
+
+  /**
+   * Create a new {@code HttpProxy} instance.
+   *
+   * @param client the {@code HttpClient} that forwards <i><b>outbound</b></i> requests to the <i><b>origin</b></i>.
+   * @return a reference to this, so the API can be used fluently.
+   */
+  static HttpProxy reverseProxy(ProxyOptions options, HttpClient client) {
+    return new io.vertx.httpproxy.impl.HttpProxyImpl(options, client);
   }
 
   /**

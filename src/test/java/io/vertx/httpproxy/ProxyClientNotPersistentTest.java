@@ -17,7 +17,8 @@ import io.vertx.ext.unit.TestContext;
  */
 public class ProxyClientNotPersistentTest extends ProxyClientKeepAliveTest {
 
-  public ProxyClientNotPersistentTest() {
+  public ProxyClientNotPersistentTest(ProxyOptions options) {
+    super(options);
     keepAlive = false;
     pipelining = false;
   }
