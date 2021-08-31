@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.httpproxy.parsing;
 
 import io.vertx.httpproxy.impl.CacheControl;
 import org.junit.Assert;

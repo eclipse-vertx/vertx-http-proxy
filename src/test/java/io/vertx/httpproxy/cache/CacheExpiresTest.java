@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.httpproxy.cache;
 
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class CacheExpiresTest extends ProxyTestBase {
+public class CacheExpiresTest extends CacheTestBase {
 
   private AtomicInteger hits = new AtomicInteger();
   private HttpClient client;

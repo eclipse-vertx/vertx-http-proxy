@@ -37,6 +37,10 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   protected boolean keepAlive = true;
   protected boolean pipelining = false;
 
+  public ProxyClientKeepAliveTest(ProxyOptions options) {
+    super(options);
+  }
+
   @Override
   public void setUp() {
     super.setUp();
@@ -459,7 +463,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
 
   @Test
   public void testHandleLongInitialLength(TestContext ctx) {
-    proxyOptions.setMaxInitialLineLength(10000);
+    serverOptions.setMaxInitialLineLength(10000);
     Async latch = ctx.async();
     String uri = "/" + randomAlphaString(5999);
     SocketAddress backend = startHttpBackend(ctx, new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {

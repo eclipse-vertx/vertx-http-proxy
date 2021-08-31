@@ -16,6 +16,10 @@ public class BackendTest extends ProxyTestBase {
 
   private HttpClient client;
 
+  public BackendTest(ProxyOptions options) {
+    super(options);
+  }
+
   @Override
   public void setUp() {
     super.setUp();

@@ -8,16 +8,18 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.httpproxy.cache;
+
+import io.vertx.httpproxy.CacheOptions;
+import io.vertx.httpproxy.ProxyOptions;
+import io.vertx.httpproxy.TestBase;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ProxyClientPipelinedTest extends ProxyClientKeepAliveTest {
+public abstract class CacheTestBase extends TestBase {
 
-  public ProxyClientPipelinedTest(ProxyOptions options) {
-    super(options);
-    keepAlive = true;
-    pipelining = true;
+  public CacheTestBase() {
+    super(new ProxyOptions().setCacheOptions(new CacheOptions()));
   }
 }
