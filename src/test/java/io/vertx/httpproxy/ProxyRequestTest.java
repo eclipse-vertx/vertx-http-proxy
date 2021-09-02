@@ -85,7 +85,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     if (version == HttpVersion.HTTP_1_1) {
       res.onComplete(ctx.asyncAssertSuccess());
     } else {
-      res.onComplete(ctx.asyncAssertFailure());
+      res.onComplete(ctx.asyncAssertSuccess());
     }
   }
 

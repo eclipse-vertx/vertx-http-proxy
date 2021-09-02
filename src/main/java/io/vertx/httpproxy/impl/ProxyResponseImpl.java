@@ -20,6 +20,7 @@ import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.impl.HttpServerRequestInternal;
 import io.vertx.core.streams.Pipe;
 import io.vertx.core.streams.ReadStream;
@@ -234,6 +235,20 @@ class ProxyResponseImpl implements ProxyResponse {
     if (len >= 0) {
       outboundResponse.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
     } else {
+      if (request.outboundRequest().version() == HttpVersion.HTTP_1_0) {
+        // Special handling for HTTP 1.0 clients that cannot handle chunked encoding
+        // we need to buffer the content
+        BufferingWriteStream buffer = new BufferingWriteStream();
+        body.stream().pipeTo(buffer, ar -> {
+          if (ar.succeeded()) {
+            Buffer content = buffer.content();
+            outboundResponse.end(content, completionHandler);
+          } else {
+            System.out.println("Not implemented");
+          }
+        });
+        return;
+      }
       outboundResponse.setChunked(true);
     }
     ReadStream<Buffer> bodyStream = bodyFilter.apply(body.stream());

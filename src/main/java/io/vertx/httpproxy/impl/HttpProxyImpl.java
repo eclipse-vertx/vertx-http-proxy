@@ -14,16 +14,13 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyRequest;
@@ -294,26 +291,6 @@ public class HttpProxyImpl implements HttpProxy {
         end(response.request(), 501);
         handler.handle(Future.succeededFuture()); // should use END future here
         return;
-      }
-
-      if (chunked && response.request().version() == HttpVersion.HTTP_1_0) {
-        String contentLength = response.headers().get(HttpHeaders.CONTENT_LENGTH);
-        if (contentLength == null) {
-          // Special handling for HTTP 1.0 clients that cannot handle chunked encoding
-          Body body = response.getBody();
-          response.release();
-          BufferingWriteStream buffer = new BufferingWriteStream();
-          body.stream().pipeTo(buffer, ar -> {
-            if (ar.succeeded()) {
-              Buffer content = buffer.content();
-              response.setBody(Body.body(content));
-              context.handleProxyResponse(response, handler);
-            } else {
-              System.out.println("Not implemented");
-            }
-          });
-          return;
-        }
       }
 
       context.handleProxyResponse(response, handler);
