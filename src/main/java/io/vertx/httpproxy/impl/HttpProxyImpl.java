@@ -28,10 +28,10 @@ import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.cache.CacheOptions;
+import io.vertx.httpproxy.spi.cache.Cache;
 
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -45,11 +45,12 @@ public class HttpProxyImpl implements HttpProxy {
 
   private final HttpClient client;
   private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
-  private final Map<String, Resource> cache;
+  private final Cache<String, Resource> cache;
 
   public HttpProxyImpl(ProxyOptions options, HttpClient client) {
-    if (options != null) {
-      cache = new HashMap<>();
+    CacheOptions cacheOptions = options.getCacheOptions();
+    if (cacheOptions != null) {
+      cache = cacheOptions.newCache();
     } else {
       cache = null;
     }
@@ -169,7 +170,7 @@ public class HttpProxyImpl implements HttpProxy {
           };
         } else {
           if (request.getMethod() == HttpMethod.HEAD) {
-            Resource resource = cache.get(request.absoluteURI());
+            Resource resource = (Resource) cache.get(request.absoluteURI());
             if (resource != null) {
               if (!revalidateResource(response, resource)) {
                 // Invalidate cache

@@ -60,3 +60,12 @@ accordingly.
 ----
 
 Finally, all outbound requests will be forwarded as a reverse proxy to the *origin server* conveniently.
+
+=== Proxy caching
+
+By default the proxy does not cache response and ignores most cache directives, you can enable caching by setting the cache options.
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#cacheConfig}
+----

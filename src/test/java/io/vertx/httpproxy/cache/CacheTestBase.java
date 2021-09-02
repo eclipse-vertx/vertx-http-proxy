@@ -10,7 +10,6 @@
  */
 package io.vertx.httpproxy.cache;
 
-import io.vertx.httpproxy.CacheOptions;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.TestBase;
 

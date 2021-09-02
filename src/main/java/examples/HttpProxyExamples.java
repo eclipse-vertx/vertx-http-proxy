@@ -6,7 +6,9 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.HttpProxy;
+import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyRequest;
+import io.vertx.httpproxy.cache.CacheOptions;
 
 /**
  * @author <a href="mailto:emad.albloushi@gmail.com">Emad Alblueshi</a>
@@ -61,5 +63,9 @@ public class HttpProxyExamples {
           .send();
       });
     });
+  }
+
+  public void cacheConfig(Vertx vertx, HttpClient proxyClient) {
+    HttpProxy proxy = HttpProxy.reverseProxy(new ProxyOptions().setCacheOptions(new CacheOptions()), proxyClient);
   }
 }

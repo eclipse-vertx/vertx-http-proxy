@@ -11,6 +11,7 @@
 package io.vertx.httpproxy;
 
 import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
+import io.vertx.httpproxy.cache.CacheOptions;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
