@@ -528,6 +528,7 @@ public class ProxyRequestTest extends ProxyTestBase {
         if (req.writeQueueFull()) {
           req.drainHandler(v1 -> {
             req.end().onSuccess(v2 -> {
+              vertx.cancelTimer(id);
               drainedLatch.complete();
             });
           });
