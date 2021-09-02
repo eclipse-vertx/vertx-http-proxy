@@ -80,9 +80,13 @@ public class ProxyRequestTest extends ProxyTestBase {
   private void testChunkedBackendResponse(TestContext ctx, HttpVersion version) {
     runHttpTest(ctx, req -> req.response().setChunked(true).end("Hello World"), ctx.asyncAssertSuccess());
     HttpClient httpClient = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
-        .compose(req -> req.send().compose(HttpClientResponse::body))
-        .onComplete(result -> ctx.assertEquals(result.succeeded(), version == HttpVersion.HTTP_1_1));
+    Future<Buffer> res = httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
+      .compose(req -> req.send().compose(HttpClientResponse::body));
+    if (version == HttpVersion.HTTP_1_1) {
+      res.onComplete(ctx.asyncAssertSuccess());
+    } else {
+      res.onComplete(ctx.asyncAssertFailure());
+    }
   }
 
   @Test
