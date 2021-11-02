@@ -16,10 +16,13 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
@@ -68,6 +71,52 @@ public class HttpProxyImpl implements HttpProxy {
     Boolean chunked = HttpUtils.isChunked(outboundRequest.headers());
     if (chunked == null) {
       end(proxyRequest, 400);
+      return;
+    }
+
+    //
+    if (outboundRequest.method() == HttpMethod.GET && outboundRequest.headers().contains(HttpHeaders.CONNECTION, HttpHeaders.UPGRADE, true)) {
+      outboundRequest.pause();
+      resolveOrigin(outboundRequest).onComplete(ar -> {
+        if (ar.succeeded()) {
+          HttpClientRequest inboundRequest = ar.result();
+          inboundRequest.setMethod(HttpMethod.GET);
+          inboundRequest.setURI(outboundRequest.uri());
+          inboundRequest.headers().addAll(outboundRequest.headers());
+          Future<HttpClientResponse> fut2 = inboundRequest.connect();
+          fut2.onComplete(ar2 -> {
+            if (ar2.succeeded()) {
+              HttpClientResponse inboundResponse = ar2.result();
+              if (inboundResponse.statusCode() == 101) {
+                HttpServerResponse outboundResponse = outboundRequest.response();
+                outboundResponse.setStatusCode(101);
+                outboundResponse.headers().addAll(inboundResponse.headers());
+                Future<NetSocket> otherso = outboundRequest.toNetSocket();
+                otherso.onComplete(ar3 -> {
+                  if (ar3.succeeded()) {
+                    NetSocket outboundSocket = ar3.result();
+                    NetSocket inboundSocket = inboundResponse.netSocket();
+                    outboundSocket.handler(buff -> inboundSocket.write(buff));
+                    inboundSocket.handler(buff -> outboundSocket.write(buff));
+                    outboundSocket.closeHandler(v -> inboundSocket.close());
+                    inboundSocket.closeHandler(v -> outboundSocket.close());
+                  } else {
+                    System.out.println("HANDLE ME 2");
+                    ar3.cause().printStackTrace();
+                  }
+                });
+              } else {
+                System.out.println("HANDLE ME");
+              }
+            } else {
+              ar2.cause().printStackTrace();
+            }
+          });
+        } else {
+          outboundRequest.resume();
+          end(proxyRequest, 502);
+        }
+      });
       return;
     }
 
