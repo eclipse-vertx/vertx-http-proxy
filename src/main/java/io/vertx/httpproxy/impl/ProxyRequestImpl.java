@@ -29,9 +29,20 @@ import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
+import java.util.Map;
 import java.util.function.Function;
 
 public class ProxyRequestImpl implements ProxyRequest {
+
+  private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
+    .add(HttpHeaders.CONNECTION, "whatever")
+    .add(HttpHeaders.KEEP_ALIVE, "whatever")
+    .add(HttpHeaders.PROXY_AUTHENTICATE, "whatever")
+    .add(HttpHeaders.PROXY_AUTHORIZATION, "whatever")
+    .add("te", "whatever")
+    .add("trailer", "whatever")
+    .add(HttpHeaders.TRANSFER_ENCODING, "whatever")
+    .add(HttpHeaders.UPGRADE, "whatever");
 
   final ContextInternal context;
   private HttpMethod method;
@@ -138,16 +149,14 @@ public class ProxyRequestImpl implements ProxyRequest {
     inboundRequest.setMethod(method);
     inboundRequest.setURI(uri);
 
-    // Add all end-to-end headers
-    headers.forEach(header -> {
+    // Add all headers
+    for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
-      if (name.equalsIgnoreCase("host")) {
-        // Skip
-      } else {
+      if (!HOP_BY_HOP_HEADERS.contains(name)) {
         inboundRequest.headers().add(name, value);
       }
-    });
+    }
 
     long len = body.length();
     if (len >= 0) {

@@ -64,7 +64,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   public void testGet(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals("localhost:8081", req.host());
+      ctx.assertEquals("localhost:8080", req.host());
       req.response().end("Hello World");
     });
     startProxy(backend);
@@ -710,13 +710,17 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   public void testPropagateHeaders(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
       ctx.assertEquals("request_header_value", req.getHeader("request_header"));
+      ctx.assertNull(req.getHeader("proxy-authenticate"));
       req.response().putHeader("response_header", "response_header_value").end();
     });
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
     Async latch = ctx.async();
     client.request(GET, 8080, "localhost", "/", ctx.asyncAssertSuccess(req -> {
-      req.putHeader("request_header", "request_header_value").send(ctx.asyncAssertSuccess(resp -> {
+      req
+        .putHeader("request_header", "request_header_value")
+        .putHeader("proxy-authenticate", "proxy-authenticate_value")
+        .send(ctx.asyncAssertSuccess(resp -> {
         ctx.assertEquals(200, resp.statusCode());
         ctx.assertEquals("response_header_value", resp.getHeader("response_header"));
         latch.complete();
