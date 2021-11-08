@@ -10,13 +10,20 @@ import io.vertx.httpproxy.cache.CacheOptions;
 @DataObject(generateConverter = true)
 public class ProxyOptions {
 
+  /**
+   * Enable WebSocket support : {@code true}
+   */
+  public static final boolean DEFAULT_SUPPORT_WEBSOCKET = true;
+
   private CacheOptions cacheOptions;
+  private boolean supportWebSocket;
 
   public ProxyOptions(JsonObject json) {
     ProxyOptionsConverter.fromJson(json, this);
   }
 
   public ProxyOptions() {
+    supportWebSocket = DEFAULT_SUPPORT_WEBSOCKET;
   }
 
   /**
@@ -36,6 +43,15 @@ public class ProxyOptions {
    */
   public ProxyOptions setCacheOptions(CacheOptions cacheOptions) {
     this.cacheOptions = cacheOptions;
+    return this;
+  }
+
+  public boolean getSupportWebSocket() {
+    return supportWebSocket;
+  }
+
+  public ProxyOptions setSupportWebSocket(boolean supportWebSocket) {
+    this.supportWebSocket = supportWebSocket;
     return this;
   }
 

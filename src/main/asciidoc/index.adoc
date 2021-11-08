@@ -61,6 +61,15 @@ accordingly.
 
 Finally, all outbound requests will be forwarded as a reverse proxy to the *origin server* conveniently.
 
+=== WebSockets
+
+WebSocket upgrades are supported.
+
+The proxy simply forward the WebSocket handshake request headers (including the `connection` header) and the handshake
+is performed between the user agent and the origin server.
+
+You can configure WebSocket support with {@link io.vertx.httpproxy.ProxyOptions#setSupportWebSocket}.
+
 === Proxy caching
 
 By default the proxy does not cache response and ignores most cache directives, you can enable caching by setting the cache options.
