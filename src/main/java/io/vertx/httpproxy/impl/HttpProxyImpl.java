@@ -21,6 +21,7 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
@@ -74,8 +75,10 @@ public class HttpProxyImpl implements HttpProxy {
       return;
     }
 
-    //
-    if (outboundRequest.method() == HttpMethod.GET && outboundRequest.headers().contains(HttpHeaders.CONNECTION, HttpHeaders.UPGRADE, true)) {
+    // WebSocket upgrade tunneling
+    if (outboundRequest.version() == HttpVersion.HTTP_1_1 &&
+        outboundRequest.method() == HttpMethod.GET &&
+        outboundRequest.headers().contains(HttpHeaders.CONNECTION, HttpHeaders.UPGRADE, true)) {
       outboundRequest.pause();
       resolveOrigin(outboundRequest).onComplete(ar -> {
         if (ar.succeeded()) {
@@ -84,6 +87,15 @@ public class HttpProxyImpl implements HttpProxy {
           inboundRequest.setURI(outboundRequest.uri());
           inboundRequest.headers().addAll(outboundRequest.headers());
           Future<HttpClientResponse> fut2 = inboundRequest.connect();
+          outboundRequest.handler(buff -> {
+            inboundRequest.write(buff).onComplete(ar_ -> {
+              System.out.println(ar_.succeeded());
+            });
+          });
+          outboundRequest.endHandler(v -> {
+            inboundRequest.end();
+          });
+          outboundRequest.resume();
           fut2.onComplete(ar2 -> {
             if (ar2.succeeded()) {
               HttpClientResponse inboundResponse = ar2.result();

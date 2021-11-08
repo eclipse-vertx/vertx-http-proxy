@@ -16,6 +16,8 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.http.WebSocketConnectOptions;
+import io.vertx.core.http.WebsocketVersion;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -43,7 +45,26 @@ public class WebSocketTest extends ProxyTestBase {
   }
 
   @Test
-  public void testWebSocket(TestContext ctx) {
+  public void testWebSocketV00(TestContext ctx) {
+    testWebSocket(ctx, WebsocketVersion.V00);
+  }
+
+  @Test
+  public void testWebSocketV07(TestContext ctx) {
+    testWebSocket(ctx, WebsocketVersion.V07);
+  }
+
+  @Test
+  public void testWebSocketV08(TestContext ctx) {
+    testWebSocket(ctx, WebsocketVersion.V08);
+  }
+
+  @Test
+  public void testWebSocketV13(TestContext ctx) {
+    testWebSocket(ctx, WebsocketVersion.V13);
+  }
+
+  private void testWebSocket(TestContext ctx, WebsocketVersion version) {
     Async async = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
@@ -56,7 +77,12 @@ public class WebSocketTest extends ProxyTestBase {
     });
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
-    client.webSocket(8080, "localhost", "/ws", ctx.asyncAssertSuccess(ws -> {
+    WebSocketConnectOptions options = new WebSocketConnectOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws")
+      .setVersion(version);
+    client.webSocket(options, ctx.asyncAssertSuccess(ws -> {
       ws.write(Buffer.buffer("ping"));
       ws.handler(buff -> {
         ws.close();
