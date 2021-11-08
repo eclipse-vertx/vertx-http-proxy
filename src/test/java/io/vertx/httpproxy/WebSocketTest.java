@@ -16,6 +16,7 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.http.UpgradeRejectedException;
 import io.vertx.core.http.WebSocketConnectOptions;
 import io.vertx.core.http.WebsocketVersion;
 import io.vertx.core.net.SocketAddress;
@@ -87,6 +88,24 @@ public class WebSocketTest extends ProxyTestBase {
       ws.handler(buff -> {
         ws.close();
       });
+    }));
+  }
+
+  @Test
+  public void testWebSocketReject(TestContext ctx) {
+    Async async = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response().setStatusCode(400).end();
+    });
+    startProxy(backend);
+    HttpClient client = vertx.createHttpClient();
+    WebSocketConnectOptions options = new WebSocketConnectOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws");
+    client.webSocket(options, ctx.asyncAssertFailure(err -> {
+      ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
+      async.complete();
     }));
   }
 }

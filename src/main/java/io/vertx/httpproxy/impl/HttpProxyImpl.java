@@ -118,7 +118,9 @@ public class HttpProxyImpl implements HttpProxy {
                   }
                 });
               } else {
-                System.out.println("HANDLE ME");
+                // Rejection
+                outboundRequest.resume();
+                end(proxyRequest, inboundResponse.statusCode());
               }
             } else {
               ar2.cause().printStackTrace();
