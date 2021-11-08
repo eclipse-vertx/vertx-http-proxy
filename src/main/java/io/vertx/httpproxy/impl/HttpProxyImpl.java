@@ -16,10 +16,14 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
@@ -41,6 +45,7 @@ public class HttpProxyImpl implements HttpProxy {
   };
 
   private final HttpClient client;
+  private final boolean supportWebSocket;
   private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
   private final Cache<String, Resource> cache;
 
@@ -52,6 +57,7 @@ public class HttpProxyImpl implements HttpProxy {
       cache = null;
     }
     this.client = client;
+    this.supportWebSocket = options.getSupportWebSocket();
   }
 
   @Override
@@ -71,6 +77,15 @@ public class HttpProxyImpl implements HttpProxy {
       return;
     }
 
+    // WebSocket upgrade tunneling
+    if (supportWebSocket &&
+        outboundRequest.version() == HttpVersion.HTTP_1_1 &&
+        outboundRequest.method() == HttpMethod.GET &&
+        outboundRequest.headers().contains(HttpHeaders.CONNECTION, HttpHeaders.UPGRADE, true)) {
+      handleWebSocketUpgrade(proxyRequest);
+      return;
+    }
+
     ProxyContext bh;
     if (cache != null) {
       Proxy logic = new Proxy();
@@ -83,6 +98,57 @@ public class HttpProxyImpl implements HttpProxy {
     }
 
     bh.handleProxyRequest(proxyRequest, ar -> {});
+  }
+
+  private void handleWebSocketUpgrade(ProxyRequest proxyRequest) {
+    HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
+    resolveOrigin(outboundRequest).onComplete(ar -> {
+      if (ar.succeeded()) {
+        HttpClientRequest inboundRequest = ar.result();
+        inboundRequest.setMethod(HttpMethod.GET);
+        inboundRequest.setURI(outboundRequest.uri());
+        inboundRequest.headers().addAll(outboundRequest.headers());
+        Future<HttpClientResponse> fut2 = inboundRequest.connect();
+        outboundRequest.handler(inboundRequest::write);
+        outboundRequest.endHandler(v -> inboundRequest.end());
+        outboundRequest.resume();
+        fut2.onComplete(ar2 -> {
+          if (ar2.succeeded()) {
+            HttpClientResponse inboundResponse = ar2.result();
+            if (inboundResponse.statusCode() == 101) {
+              HttpServerResponse outboundResponse = outboundRequest.response();
+              outboundResponse.setStatusCode(101);
+              outboundResponse.headers().addAll(inboundResponse.headers());
+              Future<NetSocket> otherso = outboundRequest.toNetSocket();
+              otherso.onComplete(ar3 -> {
+                if (ar3.succeeded()) {
+                  NetSocket outboundSocket = ar3.result();
+                  NetSocket inboundSocket = inboundResponse.netSocket();
+                  outboundSocket.handler(inboundSocket::write);
+                  inboundSocket.handler(outboundSocket::write);
+                  outboundSocket.closeHandler(v -> inboundSocket.close());
+                  inboundSocket.closeHandler(v -> outboundSocket.close());
+                } else {
+                  // Find reproducer
+                  System.err.println("Handle this case");
+                  ar3.cause().printStackTrace();
+                }
+              });
+            } else {
+              // Rejection
+              outboundRequest.resume();
+              end(proxyRequest, inboundResponse.statusCode());
+            }
+          } else {
+            outboundRequest.resume();
+            end(proxyRequest, 502);
+          }
+        });
+      } else {
+        outboundRequest.resume();
+        end(proxyRequest, 502);
+      }
+    });
   }
 
   private Future<HttpClientRequest> resolveOrigin(HttpServerRequest outboundRequest) {

@@ -25,6 +25,11 @@ public class ProxyOptionsConverter {
             obj.setCacheOptions(new io.vertx.httpproxy.cache.CacheOptions((io.vertx.core.json.JsonObject)member.getValue()));
           }
           break;
+        case "supportWebSocket":
+          if (member.getValue() instanceof Boolean) {
+            obj.setSupportWebSocket((Boolean)member.getValue());
+          }
+          break;
       }
     }
   }
@@ -37,5 +42,6 @@ public class ProxyOptionsConverter {
     if (obj.getCacheOptions() != null) {
       json.put("cacheOptions", obj.getCacheOptions().toJson());
     }
+    json.put("supportWebSocket", obj.getSupportWebSocket());
   }
 }
