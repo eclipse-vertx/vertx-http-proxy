@@ -108,4 +108,24 @@ public class WebSocketTest extends ProxyTestBase {
       async.complete();
     }));
   }
+
+  @Test
+  public void testInboundClose(TestContext ctx) {
+    Async async = ctx.async();
+    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+      so.handler(buff -> {
+        so.close();
+      });
+    });
+    startProxy(backend);
+    HttpClient client = vertx.createHttpClient();
+    WebSocketConnectOptions options = new WebSocketConnectOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws");
+    client.webSocket(options, ctx.asyncAssertFailure(err -> {
+      ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
+      async.complete();
+    }));
+  }
 }

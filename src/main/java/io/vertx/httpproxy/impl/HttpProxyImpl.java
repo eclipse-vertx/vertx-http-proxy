@@ -123,7 +123,8 @@ public class HttpProxyImpl implements HttpProxy {
                 end(proxyRequest, inboundResponse.statusCode());
               }
             } else {
-              ar2.cause().printStackTrace();
+              outboundRequest.resume();
+              end(proxyRequest, 502);
             }
           });
         } else {
