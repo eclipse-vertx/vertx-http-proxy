@@ -38,7 +38,7 @@ public class ProxyOptions {
    *
    * {@code null} cache options disables caching, by default cache is disabled.
    *
-   * @param cacheOptions the cache options.
+   * @param cacheOptions the cache options
    * @return a reference to this, so the API can be used fluently
    */
   public ProxyOptions setCacheOptions(CacheOptions cacheOptions) {
@@ -46,10 +46,19 @@ public class ProxyOptions {
     return this;
   }
 
+  /**
+   * @return whether WebSocket are supported
+   */
   public boolean getSupportWebSocket() {
     return supportWebSocket;
   }
 
+  /**
+   * Set whether WebSocket are supported.
+   *
+   * @param supportWebSocket {@code true} to enable WebSocket support, {@code false} otherwise
+   * @return a reference to this, so the API can be used fluently
+   */
   public ProxyOptions setSupportWebSocket(boolean supportWebSocket) {
     this.supportWebSocket = supportWebSocket;
     return this;
