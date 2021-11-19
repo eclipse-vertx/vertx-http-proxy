@@ -29,6 +29,7 @@ import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.ProxyEvent;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 
@@ -48,6 +49,8 @@ public class HttpProxyImpl implements HttpProxy {
   private final boolean supportWebSocket;
   private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
   private final Cache<String, Resource> cache;
+  private Handler<ProxyEvent> proxyRequestHandler;
+  private Handler<ProxyEvent> proxyResponseHandler;
 
   public HttpProxyImpl(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
@@ -58,11 +61,26 @@ public class HttpProxyImpl implements HttpProxy {
     }
     this.client = client;
     this.supportWebSocket = options.getSupportWebSocket();
+
+    this.proxyRequestHandler = ar -> {};
+    this.proxyResponseHandler = ar -> {};
   }
 
   @Override
   public HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
     this.selector = selector;
+    return this;
+  }
+
+  @Override
+  public HttpProxy onProxyRequestCompletion(Handler<ProxyEvent> handler) {
+    this.proxyRequestHandler = handler;
+    return this;
+  }
+
+  @Override
+  public HttpProxy onProxyResponseCompletion(Handler<ProxyEvent> handler) {
+    this.proxyResponseHandler = handler;
     return this;
   }
 
@@ -97,7 +115,7 @@ public class HttpProxyImpl implements HttpProxy {
       bh = new Proxy();
     }
 
-    bh.handleProxyRequest(proxyRequest, ar -> {});
+    bh.handleProxyRequest(proxyRequest);
   }
 
   private void handleWebSocketUpgrade(ProxyRequest proxyRequest) {
@@ -174,13 +192,15 @@ public class HttpProxyImpl implements HttpProxy {
       .putHeader(HttpHeaders.CONTENT_LENGTH, "0")
       .setBody(null)
       .send();
-
   }
 
   private interface ProxyContext {
 
-    void handleProxyRequest(ProxyRequest request, Handler<AsyncResult<Void>> handler);
-    void handleProxyResponse(ProxyResponse response, Handler<AsyncResult<Void>> handler);
+    void handleProxyRequest(ProxyRequest request);
+    void handleProxyResponse(ProxyResponse response);
+
+    void onHandleProxyRequest(ProxyEvent event);
+    void onHandleProxyResponse(ProxyEvent event);
 
   }
 
@@ -190,30 +210,39 @@ public class HttpProxyImpl implements HttpProxy {
     private Resource cached;
 
     @Override
-    public void handleProxyRequest(ProxyRequest request, Handler<AsyncResult<Void>> handler) {
-      if (tryHandleProxyRequestFromCache(request, handler)) {
+    public void handleProxyRequest(ProxyRequest request) {
+      if (tryHandleProxyRequestFromCache(request)) {
         return;
       }
-      context.handleProxyRequest(request, handler);
+      context.handleProxyRequest(request);
     }
 
     @Override
-    public void handleProxyResponse(ProxyResponse response, Handler<AsyncResult<Void>> handler) {
-      sendAndTryCacheProxyResponse(response, handler);
+    public void handleProxyResponse(ProxyResponse response) {
+      sendAndTryCacheProxyResponse(response);
     }
 
-    private void sendAndTryCacheProxyResponse(ProxyResponse response, Handler<AsyncResult<Void>> completionHandler) {
+    @Override
+    public void onHandleProxyRequest(ProxyEvent res) {
+      context.onHandleProxyRequest(res);
+    }
+
+    @Override
+    public void onHandleProxyResponse(ProxyEvent res) {
+      context.onHandleProxyResponse(res);
+    }
+
+    private void sendAndTryCacheProxyResponse(ProxyResponse response) {
 
       if (cached != null && response.getStatusCode() == 304) {
         // Warning: this relies on the fact that HttpServerRequest will not send a body for HEAD
         response.release();
         cached.sendTo(response.request().response());
-        completionHandler.handle(Future.succeededFuture()); // Use sendTo result
+        onHandleProxyResponse(ProxyEvent.fromResponse(response)); // Use sendTo result
         return;
       }
 
       ProxyRequest request = response.request();
-      Handler<AsyncResult<Void>> handler;
       if (response.publicCacheControl() && response.maxAge() > 0) {
         if (request.getMethod() == HttpMethod.GET) {
           String absoluteUri = request.absoluteURI();
@@ -225,12 +254,20 @@ public class HttpProxyImpl implements HttpProxy {
             System.currentTimeMillis(),
             response.maxAge());
           response.bodyFilter(s -> new BufferingReadStream(s, res.content));
-          handler = ar3 -> {
-            if (ar3.succeeded()) {
-              cache.put(absoluteUri, res);
+          // Note: we must manually call this instead of context.handleProxyResponse as we
+          // have to do additional work based on the response instead of handing off
+          // directly to the handler.
+          ((ProxyResponseImpl)response).send(
+            ar3 -> {
+              if (ar3.succeeded()) {
+                cache.put(absoluteUri, res);
+                onHandleProxyResponse(ProxyEvent.fromResponse(response));
+              } else {
+                onHandleProxyResponse(ProxyEvent.failedResponse(response));
+              }
             }
-            completionHandler.handle(ar3);
-          };
+          );
+          return;
         } else {
           if (request.getMethod() == HttpMethod.HEAD) {
             Resource resource = (Resource) cache.get(request.absoluteURI());
@@ -241,15 +278,12 @@ public class HttpProxyImpl implements HttpProxy {
               }
             }
           }
-          handler = completionHandler;
         }
-      } else {
-        handler = completionHandler;
       }
-      context.handleProxyResponse(response, handler);
+      context.handleProxyResponse(response);
     }
 
-    private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest, Handler<AsyncResult<Void>> handler) {
+    private boolean tryHandleProxyRequestFromCache(ProxyRequest proxyRequest) {
 
       HttpServerRequest outboundRequest = proxyRequest.outboundRequest();
 
@@ -276,7 +310,7 @@ public class HttpProxyImpl implements HttpProxy {
             if (etag != null) {
               proxyRequest.headers().set(HttpHeaders.IF_NONE_MATCH, resource.etag);
               cached = resource;
-              context.handleProxyRequest(proxyRequest, handler);
+              context.handleProxyRequest(proxyRequest);
               return true;
             } else {
               return false;
@@ -285,19 +319,18 @@ public class HttpProxyImpl implements HttpProxy {
         }
       }
 
-      //
       String ifModifiedSinceHeader = outboundRequest.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
       if ((outboundRequest.method() == HttpMethod.GET || outboundRequest.method() == HttpMethod.HEAD) && ifModifiedSinceHeader != null && resource.lastModified != null) {
         Date ifModifiedSince = ParseUtils.parseHeaderDate(ifModifiedSinceHeader);
         if (resource.lastModified.getTime() <= ifModifiedSince.getTime()) {
           outboundRequest.response().setStatusCode(304).end();
-          handler.handle(Future.succeededFuture());
+          onHandleProxyRequest(ProxyEvent.fromRequest(proxyRequest).withStatusCode(304));
           return true;
         }
       }
 
       resource.sendTo(proxyRequest.response());
-      handler.handle(Future.succeededFuture());
+      onHandleProxyRequest(ProxyEvent.fromRequest(proxyRequest));
       return true;
     }
   }
@@ -307,13 +340,14 @@ public class HttpProxyImpl implements HttpProxy {
     private ProxyContext context = this;
 
     @Override
-    public void handleProxyRequest(ProxyRequest request, Handler<AsyncResult<Void>> handler) {
+    public void handleProxyRequest(ProxyRequest request) {
       sendProxyRequest(request, ar -> {
         if (ar.succeeded()) {
-          sendProxyResponse(ar.result(), ar2 -> {});
-          handler.handle(Future.succeededFuture());
+          // Allow consumers to handle the event first
+          onHandleProxyRequest(ProxyEvent.fromRequest(request));
+          sendProxyResponse(ar.result());
         } else {
-          handler.handle(Future.failedFuture(ar.cause()));
+          onHandleProxyRequest(ProxyEvent.failedRequest(request));
         }
       });
     }
@@ -348,24 +382,36 @@ public class HttpProxyImpl implements HttpProxy {
       });
     }
 
-    private void sendProxyResponse(ProxyResponse response, Handler<AsyncResult<Void>> handler) {
+    private void sendProxyResponse(ProxyResponse response) {
 
       // Check validity
       Boolean chunked = HttpUtils.isChunked(response.headers());
       if (chunked == null) {
         // response.request().release(); // Is it needed ???
         end(response.request(), 501);
-        handler.handle(Future.succeededFuture()); // should use END future here
+        onHandleProxyResponse(ProxyEvent.fromResponse(response).withStatusCode(501)); // should use END future here
         return;
       }
 
-      context.handleProxyResponse(response, handler);
+      context.handleProxyResponse(response);
     }
 
+    @Override
+    public void handleProxyResponse(ProxyResponse response) {
+      ((ProxyResponseImpl)response).send(ar -> {
+        if (ar.succeeded()) this.onHandleProxyResponse(ProxyEvent.fromResponse(response));
+        else this.onHandleProxyResponse(ProxyEvent.failedResponse(response));
+      });
+    }
 
     @Override
-    public void handleProxyResponse(ProxyResponse response, Handler<AsyncResult<Void>> handler) {
-      ((ProxyResponseImpl)response).send(handler);
+    public void onHandleProxyRequest(ProxyEvent res) {
+      proxyRequestHandler.handle(res);
+    }
+
+    @Override
+    public void onHandleProxyResponse(ProxyEvent res) {
+      proxyResponseHandler.handle(res);
     }
   }
 }

@@ -72,6 +72,12 @@ public abstract class TestBase {
   }
 
   protected Closeable startProxy(Function<HttpServerRequest, Future<SocketAddress>> selector) {
+    return startProxy(selector, x -> {}, x -> {});
+  }
+
+  protected Closeable startProxy(Function<HttpServerRequest, Future<SocketAddress>> selector,
+                                 Handler<ProxyEvent> proxyRequestCompletionHandler,
+                                 Handler<ProxyEvent> proxyResponseCompletionHandler) {
     CompletableFuture<Closeable> res = new CompletableFuture<>();
     vertx.deployVerticle(new AbstractVerticle() {
       @Override
@@ -80,6 +86,8 @@ public abstract class TestBase {
         HttpServer proxyServer = vertx.createHttpServer(new HttpServerOptions(serverOptions));
         HttpProxy proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
         proxy.originSelector(selector);
+        proxy.onProxyRequestCompletion(proxyRequestCompletionHandler);
+        proxy.onProxyResponseCompletion(proxyResponseCompletionHandler);
         proxyServer.requestHandler(proxy);
         proxyServer.listen(ar -> startFuture.handle(ar.mapEmpty()));
       }

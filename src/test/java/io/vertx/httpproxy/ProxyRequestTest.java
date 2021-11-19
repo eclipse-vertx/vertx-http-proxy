@@ -612,6 +612,45 @@ public class ProxyRequestTest extends ProxyTestBase {
       }));
   }
 
+  @Test
+  public void testProxyRequestHandler(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals(HttpMethod.POST, req.method());
+      req.response()
+        .setStatusCode(203)
+        .end("some-data");
+    });
+    Async async = ctx.async(3);
+    startProxy(req -> Future.succeededFuture(backend), reqEvent -> {
+      if (reqEvent.failed()) {
+        ctx.fail();
+        return;
+      }
+
+      ctx.assertEquals(200, reqEvent.getStatusCode());
+      ctx.assertEquals("/", reqEvent.outboundRequest().uri());
+      async.countDown();
+    }, resEvent -> {
+      if (resEvent.failed()) {
+        ctx.fail();
+        return;
+      }
+
+      ctx.assertEquals(resEvent.getStatusCode(), 203);
+      async.countDown();
+    });
+    HttpClient client = vertx.createHttpClient();
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(req -> req.send().compose(res -> {
+        ctx.assertEquals(203, res.statusCode());
+        return res.body();
+      }))
+      .onComplete(ctx.asyncAssertSuccess(body -> {
+        ctx.assertEquals("some-data", body.toString());
+        async.countDown();
+      }));
+  }
+
   private static Buffer CHUNK;
 
   static {

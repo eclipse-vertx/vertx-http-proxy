@@ -80,6 +80,12 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   @Fluent
   HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
 
+  @Fluent
+  HttpProxy onProxyRequestCompletion(Handler<ProxyEvent> handler);
+
+  @Fluent
+  HttpProxy onProxyResponseCompletion(Handler<ProxyEvent> handler);
+
   /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
    *
