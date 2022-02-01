@@ -18,6 +18,7 @@ class BufferingReadStream implements ReadStream<Buffer> {
 
   private final ReadStream<Buffer> stream;
   private final Buffer content;
+  private Handler<Void> endHandler;
 
   public BufferingReadStream(ReadStream<Buffer> stream, Buffer content) {
     this.stream = stream;

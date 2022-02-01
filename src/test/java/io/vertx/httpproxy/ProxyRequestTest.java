@@ -336,10 +336,9 @@ public class ProxyRequestTest extends ProxyTestBase {
   }
 
   @Test
-  public void testRequestFilter(TestContext ctx) throws Exception {
+  public void testRequestFilter(TestContext ctx) {
     Filter filter = new Filter();
     CompletableFuture<Integer> onResume = new CompletableFuture<>();
-    HttpClient client = vertx.createHttpClient();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.pause();
       onResume.thenAccept(num -> {
@@ -350,32 +349,50 @@ public class ProxyRequestTest extends ProxyTestBase {
         req.resume();
       });
     });
+    Async async = ctx.async();
     HttpClient backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
-      ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      proxyReq.bodyFilter(filter::init);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
-        proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertSuccess());
-      }));
-    });
-    client.request(HttpMethod.POST, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
-      req.setChunked(true);
-      AtomicInteger num = new AtomicInteger();
-      vertx.setPeriodic(1, id -> {
-        if (filter.paused.get()) {
-          vertx.cancelTimer(id);
-          req.end();
-          onResume.complete(num.get());
-        } else {
-          num.incrementAndGet();
-          req.write(CHUNK);
+    HttpClient client = vertx.createHttpClient();
+    try {
+      HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
+      proxy.origin(backend);
+      proxy.addInterceptor(new ProxyInterceptor() {
+        @Override
+        public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+          ProxyRequest proxyRequest = context.request();
+          Body body = proxyRequest.getBody();
+          proxyRequest.setBody(Body.body(filter.init(body.stream()), body.length()));
+          return context.sendRequest();
         }
       });
-    }));
+      startHttpServer(ctx, serverOptions, proxy);
+      client.request(HttpMethod.POST, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
+        req.setChunked(true);
+        AtomicInteger num = new AtomicInteger();
+        vertx.setPeriodic(1, id -> {
+          if (filter.paused.get()) {
+            vertx.cancelTimer(id);
+            req.end();
+            onResume.complete(num.get());
+          } else {
+            num.incrementAndGet();
+            req.write(CHUNK);
+          }
+        });
+        req.response()
+          .flatMap(HttpClientResponse::body)
+          .onComplete(ctx.asyncAssertSuccess(v -> {
+            async.complete();
+          }));
+      }));
+      async.await();
+    } finally {
+      client.close();
+      backendClient.close();
+    }
   }
 
   @Test
-  public void testResponseFilter(TestContext ctx) throws Exception {
+  public void testResponseFilter(TestContext ctx) {
     Filter filter = new Filter();
     CompletableFuture<Integer> onResume = new CompletableFuture<>();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
@@ -393,15 +410,18 @@ public class ProxyRequestTest extends ProxyTestBase {
       });
     });
     HttpClient backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
-      ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
-        proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
-          proxyResp.bodyFilter(filter::init);
-          proxyResp.send().onComplete(ctx.asyncAssertSuccess());
-        }));
-      }));
+    HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
+    proxy.origin(backend);
+    proxy.addInterceptor(new ProxyInterceptor() {
+      @Override
+      public Future<Void> handleProxyResponse(ProxyContext context) {
+        ProxyResponse proxyResponse = context.response();
+        Body body = proxyResponse.getBody();
+        proxyResponse.setBody(Body.body(filter.init(body.stream()), body.length()));
+        return context.sendResponse();
+      }
     });
+    startHttpServer(ctx, serverOptions, proxy);
     Async async = ctx.async();
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {

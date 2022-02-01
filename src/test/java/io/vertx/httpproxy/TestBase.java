@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.io.Closeable;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -68,10 +69,10 @@ public abstract class TestBase {
   }
 
   protected Closeable startProxy(SocketAddress backend) {
-    return startProxy(req -> Future.succeededFuture(backend));
+    return startProxy(proxy -> proxy.originSelector(req -> Future.succeededFuture(backend)));
   }
 
-  protected Closeable startProxy(Function<HttpServerRequest, Future<SocketAddress>> selector) {
+  protected Closeable startProxy(Consumer<HttpProxy> config) {
     CompletableFuture<Closeable> res = new CompletableFuture<>();
     vertx.deployVerticle(new AbstractVerticle() {
       @Override
@@ -79,7 +80,7 @@ public abstract class TestBase {
         HttpClient proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
         HttpServer proxyServer = vertx.createHttpServer(new HttpServerOptions(serverOptions));
         HttpProxy proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
-        proxy.originSelector(selector);
+        config.accept(proxy);
         proxyServer.requestHandler(proxy);
         proxyServer.listen(ar -> startFuture.handle(ar.mapEmpty()));
       }

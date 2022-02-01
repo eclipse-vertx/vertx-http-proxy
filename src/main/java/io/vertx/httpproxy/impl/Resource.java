@@ -10,6 +10,7 @@
  */
 package io.vertx.httpproxy.impl;
 
+import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
@@ -42,11 +43,10 @@ class Resource {
     this.etag = headers.get(HttpHeaders.ETAG);
   }
 
-  void sendTo(ProxyResponse proxyResponse) {
+  void init(ProxyResponse proxyResponse) {
     proxyResponse.setStatusCode(200);
     proxyResponse.setStatusMessage(statusMessage);
     proxyResponse.headers().addAll(headers);
     proxyResponse.setBody(Body.body(content));
-    proxyResponse.send();
   }
 }

@@ -13,19 +13,13 @@ package io.vertx.httpproxy;
 import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.VertxGen;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpVersion;
-import io.vertx.core.streams.ReadStream;
-import io.vertx.httpproxy.impl.ProxyRequestImpl;
-
-import java.util.function.Function;
+import io.vertx.httpproxy.impl.ProxiedRequest;
 
 /**
  *
@@ -37,23 +31,23 @@ import java.util.function.Function;
 public interface ProxyRequest {
 
   /**
-   * Create a new {@code ProxyRequest} instance, the outbound request will be paused.
+   * Create a new {@code ProxyRequest} instance, the proxied request will be paused.
    *
-   * @param outboundRequest the {@code HttpServerRequest} of the <i><b>user agent</b></i>
+   * @param proxiedRequest the {@code HttpServerRequest} that is proxied
    * @return a reference to this, so the API can be used fluently
    */
-  static ProxyRequest reverseProxy(HttpServerRequest outboundRequest) {
-    outboundRequest.pause();
-    return new ProxyRequestImpl(outboundRequest);
+  static ProxyRequest reverseProxy(HttpServerRequest proxiedRequest) {
+    proxiedRequest.pause();
+    return new ProxiedRequest(proxiedRequest);
   }
 
   /**
-   * @return the HTTP version of the outbound request
+   * @return the HTTP version of the proxied request
    */
   HttpVersion version();
 
   /**
-   * @return the absolute URI of the outbound request
+   * @return the absolute URI of the proxied request
    */
   String absoluteURI();
 
@@ -65,7 +59,7 @@ public interface ProxyRequest {
   /**
    * Set the HTTP method to be sent to the <i><b>origin</b></i> server.
    *
-   * <p>The initial HTTP method value is the outbound request HTTP method.
+   * <p>The initial HTTP method value is the proxied request HTTP method.
    *
    * @param method the new HTTP method
    * @return a reference to this, so the API can be used fluently
@@ -81,7 +75,7 @@ public interface ProxyRequest {
   /**
    * Set the request URI to be sent to the <i><b>origin</b></i> server.
    *
-   * <p>The initial request URI value is the <i><b>outbound</b></i> request URI.
+   * <p>The initial request URI value is the proxied request URI.
    *
    * @param uri the new URI
    * @return a reference to this, so the API can be used fluently
@@ -97,7 +91,7 @@ public interface ProxyRequest {
   /**
    * Set the request body to be sent to the <i><b>origin</b></i> server.
    *
-   * <p>The initial request body value is the <i><b>outbound</b></i> request body.
+   * <p>The initial request body value is the proxied request body.
    *
    * @param body the new body
    * @return a reference to this, so the API can be used fluently
@@ -107,7 +101,7 @@ public interface ProxyRequest {
 
   /**
    * @return the headers that will be sent to the origin server, the returned headers can be modified. The headers
-   *         map is populated with the outbound request headers
+   *         map is populated with the proxied request headers
    */
   MultiMap headers();
 
@@ -123,36 +117,25 @@ public interface ProxyRequest {
   ProxyRequest putHeader(CharSequence name, CharSequence value);
 
   /**
-   * Set a body filter.
+   * Proxy this request to the <i><b>origin</b></i> server using the specified {@code request} and then send the proxy response.
    *
-   * <p> The body filter can rewrite the request body sent to the <i><b>origin</b></i> server.
-   *
-   * @param filter the filter
-   * @return a reference to this, so the API can be used fluently
+   * @param request the request connected to the <i><b>origin</b></i> server
    */
-  @Fluent
-  ProxyRequest bodyFilter(Function<ReadStream<Buffer>, ReadStream<Buffer>> filter);
-
-  /**
-   * Proxy this outbound request and response to the <i><b>origin</b></i> server using the specified inbound request.
-   *
-   * @param inboundRequest the request connected to the <i><b>origin</b></i> server
-   */
-  default Future<Void> proxy(HttpClientRequest inboundRequest) {
-    return send(inboundRequest).flatMap(resp -> resp.send());
+  default Future<Void> proxy(HttpClientRequest request) {
+    return send(request).flatMap(resp -> resp.send());
   }
 
   /**
-   * Send this request to the <i><b>origin</b></i> server using the specified inbound request.
+   * Send this request to the <i><b>origin</b></i> server using the specified {@code request}.
    *
-   * <p> The {@code completionHandler} will be called with the proxy response sent by the <i><b>origin</b></i>.
+   * <p> The returned future will be completed with the proxy response returned by the <i><b>origin</b></i>.
    *
-   * @param inboundRequest the request connected to the <i><b>origin</b></i> server
+   * @param request the request connected to the <i><b>origin</b></i> server
    */
-  Future<ProxyResponse> send(HttpClientRequest inboundRequest);
+  Future<ProxyResponse> send(HttpClientRequest request);
 
   /**
-   * Release the proxy request.
+   * Release the proxy request and its associated resources
    *
    * <p> The HTTP server request is resumed, no HTTP server response is sent.
    *
@@ -162,9 +145,9 @@ public interface ProxyRequest {
   ProxyRequest release();
 
   /**
-   * @return the outbound HTTP server request
+   * @return the proxied HTTP server request
    */
-  HttpServerRequest outboundRequest();
+  HttpServerRequest proxiedRequest();
 
   /**
    * Create and return the proxy response.
