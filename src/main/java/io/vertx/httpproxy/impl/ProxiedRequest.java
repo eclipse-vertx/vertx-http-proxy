@@ -24,15 +24,13 @@ import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.impl.HttpServerRequestInternal;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.Pipe;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
 import java.util.Map;
-import java.util.function.Function;
 
-public class ProxyRequestImpl implements ProxyRequest {
+public class ProxiedRequest implements ProxyRequest {
 
   private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
     .add(HttpHeaders.CONNECTION, "whatever")
@@ -51,14 +49,14 @@ public class ProxyRequestImpl implements ProxyRequest {
   private String absoluteURI;
   private Body body;
   private MultiMap headers;
-  HttpClientRequest inboundRequest;
-  private HttpServerRequest outboundRequest;
+  HttpClientRequest request;
+  private HttpServerRequest proxiedRequest;
 
-  public ProxyRequestImpl(HttpServerRequest outboundRequest) {
+  public ProxiedRequest(HttpServerRequest proxiedRequest) {
 
     // Determine content length
     long contentLength = -1L;
-    String contentLengthHeader = outboundRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
+    String contentLengthHeader = proxiedRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
     if (contentLengthHeader != null) {
       try {
         contentLength = Long.parseLong(contentLengthHeader);
@@ -67,14 +65,14 @@ public class ProxyRequestImpl implements ProxyRequest {
       }
     }
 
-    this.method = outboundRequest.method();
-    this.version = outboundRequest.version();
-    this.body = Body.body(outboundRequest, contentLength);
-    this.uri = outboundRequest.uri();
-    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(outboundRequest.headers());
-    this.absoluteURI = outboundRequest.absoluteURI();
-    this.outboundRequest = outboundRequest;
-    this.context = (ContextInternal) ((HttpServerRequestInternal) outboundRequest).context();
+    this.method = proxiedRequest.method();
+    this.version = proxiedRequest.version();
+    this.body = Body.body(proxiedRequest, contentLength);
+    this.uri = proxiedRequest.uri();
+    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(proxiedRequest.headers());
+    this.absoluteURI = proxiedRequest.absoluteURI();
+    this.proxiedRequest = proxiedRequest;
+    this.context = (ContextInternal) ((HttpServerRequestInternal) proxiedRequest).context();
   }
 
   @Override
@@ -121,8 +119,8 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
-  public HttpServerRequest outboundRequest() {
-    return outboundRequest;
+  public HttpServerRequest proxiedRequest() {
+    return proxiedRequest;
   }
 
   @Override
@@ -135,43 +133,43 @@ public class ProxyRequestImpl implements ProxyRequest {
 
   @Override
   public ProxyResponse response() {
-    return new ProxyResponseImpl(this, outboundRequest.response());
+    return new ProxiedResponse(this, proxiedRequest.response());
   }
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
 
-    inboundRequest.response().<ProxyResponse>map(r -> {
+    request.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
-      return new ProxyResponseImpl(this, outboundRequest.response(), r);
+      return new ProxiedResponse(this, proxiedRequest.response(), r);
     }).onComplete(responseHandler);
 
 
-    inboundRequest.setMethod(method);
-    inboundRequest.setURI(uri);
+    request.setMethod(method);
+    request.setURI(uri);
 
     // Add all headers
     for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
       if (!HOP_BY_HOP_HEADERS.contains(name)) {
-        inboundRequest.headers().add(name, value);
+        request.headers().add(name, value);
       }
     }
 
     long len = body.length();
     if (len >= 0) {
-      inboundRequest.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
+      request.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
     } else {
-      Boolean isChunked = HttpUtils.isChunked(outboundRequest.headers());
-      inboundRequest.setChunked(len == -1 && Boolean.TRUE == isChunked);
+      Boolean isChunked = HttpUtils.isChunked(proxiedRequest.headers());
+      request.setChunked(len == -1 && Boolean.TRUE == isChunked);
     }
 
     Pipe<Buffer> pipe = body.stream().pipe();
     pipe.endOnComplete(true);
     pipe.endOnFailure(false);
-    pipe.to(inboundRequest, ar -> {
+    pipe.to(request, ar -> {
       if (ar.failed()) {
-        inboundRequest.reset();
+        request.reset();
       }
     });
   }
@@ -188,19 +186,10 @@ public class ProxyRequestImpl implements ProxyRequest {
   }
 
   @Override
-  public ProxyRequest bodyFilter(Function<ReadStream<Buffer>, ReadStream<Buffer>> filter) {
-    return this;
-  }
-
-  @Override
-  public Future<ProxyResponse> send(HttpClientRequest inboundRequest) {
+  public Future<ProxyResponse> send(HttpClientRequest request) {
     Promise<ProxyResponse> promise = context.promise();
-    send(inboundRequest, promise);
+    this.request = request;
+    sendRequest(promise);
     return promise.future();
-  }
-
-  void send(HttpClientRequest inboundRequest, Handler<AsyncResult<ProxyResponse>> completionHandler) {
-    this.inboundRequest = inboundRequest;
-    sendRequest(completionHandler);
   }
 }

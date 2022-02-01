@@ -30,36 +30,21 @@ dependencies {
 }
 ----
 
-== Basic Http Proxy
+== Reverse proxy server
 
 In order to accomplish a reverse proxy with Vert.x Http Proxy you need the following:
 
-1. *Proxy Server* that handles outbound requests and forward them to the *origin server* using `HttpProxy` instance.
-2. *Origin Server* that handles requests from the *proxy server* and handles responses accordingly.
+1. *Proxy Server* that handles user-agent requests and forward them to the *origin server*
+2. *Origin Server* that handles requests from the *proxy server* and respond accordingly
 
-Now, you have the overall concept so let's dive in implementation and begin with *origin server* then
-the *proxy server* with `HttpProxy`:
-
-== Origin Server
-
-You simply create the *origin server* that listens to port `7070`
-
-[source,java]
-----
-{@link examples.HttpProxyExamples#origin}
-----
-
-== Proxy Server With `HttpProxy`
-
-Create the *proxy server* that listens to port `8080` with `HttpProxy` instance that handles reverse proxy logic
-accordingly.
+You can create a *proxy server* that listens to port `8080` and implement reverse proxy logic
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#proxy}
 ----
 
-Finally, all outbound requests will be forwarded as a reverse proxy to the *origin server* conveniently.
+All user-agent requests are forwarded to the *origin server* conveniently.
 
 === WebSockets
 
@@ -77,4 +62,43 @@ By default the proxy does not cache response and ignores most cache directives, 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#cacheConfig}
+----
+
+=== Proxy interception
+
+Interception is a powerful way to extend the proxy withg new features.
+
+You can implement {@link io.vertx.httpproxy.ProxyInterceptor#handleProxyRequest} to perform any operation on the proxy request
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#inboundInterceptor}
+----
+
+Likewise with the proxy response
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#outboundInterceptor}
+----
+
+==== Body filtering
+
+You can filter body by simply replacing the original {@link io.vertx.httpproxy.Body} with a new one
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyFilter}
+----
+
+==== Interception control
+
+{@link io.vertx.httpproxy.ProxyContext#sendRequest} and {@link io.vertx.httpproxy.ProxyContext#sendResponse} continue the
+current interception chain and then send the result to the origin server or the user-agent.
+
+You can change the control, e.g you can send a response immediately to the user-agent without even requesting the origin server
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#immediateResponse}
 ----

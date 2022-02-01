@@ -11,12 +11,14 @@
 package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.Fluent;
+import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.SocketAddress;
+import io.vertx.httpproxy.impl.ReverseProxy;
 
 import java.util.function.Function;
 
@@ -35,7 +37,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently.
    */
   static HttpProxy reverseProxy(HttpClient client) {
-    return new io.vertx.httpproxy.impl.HttpProxyImpl(new ProxyOptions(), client);
+    return new ReverseProxy(new ProxyOptions(), client);
   }
 
   /**
@@ -45,7 +47,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently.
    */
   static HttpProxy reverseProxy(ProxyOptions options, HttpClient client) {
-    return new io.vertx.httpproxy.impl.HttpProxyImpl(options, client);
+    return new ReverseProxy(options, client);
   }
 
   /**
@@ -79,6 +81,9 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    */
   @Fluent
   HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
+
+  @Fluent
+  HttpProxy addInterceptor(ProxyInterceptor filter);
 
   /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
