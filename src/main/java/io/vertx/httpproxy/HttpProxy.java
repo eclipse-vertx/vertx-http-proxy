@@ -82,8 +82,14 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   @Fluent
   HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
 
+  /**
+   * Add an interceptor to the interceptor chain.
+   *
+   * @param interceptor
+   * @return a reference to this, so the API can be used fluently
+   */
   @Fluent
-  HttpProxy addInterceptor(ProxyInterceptor filter);
+  HttpProxy addInterceptor(ProxyInterceptor interceptor);
 
   /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
