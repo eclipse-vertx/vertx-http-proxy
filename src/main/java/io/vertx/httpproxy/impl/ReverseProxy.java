@@ -44,7 +44,7 @@ public class ReverseProxy implements HttpProxy {
   private final HttpClient client;
   private final boolean supportWebSocket;
   private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
-  private List<ProxyInterceptor> interceptors = new ArrayList<>();
+  private final List<ProxyInterceptor> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
@@ -165,9 +165,9 @@ public class ReverseProxy implements HttpProxy {
 
   private class Proxy implements ProxyContext {
 
-    private ProxyRequest request;
+    private final ProxyRequest request;
     private ProxyResponse response;
-    private Map<String, Object> attachments = new HashMap<>();
+    private final Map<String, Object> attachments = new HashMap<>();
     private ListIterator<ProxyInterceptor> filters;
 
     private Proxy(ProxyRequest request) {
