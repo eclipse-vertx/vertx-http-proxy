@@ -44,13 +44,13 @@ public class ProxiedRequest implements ProxyRequest {
 
   final ContextInternal context;
   private HttpMethod method;
-  private HttpVersion version;
+  private final HttpVersion version;
   private String uri;
-  private String absoluteURI;
+  private final String absoluteURI;
   private Body body;
-  private MultiMap headers;
+  private final MultiMap headers;
   HttpClientRequest request;
-  private HttpServerRequest proxiedRequest;
+  private final HttpServerRequest proxiedRequest;
 
   public ProxiedRequest(HttpServerRequest proxiedRequest) {
 
