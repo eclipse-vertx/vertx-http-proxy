@@ -22,7 +22,6 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.NetSocket;
-import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
@@ -43,7 +42,7 @@ public class ReverseProxy implements HttpProxy {
 
   private final HttpClient client;
   private final boolean supportWebSocket;
-  private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
+  private Function<HttpServerRequest, Future<RequestOptions>> selector = req -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptor> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
@@ -57,7 +56,7 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
+  public HttpProxy originSelector(Function<HttpServerRequest, Future<RequestOptions>> selector) {
     this.selector = selector;
     return this;
   }
@@ -156,9 +155,7 @@ public class ReverseProxy implements HttpProxy {
   }
 
   private Future<HttpClientRequest> resolveOrigin(HttpServerRequest proxiedRequest) {
-    return selector.apply(proxiedRequest).flatMap(server -> {
-      RequestOptions requestOptions = new RequestOptions();
-      requestOptions.setServer(server);
+    return selector.apply(proxiedRequest).flatMap(requestOptions -> {
       return client.request(requestOptions);
     });
   }

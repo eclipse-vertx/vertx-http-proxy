@@ -11,12 +11,12 @@
 package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.Fluent;
-import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.impl.ReverseProxy;
 
@@ -58,7 +58,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    */
   @Fluent
   default HttpProxy origin(SocketAddress address) {
-    return originSelector(req -> Future.succeededFuture(address));
+      return originSelector(req -> Future.succeededFuture(new RequestOptions().setServer(address)));
   }
 
   /**
@@ -74,13 +74,13 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   }
 
   /**
-   * Set a selector that resolves the <i><b>origin</b></i> address based on the <i><b>outbound</b></i> request.
+   * Set a selector that resolves the <i><b>origin</b></i> request based on the <i><b>outbound</b></i> request.
    *
    * @param selector the selector
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
+  HttpProxy originSelector(Function<HttpServerRequest, Future<RequestOptions>> selector);
 
   /**
    * Add an interceptor to the interceptor chain.

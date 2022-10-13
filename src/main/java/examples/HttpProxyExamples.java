@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.HttpProxy;
@@ -119,9 +120,12 @@ public class HttpProxyExamples {
   }
 
   public void more(Vertx vertx, HttpClient proxyClient) {
-    HttpProxy proxy = HttpProxy.reverseProxy(proxyClient).originSelector(
-      address -> Future.succeededFuture(SocketAddress.inetSocketAddress(7070, "origin"))
-    );
+      HttpProxy proxy = HttpProxy.reverseProxy(proxyClient).originSelector(req -> {
+          RequestOptions requestOptions = new RequestOptions();
+          requestOptions.setServer(SocketAddress.inetSocketAddress(443, "origin"));
+          requestOptions.setSsl(Boolean.TRUE).setTimeout(1000).putHeader("Host", "origin");
+          return Future.succeededFuture(requestOptions);
+      });
   }
 
   public void lowLevel(Vertx vertx, HttpServer proxyServer, HttpClient proxyClient) {

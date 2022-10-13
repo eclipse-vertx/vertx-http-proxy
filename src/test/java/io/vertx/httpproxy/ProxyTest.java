@@ -14,6 +14,7 @@ import io.vertx.core.Future;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -47,7 +48,8 @@ public class ProxyTest extends ProxyTestBase {
       backends[i] = startHttpBackend(ctx, 8081 + value, req -> req.response().end("" + value));
     }
     AtomicInteger count = new AtomicInteger();
-    startProxy(proxy -> proxy.originSelector(req -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length])));
+    startProxy(proxy -> proxy.originSelector(req -> Future
+        .succeededFuture(new RequestOptions().setServer(backends[count.getAndIncrement() % backends.length]))));
     HttpClient client = vertx.createHttpClient();
     Map<String, AtomicInteger> result = Collections.synchronizedMap(new HashMap<>());
     Async latch = ctx.async();
