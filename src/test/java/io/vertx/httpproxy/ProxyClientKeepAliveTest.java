@@ -10,6 +10,7 @@
  */
 package io.vertx.httpproxy;
 
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
@@ -726,5 +727,52 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         latch.complete();
       }));
     }));
+  }
+
+  @Test
+  public void testAuthorityOverride1(TestContext ctx) {
+    testAuthorityOverride(ctx, "foo:8080", "foo:8080", "localhost:8080");
+  }
+
+  @Test
+  public void testAuthorityOverride2(TestContext ctx) {
+    testAuthorityOverride(ctx, "foo", "foo", "localhost:8080");
+  }
+
+  @Test
+  public void testAuthorityOverride3(TestContext ctx) {
+    testAuthorityOverride(ctx, "localhost:8080", "localhost:8080", null);
+  }
+
+  private void testAuthorityOverride(TestContext ctx, String authority, String expectedAuthority, String expectedForwardedHost) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals("/somepath", req.uri());
+      ctx.assertEquals(expectedAuthority, req.host());
+      ctx.assertEquals(expectedForwardedHost, req.getHeader("x-forwarded-host"));
+      req.response().end("Hello World");
+    });
+    startProxy(proxy -> {
+      proxy.origin(backend);
+      proxy.addInterceptor(new ProxyInterceptor() {
+        @Override
+        public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+          ProxyRequest request = context.request();
+          ctx.assertEquals("localhost:8080", request.getAuthority());
+          request.setAuthority(authority);
+          return ProxyInterceptor.super.handleProxyRequest(context);
+        }
+      });
+    });
+    HttpClient client = vertx.createHttpClient();
+    client.request(GET, 8080, "localhost", "/somepath")
+      .compose(req -> req
+        .send()
+        .compose(resp -> {
+          ctx.assertEquals(200, resp.statusCode());
+          return resp.body();
+        }))
+      .onComplete(ctx.asyncAssertSuccess(body -> {
+        ctx.assertEquals("Hello World", body.toString());
+      }));
   }
 }

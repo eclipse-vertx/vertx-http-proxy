@@ -69,7 +69,7 @@ public abstract class TestBase {
   }
 
   protected Closeable startProxy(SocketAddress backend) {
-    return startProxy(proxy -> proxy.originSelector(req -> Future.succeededFuture(backend)));
+    return startProxy(proxy -> proxy.origin(backend));
   }
 
   protected Closeable startProxy(Consumer<HttpProxy> config) {

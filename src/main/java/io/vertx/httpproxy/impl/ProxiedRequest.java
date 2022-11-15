@@ -29,8 +29,11 @@ import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class ProxiedRequest implements ProxyRequest {
+
+  private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
   private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
     .add(HttpHeaders.CONNECTION, "whatever")
@@ -48,6 +51,7 @@ public class ProxiedRequest implements ProxyRequest {
   private String uri;
   private final String absoluteURI;
   private Body body;
+  private String authority;
   private final MultiMap headers;
   HttpClientRequest request;
   private final HttpServerRequest proxiedRequest;
@@ -73,6 +77,7 @@ public class ProxiedRequest implements ProxyRequest {
     this.absoluteURI = proxiedRequest.absoluteURI();
     this.proxiedRequest = proxiedRequest;
     this.context = (ContextInternal) ((HttpServerRequestInternal) proxiedRequest).context();
+    this.authority = proxiedRequest.host();
   }
 
   @Override
@@ -100,6 +105,18 @@ public class ProxiedRequest implements ProxyRequest {
   public ProxyRequest setBody(Body body) {
     this.body = body;
     return this;
+  }
+
+  @Override
+  public ProxyRequest setAuthority(String authority) {
+    Objects.requireNonNull(authority);
+    this.authority= authority;
+    return this;
+  }
+
+  @Override
+  public String getAuthority() {
+    return authority;
   }
 
   @Override
@@ -151,9 +168,38 @@ public class ProxiedRequest implements ProxyRequest {
     for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
-      if (!HOP_BY_HOP_HEADERS.contains(name)) {
+      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equals("host")) {
         request.headers().add(name, value);
       }
+    }
+
+    //
+    String proxiedAuthority = proxiedRequest.host();
+    int idx = proxiedAuthority.indexOf(':');
+    String proxiedHost;
+    int proxiedPort;
+    if (idx == -1) {
+      proxiedHost = proxiedAuthority;
+      proxiedPort = -1;
+    } else {
+      proxiedHost = proxiedAuthority.substring(0, idx);
+      proxiedPort = Integer.parseInt(proxiedAuthority.substring(idx + 1));
+    }
+
+    String host;
+    int port;
+    idx = authority.indexOf(':');
+    if (idx == -1) {
+      host = authority;
+      port = -1;
+    } else {
+      host = authority.substring(0, idx);
+      port = Integer.parseInt(authority.substring(idx + 1));
+    }
+    request.setHost(host);
+    request.setPort(port == -1 ? (request.absoluteURI().startsWith("https://") ? 443 : 80) : port);
+    if (!proxiedHost.equals(host) || proxiedPort != port) {
+      request.putHeader(X_FORWARDED_HOST, proxiedAuthority);
     }
 
     long len = body.length();

@@ -64,6 +64,28 @@ You can set a function to create the client request to the origin server for ult
 {@link examples.HttpProxyExamples#originRequestProvider}
 ----
 
+=== Headers forwarding
+
+End-to-end headers are forwarded by the proxy, hop-by-hop headers are ignored.
+
+==== Request authority
+
+As a transparent proxy, the request authority ({@code Host} header for HTTP/1.1, {@code :authority} pseudo header
+for HTTP/2) is preserved.
+
+You can override the request authority
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#overrideAuthority}
+----
+
+When the request authority is overridden, the {@code x-forwarded-host} header is set on the request to the origin server
+with the original authority value.
+
+WARNING: changing the request authority can have undesirable side effects and can affect the proxied web server that might
+rely on the original request authority to handle cookies, URL redirects and such.
+
 === WebSockets
 
 The proxy supports WebSocket by default.
