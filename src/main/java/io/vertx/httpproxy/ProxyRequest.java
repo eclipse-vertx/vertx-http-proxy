@@ -100,6 +100,27 @@ public interface ProxyRequest {
   ProxyRequest setBody(Body body);
 
   /**
+   * Set the request authority
+   *
+   * <ul>
+   *   <li>for HTTP/1 the {@literal Host} header</li>
+   *   <li>for HTTP/2 the {@literal :authority} pseudo header</li>
+   * </ul>
+   *
+   * The value must follow the {@literal <host>:<port>} syntax.
+   *
+   * @param authority the authority
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  ProxyRequest setAuthority(String authority);
+
+  /**
+   * @return the request authority, for HTTP2 the {@literal :authority} pseudo header otherwise the {@literal Host} header
+   */
+  String getAuthority();
+
+  /**
    * @return the headers that will be sent to the origin server, the returned headers can be modified. The headers
    *         map is populated with the proxied request headers
    */

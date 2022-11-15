@@ -164,6 +164,17 @@ public class HttpProxyExamples {
     });
   }
 
+  public void overrideAuthority(HttpProxy proxy) {
+    proxy.addInterceptor(new ProxyInterceptor() {
+      @Override
+      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+        ProxyRequest proxyRequest = context.request();
+        proxyRequest.setAuthority("example.com:80");
+        return ProxyInterceptor.super.handleProxyRequest(context);
+      }
+    });
+  }
+
   public void cacheConfig(Vertx vertx, HttpClient proxyClient) {
     HttpProxy proxy = HttpProxy.reverseProxy(new ProxyOptions().setCacheOptions(new CacheOptions()), proxyClient);
   }
