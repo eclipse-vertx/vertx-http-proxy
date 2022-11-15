@@ -37,13 +37,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class ReverseProxy implements HttpProxy {
 
   private final HttpClient client;
   private final boolean supportWebSocket;
-  private Function<HttpServerRequest, Future<SocketAddress>> selector = req -> Future.failedFuture("No origin available");
+  private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptor> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
@@ -57,8 +58,8 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
-    this.selector = selector;
+  public HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider) {
+    selector = provider;
     return this;
   }
 
@@ -156,11 +157,7 @@ public class ReverseProxy implements HttpProxy {
   }
 
   private Future<HttpClientRequest> resolveOrigin(HttpServerRequest proxiedRequest) {
-    return selector.apply(proxiedRequest).flatMap(server -> {
-      RequestOptions requestOptions = new RequestOptions();
-      requestOptions.setServer(server);
-      return client.request(requestOptions);
-    });
+    return selector.apply(proxiedRequest, client);
   }
 
   private class Proxy implements ProxyContext {

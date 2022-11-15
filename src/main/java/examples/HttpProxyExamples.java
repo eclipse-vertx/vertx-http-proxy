@@ -6,6 +6,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.HttpProxy;
@@ -41,6 +43,22 @@ public class HttpProxyExamples {
     HttpServer proxyServer = vertx.createHttpServer();
 
     proxyServer.requestHandler(proxy).listen(8080);
+  }
+
+  private SocketAddress resolveOriginAddress(HttpServerRequest request) {
+    return null;
+  }
+
+  public void originSelector(HttpProxy proxy) {
+    proxy.originSelector(request -> Future.succeededFuture(resolveOriginAddress(request)));
+  }
+
+  private RequestOptions resolveOriginOptions(HttpServerRequest request) {
+    return null;
+  }
+
+  public void originRequestProvider(HttpProxy proxy) {
+    proxy.originRequestProvider((request, client) -> client.request(resolveOriginOptions(request)));
   }
 
   public void inboundInterceptor(HttpProxy proxy) {
@@ -126,8 +144,8 @@ public class HttpProxyExamples {
 
   public void lowLevel(Vertx vertx, HttpServer proxyServer, HttpClient proxyClient) {
 
-    proxyServer.requestHandler(outboundRequest -> {
-      ProxyRequest proxyRequest = ProxyRequest.reverseProxy(outboundRequest);
+    proxyServer.requestHandler(request -> {
+      ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request);
 
       proxyClient.request(proxyRequest.getMethod(), 8080, "origin", proxyRequest.getURI())
         .compose(proxyRequest::send)
@@ -140,7 +158,7 @@ public class HttpProxyExamples {
         proxyRequest.release();
 
         // Send error
-        outboundRequest.response().setStatusCode(500)
+        request.response().setStatusCode(500)
           .send();
       });
     });
