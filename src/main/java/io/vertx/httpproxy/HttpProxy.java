@@ -16,10 +16,13 @@ import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.impl.ReverseProxy;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -74,13 +77,28 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   }
 
   /**
-   * Set a selector that resolves the <i><b>origin</b></i> address based on the <i><b>outbound</b></i> request.
+   * Set a selector that resolves the <i><b>origin</b></i> address based on the incoming HTTP request.
    *
    * @param selector the selector
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector);
+  default HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
+    return originRequestProvider((req, client) -> selector
+      .apply(req)
+      .flatMap(server -> client.request(new RequestOptions().setServer(server))));
+  }
+
+  /**
+   * Set a provider that creates the request to the <i><b>origin</b></i> server based the incoming HTTP request.
+   * Setting a provider overrides any origin selector previously set.
+   *
+   * @param provider the provider
+   * @return a reference to this, so the API can be used fluently
+   */
+  @GenIgnore(GenIgnore.PERMITTED_TYPE)
+  @Fluent
+  HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider);
 
   /**
    * Add an interceptor to the interceptor chain.
@@ -94,8 +112,8 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
   /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
    *
-   * @param outboundRequest the outbound {@code HttpServerRequest}
+   * @param request the outbound {@code HttpServerRequest}
    */
-  void handle(HttpServerRequest outboundRequest);
+  void handle(HttpServerRequest request);
 
 }

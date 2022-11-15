@@ -46,6 +46,24 @@ You can create a *proxy server* that listens to port `8080` and implement revers
 
 All user-agent requests are forwarded to the *origin server* conveniently.
 
+=== Origin server routing
+
+You can create a proxy that forwards all the traffic to a single server like seen before
+
+You can set an origin selector to route the traffic to a given server
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#originSelector}
+----
+
+You can set a function to create the client request to the origin server for ultimate flexibility
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#originRequestProvider}
+----
+
 === WebSockets
 
 The proxy supports WebSocket by default.
