@@ -96,7 +96,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @param provider the provider
    * @return a reference to this, so the API can be used fluently
    */
-  @GenIgnore(GenIgnore.PERMITTED_TYPE)
+  @GenIgnore()
   @Fluent
   HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider);
 
