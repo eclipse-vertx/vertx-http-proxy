@@ -24,12 +24,12 @@
   </parent>
 
   <artifactId>vertx-http-proxy</artifactId>
-  <version>4.3.8</version>
+  <version>4.3.9-SNAPSHOT</version>
 
   <name>Vert.x Http Proxy</name>
 
   <properties>
-    <stack.version>4.3.8</stack.version>
+    <stack.version>4.3.9-SNAPSHOT</stack.version>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
     <doc.skip>false</doc.skip>
   </properties>
