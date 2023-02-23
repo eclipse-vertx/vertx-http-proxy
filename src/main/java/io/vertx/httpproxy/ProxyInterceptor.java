@@ -6,7 +6,7 @@ import io.vertx.core.Future;
 /**
  * A {@link HttpProxy} interceptor.
  */
-@VertxGen
+@VertxGen(concrete = false)
 public interface ProxyInterceptor {
 
   /**
