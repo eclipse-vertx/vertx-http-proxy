@@ -229,7 +229,7 @@ class ProxiedResponse implements ProxyResponse {
         // Special handling for HTTP 1.0 clients that cannot handle chunked encoding
         // we need to buffer the content
         BufferingWriteStream buffer = new BufferingWriteStream();
-        body.stream().pipeTo(buffer, ar -> {
+        body.stream().pipeTo(buffer).onComplete(ar -> {
           if (ar.succeeded()) {
             Buffer content = buffer.content();
             proxiedResponse.end(content).onComplete(completionHandler);
