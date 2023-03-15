@@ -232,7 +232,7 @@ class ProxiedResponse implements ProxyResponse {
         body.stream().pipeTo(buffer, ar -> {
           if (ar.succeeded()) {
             Buffer content = buffer.content();
-            proxiedResponse.end(content, completionHandler);
+            proxiedResponse.end(content).onComplete(completionHandler);
           } else {
             System.out.println("Not implemented");
           }
