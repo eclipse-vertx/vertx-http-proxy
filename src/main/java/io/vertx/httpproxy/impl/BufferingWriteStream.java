@@ -42,14 +42,8 @@ class BufferingWriteStream implements WriteStream<Buffer> {
   }
 
   @Override
-  public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
-    content.appendBuffer(data);
-    handler.handle(Future.succeededFuture());
-  }
-
-  @Override
-  public void end(Handler<AsyncResult<Void>> handler) {
-    handler.handle(Future.succeededFuture());
+  public Future<Void> end() {
+    return Future.succeededFuture();
   }
 
   @Override
