@@ -213,7 +213,7 @@ public class ProxiedRequest implements ProxyRequest {
     Pipe<Buffer> pipe = body.stream().pipe();
     pipe.endOnComplete(true);
     pipe.endOnFailure(false);
-    pipe.to(request, ar -> {
+    pipe.to(request).onComplete(ar -> {
       if (ar.failed()) {
         request.reset();
       }

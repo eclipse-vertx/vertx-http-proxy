@@ -65,7 +65,7 @@ public abstract class TestBase {
 
   @After
   public void tearDown(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close().onComplete(context.asyncAssertSuccess());
   }
 
   protected Closeable startProxy(SocketAddress backend) {
@@ -82,14 +82,14 @@ public abstract class TestBase {
         HttpProxy proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
         config.accept(proxy);
         proxyServer.requestHandler(proxy);
-        proxyServer.listen(ar -> startFuture.handle(ar.mapEmpty()));
+        proxyServer.listen().onComplete(ar -> startFuture.handle(ar.mapEmpty()));
       }
-    }, ar -> {
+    }).onComplete(ar -> {
       if (ar.succeeded()) {
         String id = ar.result();
         res.complete(() -> {
           CountDownLatch latch = new CountDownLatch(1);
-          vertx.undeploy(id, ar2 -> latch.countDown());
+          vertx.undeploy(id).onComplete(ar2 -> latch.countDown());
           try {
             latch.await(10, TimeUnit.SECONDS);
           } catch (InterruptedException e) {
@@ -117,7 +117,7 @@ public abstract class TestBase {
     HttpServer proxyServer = vertx.createHttpServer(options);
     proxyServer.requestHandler(handler);
     Async async1 = ctx.async();
-    proxyServer.listen(ctx.asyncAssertSuccess(p -> async1.complete()));
+    proxyServer.listen().onComplete(ctx.asyncAssertSuccess(p -> async1.complete()));
     async1.awaitSuccess();
   }
 
@@ -129,7 +129,7 @@ public abstract class TestBase {
     HttpServer backendServer = vertx.createHttpServer(options);
     backendServer.requestHandler(handler);
     Async async = ctx.async();
-    backendServer.listen(ctx.asyncAssertSuccess(s -> async.complete()));
+    backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
     async.awaitSuccess();
     return new SocketAddressImpl(options.getPort(), "localhost");
   }
@@ -138,7 +138,7 @@ public abstract class TestBase {
     NetServer backendServer = vertx.createNetServer(new HttpServerOptions().setPort(port).setHost("localhost"));
     backendServer.connectHandler(handler);
     Async async = ctx.async();
-    backendServer.listen(ctx.asyncAssertSuccess(s -> async.complete()));
+    backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
     async.awaitSuccess();
     return new SocketAddressImpl(port, "localhost");
   }

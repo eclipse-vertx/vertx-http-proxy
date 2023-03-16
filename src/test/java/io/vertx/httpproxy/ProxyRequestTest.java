@@ -53,7 +53,7 @@ public class ProxyRequestTest extends ProxyTestBase {
   public void testProxyRequestIllegalHttpVersion(TestContext ctx) {
     runHttpTest(ctx, req -> req.response().end("Hello World"), ctx.asyncAssertFailure());
     NetClient client = vertx.createNetClient();
-    client.connect(8080, "localhost", ctx.asyncAssertSuccess(so -> {
+    client.connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
       so.write("GET /somepath http/1.1\r\n\r\n");
     }));
   }
@@ -165,13 +165,13 @@ public class ProxyRequestTest extends ProxyTestBase {
     Async async = ctx.async();
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertFailure(err -> async.complete()));
       }));
     });
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req ->
-      req.send(ctx.asyncAssertSuccess(resp -> {
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req ->
+      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.handler(buff -> {
           cont.complete(null);
         });
@@ -208,13 +208,13 @@ public class ProxyRequestTest extends ProxyTestBase {
     Async async = ctx.async();
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertFailure(err -> async.complete()));
       }));
     });
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req ->
-        req.send(ctx.asyncAssertSuccess(resp -> {
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req ->
+        req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
           resp.handler(buff -> {
             resp.request().connection().close();
           });
@@ -244,12 +244,12 @@ public class ProxyRequestTest extends ProxyTestBase {
     Async async = ctx.async();
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertFailure(err -> async.complete()));
       }));
     });
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       if (chunked) {
         req.setChunked(true);
       } else {
@@ -284,7 +284,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     startHttpServer(ctx, serverOptions, req -> {
       req.pause();
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(backReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(backReq -> {
         proxyReq.send(backReq).onComplete(ctx.asyncAssertFailure(err -> {
           async.complete();
           req.response().setStatusCode(502).end();
@@ -292,7 +292,7 @@ public class ProxyRequestTest extends ProxyTestBase {
       }));
     });
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertEquals(502, resp.statusCode());
       }));
@@ -318,7 +318,7 @@ public class ProxyRequestTest extends ProxyTestBase {
       req.pause();
       vertx.setTimer(500, id1 -> {
         ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-        backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(backReq -> {
+        backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(backReq -> {
           proxyReq.send(backReq).onComplete(ctx.asyncAssertSuccess(resp -> {
             vertx.setTimer(500, id2 -> {
               resp.send().onComplete(ctx.asyncAssertSuccess(v -> async.complete()));
@@ -365,7 +365,7 @@ public class ProxyRequestTest extends ProxyTestBase {
         }
       });
       startHttpServer(ctx, serverOptions, proxy);
-      client.request(HttpMethod.POST, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
+      client.request(HttpMethod.POST, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
         req.setChunked(true);
         AtomicInteger num = new AtomicInteger();
         vertx.setPeriodic(1, id -> {
@@ -424,7 +424,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     startHttpServer(ctx, serverOptions, proxy);
     Async async = ctx.async();
     HttpClient client = vertx.createHttpClient();
-    client.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
+    client.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.pause();
         onResume.thenAccept(num -> {
@@ -451,7 +451,7 @@ public class ProxyRequestTest extends ProxyTestBase {
       clientHeaders.add("proxy_header", "proxy_header_value");
       ctx.assertEquals("header_value", clientHeaders.get("header"));
       clientHeaders.remove("header");
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
           MultiMap targetHeaders = proxyResp.headers();
           targetHeaders.add("proxy_header", "proxy_header_value");
@@ -500,7 +500,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     HttpClient backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
           full.whenComplete((v, err) -> {
             proxyResp.release();
@@ -535,7 +535,7 @@ public class ProxyRequestTest extends ProxyTestBase {
       full.whenComplete((v, err) -> {
         proxyReq.release();
         proxyReq.setBody(Body.body(Buffer.buffer("another-request")));
-        backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+        backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
           proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
             proxyResp.send().onComplete(ctx.asyncAssertSuccess());
           }));
@@ -545,7 +545,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     HttpClient client = vertx.createHttpClient();
     Async drainedLatch = ctx.async();
     Buffer chunk = Buffer.buffer(new byte[1024]);
-    client.request(HttpMethod.GET, 8080, "localhost", "/somepath", ctx.asyncAssertSuccess(req -> {
+    client.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.setChunked(true);
       req.putHeader("header", "header-value");
       vertx.setPeriodic(1, id -> {
@@ -562,7 +562,7 @@ public class ProxyRequestTest extends ProxyTestBase {
         }
       });
       req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-        resp.body(ctx.asyncAssertSuccess(body -> {
+        resp.body().onComplete(ctx.asyncAssertSuccess(body -> {
           ctx.assertEquals("another-request", body.toString());
         }));
       }));
@@ -723,7 +723,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     startHttpServer(ctx, serverOptions, req -> {
       req.pause(); // Should it be necessary ?
       ProxyRequest proxyRequest = ProxyRequest.reverseProxy(req);
-      client.request(new RequestOptions().setServer(backend), ar -> {
+      client.request(new RequestOptions().setServer(backend)).onComplete(ar -> {
         if (ar.succeeded()) {
           proxyRequest.send(ar.result()).onComplete(ar2 -> {
             if (ar2.succeeded()) {
@@ -751,7 +751,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     HttpClient backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend), ctx.asyncAssertSuccess(clientReq -> {
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ar -> {
           expect.handle(ar);
           async.complete();

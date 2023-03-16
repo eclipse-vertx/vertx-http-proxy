@@ -83,7 +83,7 @@ public class WebSocketTest extends ProxyTestBase {
       .setHost("localhost")
       .setURI("/ws")
       .setVersion(version);
-    client.webSocket(options, ctx.asyncAssertSuccess(ws -> {
+    client.webSocket(options).onComplete(ctx.asyncAssertSuccess(ws -> {
       ws.write(Buffer.buffer("ping"));
       ws.handler(buff -> {
         ws.close();
@@ -103,7 +103,7 @@ public class WebSocketTest extends ProxyTestBase {
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    client.webSocket(options, ctx.asyncAssertFailure(err -> {
+    client.webSocket(options).onComplete(ctx.asyncAssertFailure(err -> {
       ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
       async.complete();
     }));
@@ -123,7 +123,7 @@ public class WebSocketTest extends ProxyTestBase {
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    client.webSocket(options, ctx.asyncAssertFailure(err -> {
+    client.webSocket(options).onComplete(ctx.asyncAssertFailure(err -> {
       ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
       async.complete();
     }));

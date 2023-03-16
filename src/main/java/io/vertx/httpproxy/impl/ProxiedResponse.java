@@ -260,7 +260,7 @@ class ProxiedResponse implements ProxyResponse {
     Pipe<Buffer> pipe = body.pipe();
     pipe.endOnSuccess(true);
     pipe.endOnFailure(false);
-    pipe.to(proxiedResponse, ar -> {
+    pipe.to(proxiedResponse).onComplete(ar -> {
       if (ar.failed()) {
         request.request.reset();
         proxiedResponse.reset();
