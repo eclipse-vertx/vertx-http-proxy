@@ -118,8 +118,11 @@ public class ProxyRequestTest extends ProxyTestBase {
     HttpClient httpClient = vertx.createHttpClient();
     httpClient
         .request(HttpMethod.POST, 8080, "localhost", "/somepath")
-        .compose(req -> req.setChunked(true).send("chunk"))
-        .compose(HttpClientResponse::body)
+        .compose(req -> req
+          .setChunked(true)
+          .send("chunk")
+          .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals(200, resp.statusCode())))
+          .compose(HttpClientResponse::end))
         .onComplete(ctx.asyncAssertSuccess());
   }
 
