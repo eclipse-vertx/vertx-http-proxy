@@ -528,7 +528,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     CompletableFuture<Void> full = new CompletableFuture<>();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals(null, req.getHeader("header"));
-      req.body(ctx.asyncAssertSuccess(body -> {
+      req.body().onComplete(ctx.asyncAssertSuccess(body -> {
         req.response().end(body);
       }));
     });
