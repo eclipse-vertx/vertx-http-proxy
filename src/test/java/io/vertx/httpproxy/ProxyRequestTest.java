@@ -99,11 +99,11 @@ public class ProxyRequestTest extends ProxyTestBase {
       req.response().end("Hello World");
     }, ctx.asyncAssertSuccess());
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient
-        .request(HttpMethod.GET, 8080, "localhost", "/somepath")
-        .compose(HttpClientRequest::send)
-        .compose(HttpClientResponse::body)
-        .onComplete(ctx.asyncAssertSuccess());
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
+      .compose(req -> req
+        .send()
+        .compose(HttpClientResponse::body))
+      .onComplete(ctx.asyncAssertSuccess());
   }
 
   @Test
@@ -136,7 +136,9 @@ public class ProxyRequestTest extends ProxyTestBase {
         "\r\n"), ctx.asyncAssertSuccess());
     HttpClient httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
-        .compose(req -> req.send().compose(HttpClientResponse::body))
+        .compose(req -> req
+          .send()
+          .compose(HttpClientResponse::body))
         .onComplete(ctx.asyncAssertSuccess());
   }
 
