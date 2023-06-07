@@ -34,8 +34,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Parameterized.UseParametersRunnerFactory(VertxUnitRunnerWithParametersFactory.class)
 public class ProxyTest extends ProxyTestBase {
 
+  private HttpClient client;
+
   public ProxyTest(ProxyOptions options) {
     super(options);
+  }
+
+  @Override
+  public void tearDown(TestContext context) {
+    super.tearDown(context);
+    client = null;
   }
 
   @Test
@@ -48,7 +56,7 @@ public class ProxyTest extends ProxyTestBase {
     }
     AtomicInteger count = new AtomicInteger();
     startProxy(proxy -> proxy.originSelector(req -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length])));
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     Map<String, AtomicInteger> result = Collections.synchronizedMap(new HashMap<>());
     Async latch = ctx.async();
     for (int i = 0;i < backends.length * numRequests;i++) {
@@ -92,7 +100,7 @@ public class ProxyTest extends ProxyTestBase {
         return fut;
       }
     }));
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client
       .request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req

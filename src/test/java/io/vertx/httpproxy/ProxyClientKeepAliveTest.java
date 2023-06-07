@@ -37,6 +37,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
 
   protected boolean keepAlive = true;
   protected boolean pipelining = false;
+  protected HttpClient client;
 
   public ProxyClientKeepAliveTest(ProxyOptions options) {
     super(options);
@@ -48,11 +49,17 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     clientOptions.setKeepAlive(keepAlive).setPipelining(pipelining);
   }
 
-/*
+  @Override
+  public void tearDown(TestContext context) {
+    super.tearDown(context);
+    client = null;
+  }
+
+  /*
   @Test
   public void testNotfound(TestContext ctx) {
     startProxy(ctx);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     Async async = ctx.async();
     client.getNow(8080, "localhost", "/", resp -> {
       ctx.assertEquals(404, resp.statusCode());
@@ -69,7 +76,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.response().end("Hello World");
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/somepath")
         .compose(req -> req
             .send()
@@ -96,7 +103,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/")
         .compose(req -> req
             .send(Buffer.buffer(body))
@@ -118,7 +125,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     Async async = ctx.async();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.asyncAssertSuccess(req -> {
@@ -144,7 +151,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.asyncAssertSuccess(req -> {
           req.response().onComplete(ctx.asyncAssertFailure());
@@ -172,7 +179,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.asyncAssertSuccess(req -> {
           closeLatch.future().onSuccess(v -> {
@@ -199,7 +206,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.asyncAssertSuccess(req -> {
           req.putHeader("Content-Length", "2048");
@@ -235,7 +242,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     Async async = ctx.async();
     client.request(GET, 8080, "localhost", "/")
         .onComplete(ctx.asyncAssertSuccess(req -> {
@@ -275,7 +282,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8081, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.handler(buff -> {
@@ -293,7 +300,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       so.close();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/")
         .compose(req ->
       req.send().compose(resp -> {
@@ -312,7 +319,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         .end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertNotNull(resp.getHeader("date"));
@@ -331,7 +338,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
           .end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertNotNull(resp.getHeader("date"));
@@ -351,7 +358,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
           .end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertEquals(expectedDate, resp.getHeader("date"));
@@ -380,7 +387,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       streamChunkedBody(resp, num);
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
+    client = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
     StringBuilder sb = new StringBuilder();
     for (int i = 0;i < num;i++) {
       sb.append("chunk-").append(i);
@@ -435,7 +442,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.response().end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/")
         .onSuccess(req -> {
           req.setChunked(true);
@@ -472,7 +479,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.response().end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "" + uri).onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertEquals(200, resp.statusCode());
@@ -505,7 +512,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     });
     clientOptions.setMaxInitialLineLength(5000);
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient(/*new HttpClientOptions().setProtocolVersion(HttpVersion.HTTP_1_0)*/);
+    client = vertx.createHttpClient(/*new HttpClientOptions().setProtocolVersion(HttpVersion.HTTP_1_0)*/);
     client.request(GET, 8080, "localhost", "/somepath").compose(req ->
       req.send().compose(resp -> {
         ctx.assertEquals(200, resp.statusCode());
@@ -608,7 +615,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.response().end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.valueOf("FOO"), 8080, "localhost", "/")
         .compose(req -> req.send().compose(HttpClientResponse::body))
         .onComplete(ctx.asyncAssertSuccess());
@@ -622,7 +629,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.response().putHeader("content-length", "" + "content".length()).end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HEAD, 8080, "localhost", "/").compose(req ->
       req.send().compose(HttpClientResponse::body)
     ).onComplete(ctx.asyncAssertSuccess(body -> {
@@ -644,7 +651,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       );
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HEAD, 8080, "localhost", "/").compose(req ->
       req.send().compose(HttpClientResponse::body)
     ).onComplete(ctx.asyncAssertSuccess(body -> {
@@ -668,7 +675,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     for (String response : responses) {
       responseBody.set(response);
       Async latch = ctx.async();
-      HttpClient client = vertx.createHttpClient();
+      client = vertx.createHttpClient();
       try (Closeable proxy = startProxy(backend)) {
         client.request(GET, 8080, "localhost", "/somepath")
             .compose(req -> req.send().compose(resp -> {
@@ -715,7 +722,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.response().putHeader("response_header", "response_header_value").end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     Async latch = ctx.async();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req
@@ -763,7 +770,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         }
       });
     });
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/somepath")
       .compose(req -> req
         .send()

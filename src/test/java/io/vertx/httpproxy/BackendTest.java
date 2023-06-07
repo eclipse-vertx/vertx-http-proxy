@@ -23,7 +23,12 @@ public class BackendTest extends ProxyTestBase {
   @Override
   public void setUp() {
     super.setUp();
-    client = vertx.createHttpClient();
+  }
+
+  @Override
+  public void tearDown(TestContext context) {
+    super.tearDown(context);
+    client = null;
   }
 
   @Test
@@ -38,7 +43,7 @@ public class BackendTest extends ProxyTestBase {
         .end("some-data");
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     Async async = ctx.async();
     client.request(HttpMethod.POST, 8080, "localhost", "/path")
       .compose(req -> req.send().compose(resp -> {

@@ -75,11 +75,14 @@ public abstract class TestBase {
   protected Closeable startProxy(Consumer<HttpProxy> config) {
     CompletableFuture<Closeable> res = new CompletableFuture<>();
     vertx.deployVerticle(new AbstractVerticle() {
+      HttpClient proxyClient;
+      HttpServer proxyServer;
+      HttpProxy proxy;
       @Override
       public void start(Promise<Void> startFuture) {
-        HttpClient proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-        HttpServer proxyServer = vertx.createHttpServer(new HttpServerOptions(serverOptions));
-        HttpProxy proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
+        proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
+        proxyServer = vertx.createHttpServer(new HttpServerOptions(serverOptions));
+        proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
         config.accept(proxy);
         proxyServer.requestHandler(proxy);
         proxyServer.listen().onComplete(ar -> startFuture.handle(ar.mapEmpty()));

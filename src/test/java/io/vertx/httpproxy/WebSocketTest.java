@@ -41,6 +41,14 @@ import static io.vertx.core.http.HttpMethod.GET;
 @RunWith(VertxUnitRunner.class)
 public class WebSocketTest extends ProxyTestBase {
 
+  private HttpClient client;
+
+  @Override
+  public void tearDown(TestContext context) {
+    super.tearDown(context);
+    client = null;
+  }
+
   public WebSocketTest() {
     super(new ProxyOptions());
   }
@@ -77,7 +85,7 @@ public class WebSocketTest extends ProxyTestBase {
       }));
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     WebSocketConnectOptions options = new WebSocketConnectOptions()
       .setPort(8080)
       .setHost("localhost")
@@ -98,7 +106,7 @@ public class WebSocketTest extends ProxyTestBase {
       req.response().setStatusCode(400).end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     WebSocketConnectOptions options = new WebSocketConnectOptions()
       .setPort(8080)
       .setHost("localhost")
@@ -118,7 +126,7 @@ public class WebSocketTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     WebSocketConnectOptions options = new WebSocketConnectOptions()
       .setPort(8080)
       .setHost("localhost")
