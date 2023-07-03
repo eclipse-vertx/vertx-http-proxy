@@ -116,10 +116,13 @@ public class ProxyRequestTest extends ProxyTestBase {
       req.response().end("Hello World");
     }, ctx.asyncAssertSuccess());
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
+    httpClient
+      .request(HttpMethod.POST, 8080, "localhost", "/somepath")
       .compose(req -> req
+        .setChunked(true)
         .send("chunk")
-        .compose(HttpClientResponse::body))
+        .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals(200, resp.statusCode())))
+        .compose(HttpClientResponse::end))
       .onComplete(ctx.asyncAssertSuccess());
   }
 
@@ -132,11 +135,14 @@ public class ProxyRequestTest extends ProxyTestBase {
         "connection: close\r\n" +
         "\r\n"), ctx.asyncAssertSuccess());
     HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
-        .compose(req -> req
-          .send()
-          .compose(HttpClientResponse::body))
-        .onComplete(ctx.asyncAssertSuccess());
+    httpClient
+      .request(HttpMethod.POST, 8080, "localhost", "/somepath")
+      .compose(req -> req
+        .setChunked(true)
+        .send("chunk")
+        .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals(200, resp.statusCode())))
+        .compose(HttpClientResponse::end))
+      .onComplete(ctx.asyncAssertSuccess());
   }
 
   @Test
