@@ -175,7 +175,7 @@ public class ProxyRequestTest extends ProxyTestBase {
       }
       resp.write("part");
       cont.thenAccept(v -> {
-        resp.close();
+        req.connection().close();
       });
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));

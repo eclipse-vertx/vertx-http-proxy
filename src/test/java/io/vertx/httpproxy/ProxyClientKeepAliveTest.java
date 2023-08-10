@@ -238,7 +238,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       }
       resp.write("part");
       closeFuture.thenAccept(v -> {
-        resp.close();
+        req.connection().close();
       });
     });
     startProxy(backend);
