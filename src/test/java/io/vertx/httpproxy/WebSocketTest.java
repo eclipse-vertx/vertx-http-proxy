@@ -12,13 +12,7 @@ package io.vertx.httpproxy;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.ServerWebSocket;
-import io.vertx.core.http.UpgradeRejectedException;
-import io.vertx.core.http.WebSocketConnectOptions;
-import io.vertx.core.http.WebsocketVersion;
+import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -41,12 +35,12 @@ import static io.vertx.core.http.HttpMethod.GET;
 @RunWith(VertxUnitRunner.class)
 public class WebSocketTest extends ProxyTestBase {
 
-  private HttpClient client;
+  private WebSocketClient wsClient;
 
   @Override
   public void tearDown(TestContext context) {
     super.tearDown(context);
-    client = null;
+    wsClient = null;
   }
 
   public WebSocketTest() {
@@ -85,13 +79,13 @@ public class WebSocketTest extends ProxyTestBase {
       }));
     });
     startProxy(backend);
-    client = vertx.createHttpClient();
+    wsClient = vertx.createWebSocketClient();
     WebSocketConnectOptions options = new WebSocketConnectOptions()
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws")
       .setVersion(version);
-    client.webSocket(options).onComplete(ctx.asyncAssertSuccess(ws -> {
+    wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
       ws.write(Buffer.buffer("ping"));
       ws.handler(buff -> {
         ws.close();
@@ -106,12 +100,12 @@ public class WebSocketTest extends ProxyTestBase {
       req.response().setStatusCode(400).end();
     });
     startProxy(backend);
-    client = vertx.createHttpClient();
+    wsClient = vertx.createWebSocketClient();
     WebSocketConnectOptions options = new WebSocketConnectOptions()
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    client.webSocket(options).onComplete(ctx.asyncAssertFailure(err -> {
+    wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
       ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
       async.complete();
     }));
@@ -126,12 +120,12 @@ public class WebSocketTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    client = vertx.createHttpClient();
+    wsClient = vertx.createWebSocketClient();
     WebSocketConnectOptions options = new WebSocketConnectOptions()
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    client.webSocket(options).onComplete(ctx.asyncAssertFailure(err -> {
+    wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
       ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
       async.complete();
     }));
