@@ -1,6 +1,7 @@
 package io.vertx.httpproxy.cache;
 
 import io.vertx.codegen.annotations.DataObject;
+import io.vertx.codegen.json.annotations.JsonGen;
 import io.vertx.core.impl.Arguments;
 import io.vertx.core.json.JsonObject;
 import io.vertx.httpproxy.impl.CacheImpl;
@@ -9,7 +10,8 @@ import io.vertx.httpproxy.spi.cache.Cache;
 /**
  * Cache options.
  */
-@DataObject(generateConverter = true)
+@DataObject
+@JsonGen(publicConverter = false)
 public class CacheOptions {
 
   public static final int DEFAULT_MAX_SIZE = 1000;
