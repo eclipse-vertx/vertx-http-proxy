@@ -21,7 +21,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.impl.ParseUtils;
 import org.junit.Test;
 
-import java.util.Date;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -40,10 +41,8 @@ public class CacheExpiresTest extends CacheTestBase {
   }
 
   protected void setCacheControl(MultiMap headers, long now, long delaySeconds) {
-    Date tomorrow = new Date();
-    tomorrow.setTime(now + delaySeconds * 1000);
     headers.set(HttpHeaders.CACHE_CONTROL, "public");
-    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(tomorrow));
+    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(Instant.now().plus(delaySeconds * 1000, ChronoUnit.MILLIS)));
   }
 
   @Test
@@ -146,8 +145,8 @@ public class CacheExpiresTest extends CacheTestBase {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       hits.incrementAndGet();
       ctx.assertEquals(HttpMethod.GET, req.method());
-      Date now = new Date();
-      setCacheControl(req.response().headers(), now.getTime(), 5);
+      Instant now = Instant.now();
+      setCacheControl(req.response().headers(), now.toEpochMilli(), 5);
       req.response()
           .putHeader(HttpHeaders.LAST_MODIFIED, ParseUtils.formatHttpDate(now))
           .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(now))
@@ -185,8 +184,8 @@ public class CacheExpiresTest extends CacheTestBase {
         case 0:
           ctx.assertEquals(null, req.getHeader(HttpHeaders.ETAG));
           req.response()
-              .putHeader(HttpHeaders.LAST_MODIFIED, ParseUtils.formatHttpDate(new Date(now)))
-              .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(new Date(now)))
+              .putHeader(HttpHeaders.LAST_MODIFIED, ParseUtils.formatHttpDate(Instant.ofEpochMilli(now)))
+              .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(Instant.ofEpochMilli(now)))
               .putHeader(HttpHeaders.ETAG, "" + now)
               .end("content");
           break;
@@ -195,12 +194,12 @@ public class CacheExpiresTest extends CacheTestBase {
           if (System.currentTimeMillis() < now + maxAge * 1000) {
             req.response()
                 .setStatusCode(304)
-                .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
+                .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(Instant.ofEpochMilli(System.currentTimeMillis())))
                 .putHeader(HttpHeaders.ETAG, "" + now)
                 .end();
           } else {
             req.response()
-                .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
+                .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(Instant.ofEpochMilli(System.currentTimeMillis())))
                 .putHeader(HttpHeaders.ETAG, "" + now + "2")
                 .end("content2");
           }

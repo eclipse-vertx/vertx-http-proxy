@@ -11,7 +11,7 @@ import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.spi.cache.Cache;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.function.BiFunction;
 
 class CachingFilter implements ProxyInterceptor {
@@ -136,8 +136,8 @@ class CachingFilter implements ProxyInterceptor {
     //
     String ifModifiedSinceHeader = response.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
     if ((response.method() == HttpMethod.GET || response.method() == HttpMethod.HEAD) && ifModifiedSinceHeader != null && resource.lastModified != null) {
-      Date ifModifiedSince = ParseUtils.parseHeaderDate(ifModifiedSinceHeader);
-      if (resource.lastModified.getTime() <= ifModifiedSince.getTime()) {
+      Instant ifModifiedSince = ParseUtils.parseHeaderDate(ifModifiedSinceHeader);
+      if (!ifModifiedSince.isAfter(resource.lastModified)) {
         response.response().setStatusCode(304).end();
         return Future.succeededFuture();
       }
