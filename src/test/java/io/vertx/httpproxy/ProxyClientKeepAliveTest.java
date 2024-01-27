@@ -14,11 +14,13 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.Closeable;
@@ -730,21 +732,61 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   }
 
   @Test
+  public void testIPV6Authority(TestContext ctx) {
+    testAuthority(ctx, HostAndPort.authority("[7a03:908:671:b520:ba27:bbff:ffff:fed2]", 1234));
+  }
+
+  @Test
+  public void testIPV4Authority(TestContext ctx) {
+    testAuthority(ctx, HostAndPort.authority("192.168.0.1", 1234));
+  }
+
+  @Test
+  public void testMissingPortAuthority(TestContext ctx) {
+    testAuthority(ctx, HostAndPort.authority("localhost", -1));
+  }
+
+  private void testAuthority(TestContext ctx, HostAndPort requestAuthority) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals("/somepath", req.uri());
+      ctx.assertEquals(requestAuthority.host(), req.authority().host());
+      ctx.assertEquals(requestAuthority.port(), req.authority().port());
+      ctx.assertEquals(null, req.getHeader("x-forwarded-host"));
+      req.response().end("Hello World");
+    });
+    startProxy(proxy -> {
+      proxy.origin(backend);
+    });
+    HttpClient client = vertx.createHttpClient();
+    client.request(GET, 8080, "localhost", "/somepath")
+      .compose(req -> req
+        .authority(requestAuthority)
+        .send()
+        .compose(resp -> {
+          ctx.assertEquals(200, resp.statusCode());
+          return resp.body();
+        }))
+      .onComplete(ctx.asyncAssertSuccess(body -> {
+        ctx.assertEquals("Hello World", body.toString());
+      }));
+  }
+
+  @Test
   public void testAuthorityOverride1(TestContext ctx) {
-    testAuthorityOverride(ctx, "foo:8080", "foo:8080", "localhost:8080");
+    testAuthorityOverride(ctx, HostAndPort.authority("foo", 8080), "foo:8080", "localhost:8080");
   }
 
   @Test
   public void testAuthorityOverride2(TestContext ctx) {
-    testAuthorityOverride(ctx, "foo", "foo", "localhost:8080");
+    testAuthorityOverride(ctx, HostAndPort.authority("foo"), "foo", "localhost:8080");
   }
 
   @Test
   public void testAuthorityOverride3(TestContext ctx) {
-    testAuthorityOverride(ctx, "localhost:8080", "localhost:8080", null);
+    testAuthorityOverride(ctx, HostAndPort.authority("localhost", 8080), "localhost:8080", null);
   }
 
-  private void testAuthorityOverride(TestContext ctx, String authority, String expectedAuthority, String expectedForwardedHost) {
+  private void testAuthorityOverride(TestContext ctx, HostAndPort authority, String expectedAuthority, String expectedForwardedHost) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
       ctx.assertEquals(expectedAuthority, req.host());
@@ -757,7 +799,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         @Override
         public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
           ProxyRequest request = context.request();
-          ctx.assertEquals("localhost:8080", request.getAuthority());
+          ctx.assertEquals("localhost", request.getAuthority().host());
+          ctx.assertEquals(8080, request.getAuthority().port());
           request.setAuthority(authority);
           return ProxyInterceptor.super.handleProxyRequest(context);
         }
