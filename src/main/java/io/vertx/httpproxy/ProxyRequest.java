@@ -19,6 +19,7 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpVersion;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.httpproxy.impl.ProxiedRequest;
 
 /**
@@ -113,12 +114,12 @@ public interface ProxyRequest {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  ProxyRequest setAuthority(String authority);
+  ProxyRequest setAuthority(HostAndPort authority);
 
   /**
    * @return the request authority, for HTTP2 the {@literal :authority} pseudo header otherwise the {@literal Host} header
    */
-  String getAuthority();
+  HostAndPort getAuthority();
 
   /**
    * @return the headers that will be sent to the origin server, the returned headers can be modified. The headers
