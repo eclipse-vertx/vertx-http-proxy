@@ -110,15 +110,15 @@ public class ProxiedRequest implements ProxyRequest {
   }
 
   @Override
-  public ProxyRequest setAuthority(String authority) {
+  public ProxyRequest setAuthority(HostAndPort authority) {
     Objects.requireNonNull(authority);
-    this.authority= HostAndPortImpl.parseHostAndPort(authority, -1);
+    this.authority= authority;
     return this;
   }
 
   @Override
-  public String getAuthority() {
-    return authority.toString();
+  public HostAndPort getAuthority() {
+    return authority;
   }
 
   @Override
@@ -176,10 +176,13 @@ public class ProxiedRequest implements ProxyRequest {
     }
 
     //
-    HostAndPort proxiedAuthority = proxiedRequest.authority();
-    request.authority(authority);
-    if (!proxiedAuthority.host().equals(authority.host()) || proxiedAuthority.port() != authority.port()) {
-      request.putHeader(X_FORWARDED_HOST, proxiedAuthority.toString());
+    if (authority != null) {
+      request.authority(authority);
+      HostAndPort proxiedAuthority = proxiedRequest.authority();
+      if (!equals(authority, proxiedAuthority)) {
+        // Should cope with existing forwarded host headers
+        request.putHeader(X_FORWARDED_HOST, proxiedAuthority.toString());
+      }
     }
 
     long len = body.length();
@@ -198,6 +201,13 @@ public class ProxiedRequest implements ProxyRequest {
         request.reset();
       }
     });
+  }
+
+  private static boolean equals(HostAndPort hp1, HostAndPort hp2) {
+    if (hp1 == null || hp2 == null) {
+      return false;
+    }
+    return hp1.host().equals(hp2.host()) && hp1.port() == hp2.port();
   }
 
   @Override
