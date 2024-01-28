@@ -8,6 +8,7 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.HttpProxy;
@@ -169,7 +170,7 @@ public class HttpProxyExamples {
       @Override
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
         ProxyRequest proxyRequest = context.request();
-        proxyRequest.setAuthority("example.com:80");
+        proxyRequest.setAuthority(HostAndPort.create("example.com", 80));
         return ProxyInterceptor.super.handleProxyRequest(context);
       }
     });
