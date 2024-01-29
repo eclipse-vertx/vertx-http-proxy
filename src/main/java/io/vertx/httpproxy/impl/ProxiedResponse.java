@@ -26,8 +26,8 @@ import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -85,7 +85,7 @@ class ProxiedResponse implements ProxyResponse {
           String dateHeader = response.getHeader(HttpHeaders.DATE);
           String expiresHeader = response.getHeader(HttpHeaders.EXPIRES);
           if (dateHeader != null && expiresHeader != null) {
-            maxAge = ParseUtils.parseHeaderDate(expiresHeader).getTime() - ParseUtils.parseHeaderDate(dateHeader).getTime();
+            maxAge = ParseUtils.parseHeaderDate(expiresHeader).toEpochMilli() - ParseUtils.parseHeaderDate(dateHeader).toEpochMilli();
           }
         }
       }
@@ -176,9 +176,9 @@ class ProxiedResponse implements ProxyResponse {
     }
 
     // Date header
-    Date date = HttpUtils.dateHeader(headers);
+    Instant date = HttpUtils.dateHeader(headers);
     if (date == null) {
-      date = new Date();
+      date = Instant.now();
     }
     try {
       proxiedResponse.putHeader("date", ParseUtils.formatHttpDate(date));
@@ -191,12 +191,12 @@ class ProxiedResponse implements ProxyResponse {
     if (warningHeaders.size() > 0) {
       warningHeaders = new ArrayList<>(warningHeaders);
       String dateHeader = headers.get("date");
-      Date dateInstant = dateHeader != null ? ParseUtils.parseHeaderDate(dateHeader) : null;
+      Instant dateInstant = dateHeader != null ? ParseUtils.parseHeaderDate(dateHeader) : null;
       Iterator<String> i = warningHeaders.iterator();
       // Suppress incorrect warning header
       while (i.hasNext()) {
         String warningHeader = i.next();
-        Date warningInstant = ParseUtils.parseWarningHeaderDate(warningHeader);
+        Instant warningInstant = ParseUtils.parseWarningHeaderDate(warningHeader);
         if (warningInstant != null && dateInstant != null && !warningInstant.equals(dateInstant)) {
           i.remove();
         }

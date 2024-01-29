@@ -10,14 +10,13 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.ProxyResponse;
 
-import java.util.Date;
+import java.time.Instant;
 
 class Resource {
 
@@ -27,7 +26,7 @@ class Resource {
   final MultiMap headers;
   final long timestamp;
   final long maxAge;
-  final Date lastModified;
+  final Instant lastModified;
   final String etag;
   final Buffer content = Buffer.buffer();
 
