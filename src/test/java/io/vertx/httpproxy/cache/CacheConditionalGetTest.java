@@ -21,7 +21,8 @@ import io.vertx.httpproxy.impl.ParseUtils;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.Date;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -58,9 +59,9 @@ public class CacheConditionalGetTest extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(now)))
-                .withHeader("Last-Modified", ParseUtils.formatHttpDate(new Date(now - 5000)))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(now + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.ofEpochMilli(now)))
+                .withHeader("Last-Modified", ParseUtils.formatHttpDate(Instant.ofEpochMilli(now).minus(5000, ChronoUnit.MILLIS)))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.ofEpochMilli(now).plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content")));
     startProxy(new SocketAddressImpl(8081, "localhost"));
     Async latch = ctx.async();
@@ -74,7 +75,7 @@ public class CacheConditionalGetTest extends CacheTestBase {
       vertx.setTimer(3000, id -> {
         client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
             .compose(req2 -> req2
-                .putHeader(HttpHeaders.IF_MODIFIED_SINCE, ParseUtils.formatHttpDate(new Date(now - 5000)))
+                .putHeader(HttpHeaders.IF_MODIFIED_SINCE, ParseUtils.formatHttpDate(Instant.ofEpochMilli(now).minus(5000, ChronoUnit.MILLIS)))
                 .send()
                 .compose(resp2 -> {
               ctx.assertEquals(304, resp2.statusCode());

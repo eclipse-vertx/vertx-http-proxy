@@ -24,7 +24,8 @@ import io.vertx.httpproxy.impl.ParseUtils;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.Date;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -52,10 +53,8 @@ public class CacheExpires2Test extends CacheTestBase {
   }
 
   protected void setCacheControl(MultiMap headers, long now, long delaySeconds) {
-    Date tomorrow = new Date();
-    tomorrow.setTime(now + delaySeconds * 1000);
     headers.set(HttpHeaders.CACHE_CONTROL, "public");
-    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(tomorrow));
+    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(Instant.now().plus(delaySeconds, ChronoUnit.SECONDS)));
   }
 
   @Test
@@ -66,8 +65,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content")));
     stubFor(get(urlEqualTo("/img.jpg")).withHeader("If-None-Match", equalTo("tag0")).inScenario("s")
         .willReturn(
@@ -75,8 +74,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("Etag", "tag1")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content2")));
     startProxy(new SocketAddressImpl(8081, "localhost"));
     Async latch = ctx.async();
@@ -133,8 +132,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content"))
         .willSetStateTo("abc"));
     stubFor(get(urlEqualTo("/img.jpg")).inScenario("s").whenScenarioStateIs("abc")
@@ -143,8 +142,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("Etag", "tag1")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content2")));
     stubFor(head(urlEqualTo("/img.jpg")).inScenario("s").whenScenarioStateIs("abc")
         .willReturn(
@@ -152,8 +151,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("Etag", "tag1")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))));
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
     startProxy(new SocketAddressImpl(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
@@ -216,8 +215,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content")));
     stubFor(head(urlEqualTo("/img.jpg"))
         .willReturn(
@@ -225,8 +224,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(status)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))));
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
     startProxy(new SocketAddressImpl(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
@@ -267,8 +266,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content")));
     stubFor(head(urlEqualTo("/img.jpg"))
         .willReturn(
@@ -276,8 +275,8 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withStatus(200)
                 .withHeader("Cache-Control", "public")
                 .withHeader("ETag", "tag0")
-                .withHeader("Date", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis())))
-                .withHeader("Expires", ParseUtils.formatHttpDate(new Date(System.currentTimeMillis() + 5000)))));
+                .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
+                .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
     startProxy(new SocketAddressImpl(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.HEAD, 8080, "localhost", "/img.jpg")

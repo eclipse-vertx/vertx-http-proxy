@@ -13,7 +13,7 @@ package io.vertx.httpproxy.impl;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpHeaders;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 class HttpUtils {
@@ -35,13 +35,13 @@ class HttpUtils {
     }
   }
 
-  static Date dateHeader(MultiMap headers) {
+  static Instant dateHeader(MultiMap headers) {
     String dateHeader = headers.get(HttpHeaders.DATE);
     if (dateHeader == null) {
       List<String> warningHeaders = headers.getAll("warning");
       if (warningHeaders.size() > 0) {
         for (String warningHeader : warningHeaders) {
-          Date date = ParseUtils.parseWarningHeaderDate(warningHeader);
+          Instant date = ParseUtils.parseWarningHeaderDate(warningHeader);
           if (date != null) {
             return date;
           }
