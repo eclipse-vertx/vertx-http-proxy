@@ -54,7 +54,7 @@ public class CacheExpires2Test extends CacheTestBase {
 
   protected void setCacheControl(MultiMap headers, long now, long delaySeconds) {
     headers.set(HttpHeaders.CACHE_CONTROL, "public");
-    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(Instant.now().plus(delaySeconds * 1000, ChronoUnit.MILLIS)));
+    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(Instant.now().plus(delaySeconds, ChronoUnit.SECONDS)));
   }
 
   @Test

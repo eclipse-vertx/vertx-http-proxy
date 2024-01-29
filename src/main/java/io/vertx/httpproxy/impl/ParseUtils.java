@@ -23,14 +23,15 @@ public class ParseUtils {
   public static final DateTimeFormatter RFC_850_DATE_TIME = new DateTimeFormatterBuilder()
     .appendPattern("EEEE, dd-MMM-yy HH:mm:ss")
     .parseLenient()
-    .appendLiteral(" UTC")
-    .toFormatter(Locale.US).withZone(ZoneId.of("UTC"));
+    .appendLiteral(" GMT")
+    .toFormatter(Locale.US)
+    .withZone(ZoneId.of("UTC"));
 
   public static final DateTimeFormatter ASC_TIME = new DateTimeFormatterBuilder()
     .appendPattern("EEE MMM d HH:mm:ss yyyy")
     .parseLenient()
-    .toFormatter(Locale.US).withZone(ZoneId.of("UTC"));
-
+    .toFormatter(Locale.US)
+    .withZone(ZoneId.of("UTC"));
 
   public static Instant parseHeaderDate(String value) {
     try {
@@ -70,76 +71,15 @@ public class ParseUtils {
     return DateTimeFormatter.RFC_1123_DATE_TIME.format(OffsetDateTime.ofInstant(date, ZoneOffset.UTC));
   }
 
-  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.3.1
+  // https://www.rfc-editor.org/rfc/rfc9110#http.date
   public static Instant parseHttpDate(String value) throws Exception {
-    int sep = 0;
-    while (true) {
-      if (sep < value.length()) {
-        char c = value.charAt(sep);
-        if (c == ',') {
-          String s = value.substring(0, sep);
-          if (parseWkday(s) != null) {
-            // rfc1123-date
-            return Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.parse(value));
-          } else if (parseWeekday(s) != null) {
-            // rfc850-date
-            return Instant.from(RFC_850_DATE_TIME.parse(value));
-          }
-          return null;
-        }  else if (c == ' ') {
-          String s = value.substring(0, sep);
-          if (parseWkday(s) != null) {
-            // asctime-date
-            return Instant.from(ASC_TIME.parse(value));
-          }
-          return null;
-        }
-        sep++;
-      } else {
-        return null;
-      }
+    int pos = value.indexOf(',');
+    if (pos == 3) { // e.g. Sun, 06 Nov 1994 08:49:37 GMT
+      return DateTimeFormatter.RFC_1123_DATE_TIME.parse(value, Instant::from);
     }
-  }
-
-  private static DayOfWeek parseWkday(String value) {
-    switch (value) {
-      case "Mon":
-        return DayOfWeek.MONDAY;
-      case "Tue":
-        return DayOfWeek.TUESDAY;
-      case "Wed":
-        return DayOfWeek.WEDNESDAY;
-      case "Thu":
-        return DayOfWeek.THURSDAY;
-      case "Fri":
-        return DayOfWeek.FRIDAY;
-      case "Sat":
-        return DayOfWeek.SATURDAY;
-      case "Sun":
-        return DayOfWeek.SUNDAY;
-      default:
-        return null;
+    if (pos == -1) { // e.g. Sun Nov  6 08:49:37 1994
+      return ASC_TIME.parse(value, Instant::from);
     }
-  }
-
-  private static DayOfWeek parseWeekday(String value) {
-    switch (value) {
-      case "Monday":
-        return DayOfWeek.MONDAY;
-      case "Tuesday":
-        return DayOfWeek.TUESDAY;
-      case "Wednesday":
-        return DayOfWeek.WEDNESDAY;
-      case "Thursday":
-        return DayOfWeek.THURSDAY;
-      case "Friday":
-        return DayOfWeek.FRIDAY;
-      case "Saturday":
-        return DayOfWeek.SATURDAY;
-      case "Sunday":
-        return DayOfWeek.SUNDAY;
-      default:
-        return null;
-    }
+    return RFC_850_DATE_TIME.parse(value, Instant::from); // e.g. Sunday, 06-Nov-94 08:49:37 GMT
   }
 }

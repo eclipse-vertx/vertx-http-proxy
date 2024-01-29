@@ -38,7 +38,7 @@ public class ParseUtilsTest extends TestBase {
    */
   @Test
   public void testParseHttpDateRFC_850_DATE_TIME(TestContext ctx) throws Exception {
-    assertEquals(RESULT_DATE, ParseUtils.parseHttpDate("Tuesday, 02-Jan-24 12:34:56 UTC"));
+    assertEquals(RESULT_DATE, ParseUtils.parseHttpDate("Tuesday, 02-Jan-24 12:34:56 GMT"));
   }
 
   /**
