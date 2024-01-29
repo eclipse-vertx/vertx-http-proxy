@@ -55,11 +55,7 @@ public class ParseUtils {
           int len = value.length();
           if (index + 2 < len && value.charAt(index + 1) == '"' && value.charAt(len - 1) == '"') {
             // Space for 2 double quotes
-            String date = value.substring(index + 2, len - 1);
-            try {
-              return parseHttpDate(date);
-            } catch (Exception ignore) {
-            }
+            return parseHeaderDate(value.substring(index + 2, len - 1));
           }
         }
       }
