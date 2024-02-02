@@ -94,6 +94,40 @@ public class WebSocketTest extends ProxyTestBase {
   }
 
   @Test
+  // TODO: temp, just to prove the test is ok, remove me.
+  public void testWebSocketUniqueValueConnHeader(TestContext ctx) {
+    testWebSocketCustomConnHeader(ctx, "Upgrade");
+  }
+
+  @Test
+  public void testWebSocketMultiValueConnHeader(TestContext ctx) {
+    testWebSocketCustomConnHeader(ctx, "keep-alive, Upgrade");
+  }
+
+  private void testWebSocketCustomConnHeader(TestContext ctx, String connHeaderValue) {
+    Async async = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      Future<ServerWebSocket> fut = req.toWebSocket();
+      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        ws.handler(ws::write);
+        ws.closeHandler(v -> async.complete());
+      }));
+    });
+    startProxy(backend);
+    HttpClient httpClient = vertx.createHttpClient();
+    httpClient.request(GET, 8080, "localhost", "/ws")
+      .compose(req -> req
+          .putHeader("Connection", connHeaderValue)
+          .putHeader("Upgrade", "websocket")
+          .putHeader("Origin", "localhost:8080")
+          .send()
+          .onComplete(ctx.asyncAssertSuccess(resp -> {
+            ctx.assertEquals(101, resp.statusCode());
+            req.connection().close();
+          })));
+  }
+
+  @Test
   public void testWebSocketReject(TestContext ctx) {
     Async async = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
