@@ -11,19 +11,46 @@
 
 package io.vertx.httpproxy.interceptors;
 
+import io.vertx.codegen.annotations.Unstable;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.interceptors.impl.AddPrefixPathInterceptorImpl;
+import io.vertx.httpproxy.interceptors.impl.PathInterceptorImpl;
 import io.vertx.httpproxy.interceptors.impl.RemovePrefixPathInterceptorImpl;
 
+import java.util.function.Function;
+
 @VertxGen
+@Unstable
 public interface PathInterceptor {
 
-  static ProxyInterceptor removePrefix(String prefix) {
-    return new RemovePrefixPathInterceptorImpl(); // FIXME
+  /**
+   * Apply a callback to change the request URI when the proxy receives it.
+   *
+   * @param pattern the operation that applied to the path
+   * @return the created interceptor
+   */
+  static ProxyInterceptor changePath(Function<String, String> pattern) {
+    return new PathInterceptorImpl(pattern);
   }
 
+  /**
+   * Add a prefix to the URI.
+   *
+   * @param prefix the prefix that need to be added
+   * @return the created interceptor
+   */
+  static ProxyInterceptor removePrefix(String prefix) {
+    return new RemovePrefixPathInterceptorImpl(prefix);
+  }
+
+  /**
+   * Remove a prefix to the URI. Do nothing if it doesn't exist.
+   *
+   * @param prefix the prefix that need to be removed
+   * @return the created interceptor
+   */
   static ProxyInterceptor addPrefix(String prefix) {
-    return new AddPrefixPathInterceptorImpl(); // FIXME
+    return new AddPrefixPathInterceptorImpl(prefix);
   }
 }

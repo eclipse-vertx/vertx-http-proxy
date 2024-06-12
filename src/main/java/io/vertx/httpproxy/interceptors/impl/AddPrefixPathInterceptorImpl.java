@@ -11,10 +11,8 @@
 
 package io.vertx.httpproxy.interceptors.impl;
 
-import io.vertx.httpproxy.ProxyInterceptor;
-
-public class AddPrefixPathInterceptorImpl implements ProxyInterceptor {
-
-  // FIXME
-
+public class AddPrefixPathInterceptorImpl extends PathInterceptorImpl {
+  public AddPrefixPathInterceptorImpl(String prefix) {
+    super(uri -> prefix + uri);
+  }
 }

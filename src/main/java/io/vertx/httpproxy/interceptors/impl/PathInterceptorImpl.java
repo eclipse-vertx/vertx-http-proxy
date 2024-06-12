@@ -11,10 +11,28 @@
 
 package io.vertx.httpproxy.interceptors.impl;
 
+import io.vertx.core.Future;
+import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyRequest;
+import io.vertx.httpproxy.ProxyResponse;
 
+import java.util.function.Function;
+
+/**
+ * The general interceptor for path. Extended by other implementations.
+ */
 public class PathInterceptorImpl implements ProxyInterceptor {
+  Function<String, String> pattern;
 
-  // FIXME
+  public PathInterceptorImpl(Function<String, String> pattern) {
+    this.pattern = pattern;
+  }
 
+  @Override
+  public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+    ProxyRequest proxyRequest = context.request();
+    proxyRequest.setURI(pattern.apply(proxyRequest.getURI()));
+    return context.sendRequest();
+  }
 }

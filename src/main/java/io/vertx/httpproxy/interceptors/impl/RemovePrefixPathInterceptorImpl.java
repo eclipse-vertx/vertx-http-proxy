@@ -11,10 +11,11 @@
 
 package io.vertx.httpproxy.interceptors.impl;
 
-import io.vertx.httpproxy.ProxyInterceptor;
 
-public class RemovePrefixPathInterceptorImpl implements ProxyInterceptor {
+public class RemovePrefixPathInterceptorImpl extends PathInterceptorImpl {
 
-  // FIXME
+  public RemovePrefixPathInterceptorImpl(String prefix) {
+    super(uri -> uri.startsWith(prefix) ? uri.substring(prefix.length()) : uri);
+  }
 
 }

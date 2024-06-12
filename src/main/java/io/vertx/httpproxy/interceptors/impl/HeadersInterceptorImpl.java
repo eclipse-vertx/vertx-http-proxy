@@ -11,10 +11,38 @@
 
 package io.vertx.httpproxy.interceptors.impl;
 
+import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
+import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyRequest;
+import io.vertx.httpproxy.ProxyResponse;
 
+import java.util.function.Consumer;
+
+/**
+ * The general interceptor for headers. Extended by other implementations.
+ */
 public class HeadersInterceptorImpl implements ProxyInterceptor {
+  Consumer<MultiMap> changeRequestHeaders;
+  Consumer<MultiMap> changeResponseHeaders;
 
-  // FIXME
+  public HeadersInterceptorImpl(Consumer<MultiMap> changeRequestHeaders, Consumer<MultiMap> changeResponseHeaders) {
+    this.changeRequestHeaders = changeRequestHeaders;
+    this.changeResponseHeaders = changeResponseHeaders;
+  }
 
+  @Override
+  public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+    ProxyRequest request = context.request();
+    changeRequestHeaders.accept(request.headers());
+    return context.sendRequest();
+  }
+
+  @Override
+  public Future<Void> handleProxyResponse(ProxyContext context) {
+    ProxyResponse response = context.response();
+    changeResponseHeaders.accept(response.headers());
+    return context.sendResponse();
+  }
 }
