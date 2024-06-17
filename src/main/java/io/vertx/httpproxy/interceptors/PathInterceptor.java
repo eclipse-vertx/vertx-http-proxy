@@ -14,12 +14,13 @@ package io.vertx.httpproxy.interceptors;
 import io.vertx.codegen.annotations.Unstable;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.interceptors.impl.AddPrefixPathInterceptorImpl;
 import io.vertx.httpproxy.interceptors.impl.PathInterceptorImpl;
-import io.vertx.httpproxy.interceptors.impl.RemovePrefixPathInterceptorImpl;
 
 import java.util.function.Function;
 
+/**
+ * Used to create interceptors to modify the request path.
+ */
 @VertxGen
 @Unstable
 public interface PathInterceptor {
@@ -41,7 +42,7 @@ public interface PathInterceptor {
    * @return the created interceptor
    */
   static ProxyInterceptor removePrefix(String prefix) {
-    return new RemovePrefixPathInterceptorImpl(prefix);
+    return PathInterceptorImpl.removePrefix(prefix);
   }
 
   /**
@@ -51,6 +52,6 @@ public interface PathInterceptor {
    * @return the created interceptor
    */
   static ProxyInterceptor addPrefix(String prefix) {
-    return new AddPrefixPathInterceptorImpl(prefix);
+    return PathInterceptorImpl.addPrefix(prefix);
   }
 }

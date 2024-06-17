@@ -14,16 +14,18 @@ package io.vertx.httpproxy.interceptors;
 import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.Unstable;
 import io.vertx.codegen.annotations.VertxGen;
+import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.interceptors.impl.HeadersFilterInterceptorImpl;
 import io.vertx.httpproxy.interceptors.impl.HeadersInterceptorImpl;
 
 import java.util.Set;
-import java.util.function.Consumer;
 
 import static io.vertx.codegen.annotations.GenIgnore.PERMITTED_TYPE;
 
+/**
+ * Used to create interceptors to modify request and response headers.
+ */
 @VertxGen
 @Unstable
 public interface HeadersInterceptor {
@@ -31,12 +33,11 @@ public interface HeadersInterceptor {
   /**
    * Apply callbacks to change the request and response headers when the proxy receives them.
    *
-   * @param changeRequestHeaders the operation that applied to the request headers
-   * @param changeResponseHeaders the operation that applied to the response headers
+   * @param changeRequestHeaders the operation to apply to the request headers
+   * @param changeResponseHeaders the operation to apply to the response headers
    * @return the created interceptor
    */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor changeHeaders(Consumer<MultiMap> changeRequestHeaders, Consumer<MultiMap> changeResponseHeaders) {
+  static ProxyInterceptor changeHeaders(Handler<MultiMap> changeRequestHeaders, Handler<MultiMap> changeResponseHeaders) {
     return new HeadersInterceptorImpl(changeRequestHeaders, changeResponseHeaders);
   }
 
@@ -48,7 +49,7 @@ public interface HeadersInterceptor {
    */
   @GenIgnore(PERMITTED_TYPE)
   static ProxyInterceptor filterRequestHeaders(Set<CharSequence> requestHeaders) {
-    return new HeadersFilterInterceptorImpl(requestHeaders, null);
+    return HeadersInterceptorImpl.filter(requestHeaders, null);
   }
 
   /**
@@ -59,7 +60,7 @@ public interface HeadersInterceptor {
    */
   @GenIgnore(PERMITTED_TYPE)
   static ProxyInterceptor filterResponseHeaders(Set<CharSequence> responseHeaders) {
-    return new HeadersFilterInterceptorImpl(null, responseHeaders);
+    return HeadersInterceptorImpl.filter(null, responseHeaders);
   }
 
   /**
@@ -71,6 +72,6 @@ public interface HeadersInterceptor {
    */
   @GenIgnore(PERMITTED_TYPE)
   static ProxyInterceptor filterHeaders(Set<CharSequence> requestHeaders, Set<CharSequence> responseHeaders) {
-    return new HeadersFilterInterceptorImpl(requestHeaders, responseHeaders);
+    return HeadersInterceptorImpl.filter(requestHeaders, responseHeaders);
   }
 }

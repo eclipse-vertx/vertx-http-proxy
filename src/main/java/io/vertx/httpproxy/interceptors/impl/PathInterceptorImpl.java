@@ -29,6 +29,14 @@ public class PathInterceptorImpl implements ProxyInterceptor {
     this.pattern = pattern;
   }
 
+  public static PathInterceptorImpl addPrefix(String prefix) {
+    return new PathInterceptorImpl(uri -> prefix + uri);
+  }
+
+  public static PathInterceptorImpl removePrefix(String prefix) {
+    return new PathInterceptorImpl(uri -> uri.startsWith(prefix) ? uri.substring(prefix.length()) : uri);
+  }
+
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
     ProxyRequest proxyRequest = context.request();

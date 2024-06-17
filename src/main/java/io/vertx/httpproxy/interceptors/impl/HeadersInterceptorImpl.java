@@ -12,37 +12,49 @@
 package io.vertx.httpproxy.interceptors.impl;
 
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
-import java.util.function.Consumer;
+import java.util.Set;
 
 /**
  * The general interceptor for headers. Extended by other implementations.
  */
 public class HeadersInterceptorImpl implements ProxyInterceptor {
-  Consumer<MultiMap> changeRequestHeaders;
-  Consumer<MultiMap> changeResponseHeaders;
+  Handler<MultiMap> changeRequestHeaders;
+  Handler<MultiMap> changeResponseHeaders;
 
-  public HeadersInterceptorImpl(Consumer<MultiMap> changeRequestHeaders, Consumer<MultiMap> changeResponseHeaders) {
+  public HeadersInterceptorImpl(Handler<MultiMap> changeRequestHeaders, Handler<MultiMap> changeResponseHeaders) {
     this.changeRequestHeaders = changeRequestHeaders;
     this.changeResponseHeaders = changeResponseHeaders;
+  }
+
+  public static HeadersInterceptorImpl filter(Set<CharSequence> requestHeaders, Set<CharSequence> responseHeaders) {
+    return new HeadersInterceptorImpl(oldRequestHeader -> {
+        if (requestHeaders == null) return;
+        requestHeaders.forEach(oldRequestHeader::remove);
+      },
+      oldResponseHeader -> {
+        if (responseHeaders == null) return;
+        responseHeaders.forEach(oldResponseHeader::remove);
+      });
   }
 
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
     ProxyRequest request = context.request();
-    changeRequestHeaders.accept(request.headers());
+    changeRequestHeaders.handle(request.headers());
     return context.sendRequest();
   }
 
   @Override
   public Future<Void> handleProxyResponse(ProxyContext context) {
     ProxyResponse response = context.response();
-    changeResponseHeaders.accept(response.headers());
+    changeResponseHeaders.handle(response.headers());
     return context.sendResponse();
   }
 }
