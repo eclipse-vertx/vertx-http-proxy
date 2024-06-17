@@ -18,7 +18,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
-class BufferingWriteStream implements WriteStream<Buffer> {
+public class BufferingWriteStream implements WriteStream<Buffer> {
 
   private final Buffer content;
 
