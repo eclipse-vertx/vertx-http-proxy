@@ -23,7 +23,7 @@ import java.util.function.Function;
  * The general interceptor for path. Extended by other implementations.
  */
 public class PathInterceptorImpl implements ProxyInterceptor {
-  Function<String, String> pattern;
+  private final Function<String, String> pattern;
 
   public PathInterceptorImpl(Function<String, String> pattern) {
     this.pattern = pattern;

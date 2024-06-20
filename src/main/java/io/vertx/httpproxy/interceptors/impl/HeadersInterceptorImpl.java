@@ -19,29 +19,30 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
+import java.util.Objects;
 import java.util.Set;
 
 /**
  * The general interceptor for headers. Extended by other implementations.
  */
 public class HeadersInterceptorImpl implements ProxyInterceptor {
-  Handler<MultiMap> changeRequestHeaders;
-  Handler<MultiMap> changeResponseHeaders;
+  private final Handler<MultiMap> changeRequestHeaders;
+  private final Handler<MultiMap> changeResponseHeaders;
 
   public HeadersInterceptorImpl(Handler<MultiMap> changeRequestHeaders, Handler<MultiMap> changeResponseHeaders) {
+    Objects.requireNonNull(changeRequestHeaders);
+    Objects.requireNonNull(changeResponseHeaders);
     this.changeRequestHeaders = changeRequestHeaders;
     this.changeResponseHeaders = changeResponseHeaders;
   }
 
   public static HeadersInterceptorImpl filter(Set<CharSequence> requestHeaders, Set<CharSequence> responseHeaders) {
-    return new HeadersInterceptorImpl(oldRequestHeader -> {
-        if (requestHeaders == null) return;
-        requestHeaders.forEach(oldRequestHeader::remove);
-      },
-      oldResponseHeader -> {
-        if (responseHeaders == null) return;
-        responseHeaders.forEach(oldResponseHeader::remove);
-      });
+    return new HeadersInterceptorImpl(
+      requestHeaders == null || requestHeaders.isEmpty() ?
+        h -> {} : oldRequestHeader -> requestHeaders.forEach(oldRequestHeader::remove),
+      responseHeaders == null || responseHeaders.isEmpty() ?
+        h -> {} : oldResponseHeader -> responseHeaders.forEach(oldResponseHeader::remove)
+    );
   }
 
   @Override
