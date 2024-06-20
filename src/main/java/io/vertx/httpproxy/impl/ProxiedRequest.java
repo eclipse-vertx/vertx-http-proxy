@@ -169,7 +169,7 @@ public class ProxiedRequest implements ProxyRequest {
     for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
-      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equals("host")) {
+      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equalsIgnoreCase("host")) {
         request.headers().add(name, value);
       }
     }

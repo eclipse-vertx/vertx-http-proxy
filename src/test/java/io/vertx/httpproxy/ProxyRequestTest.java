@@ -451,6 +451,7 @@ public class ProxyRequestTest extends ProxyTestBase {
   @Test
   public void testUpdateRequestHeaders(TestContext ctx) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertNotEquals("example.org", req.getHeader("Host"));
       ctx.assertNull(req.getHeader("header"));
       ctx.assertEquals("proxy_header_value", req.getHeader("proxy_header"));
       req.response().putHeader("header", "header_value").end();
@@ -459,6 +460,7 @@ public class ProxyRequestTest extends ProxyTestBase {
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       MultiMap clientHeaders = proxyReq.headers();
+      clientHeaders.add("Host", "example.org");
       clientHeaders.add("proxy_header", "proxy_header_value");
       ctx.assertEquals("header_value", clientHeaders.get("header"));
       clientHeaders.remove("header");
