@@ -110,4 +110,56 @@ public class ProxyTest extends ProxyTestBase {
         latch.countDown();
       });
   }
+
+  @Test
+  public void testUpstreamRefuse(TestContext ctx) {
+    SocketAddress backend = SocketAddress.inetSocketAddress(8081, "localhost");
+    startProxy(proxy -> proxy.origin(backend));
+    client = vertx.createHttpClient();
+    Async async = ctx.async();
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(req -> req.send().compose(resp -> {
+        ctx.assertEquals(502, resp.statusCode());
+        return resp.body();
+      }))
+      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+  }
+
+  @Test
+  public void testFilterRequestFail(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
+      @Override
+      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+        return Future.failedFuture(new RuntimeException("Some error"));
+      }
+    }));
+    client = vertx.createHttpClient();
+    Async async = ctx.async();
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(req -> req.send().compose(resp -> {
+        ctx.assertEquals(502, resp.statusCode());
+        return resp.body();
+      }))
+      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+  }
+
+  @Test
+  public void testFilterResponseFail(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
+      @Override
+      public Future<Void> handleProxyResponse(ProxyContext context) {
+        return Future.failedFuture(new RuntimeException("Some error"));
+      }
+    }));
+    client = vertx.createHttpClient();
+    Async async = ctx.async();
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(req -> req.send().compose(resp -> {
+        ctx.assertEquals(502, resp.statusCode());
+        return resp.body();
+      }))
+      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+  }
 }

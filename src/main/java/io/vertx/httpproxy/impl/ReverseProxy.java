@@ -70,7 +70,10 @@ public class ReverseProxy implements HttpProxy {
 
     Proxy proxy = new Proxy(proxyRequest);
     proxy.filters = interceptors.listIterator();
-    proxy.sendRequest().compose(proxy::sendProxyResponse);
+    proxy.sendRequest()
+      .recover(throwable -> Future.succeededFuture(proxyRequest.response().setStatusCode(502)))
+      .compose(proxy::sendProxyResponse)
+      .recover(throwable -> proxy.response().release().setStatusCode(502).send());
   }
 
   private void handleWebSocketUpgrade(ProxyRequest proxyRequest) {
@@ -191,27 +194,11 @@ public class ReverseProxy implements HttpProxy {
     }
 
     private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest) {
-      Future<HttpClientRequest> f = resolveOrigin(proxyRequest.proxiedRequest());
-      f.onFailure(err -> {
-        // Should this be done here ? I don't think so
-        HttpServerRequest proxiedRequest = proxyRequest.proxiedRequest();
-        proxiedRequest.resume();
-        Promise<Void> promise = Promise.promise();
-        proxiedRequest.exceptionHandler(promise::tryFail);
-        proxiedRequest.endHandler(promise::tryComplete);
-        promise.future().onComplete(ar2 -> {
-          end(proxyRequest, 502);
-        });
-      });
-      return f.compose(a -> sendProxyRequest(proxyRequest, a));
+      return resolveOrigin(proxyRequest.proxiedRequest()).compose(a -> sendProxyRequest(proxyRequest, a));
     }
 
     private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest, HttpClientRequest request) {
-      Future<ProxyResponse> fut = proxyRequest.send(request);
-      fut.onFailure(err -> {
-        proxyRequest.proxiedRequest().response().setStatusCode(502).end();
-      });
-      return fut;
+      return proxyRequest.send(request);
     }
 
     private Future<Void> sendProxyResponse(ProxyResponse response) {
