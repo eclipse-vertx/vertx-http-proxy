@@ -1,16 +1,23 @@
 package io.vertx.httpproxy.interceptors;
 
+import io.vertx.codegen.annotations.Unstable;
+import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.httpproxy.ProxyContext;
+import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.interceptors.impl.MatchInterceptorImpl;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public interface MatchInterceptor {
+@VertxGen
+@Unstable
+public interface MatchInterceptor extends ProxyInterceptor {
   static MatchInterceptor builder() {
-    return null;
+    return new MatchInterceptorImpl();
   }
 
   // Path:
@@ -29,16 +36,16 @@ public interface MatchInterceptor {
 
   MatchInterceptor transformParams(BiFunction<ProxyContext, MultiMap, MultiMap> transformer);
 
-  MatchInterceptor updateParam(String name, String value);
-  MatchInterceptor removeParam(String name);
+  MatchInterceptor updateParams(String name, String value);
+  MatchInterceptor removeParams(String name);
 
 
   // Headers:
-  MatchInterceptor matchRequestHeaders(String paramName, String alias);
-  MatchInterceptor matchRequestHeaders(String paramName);
+  MatchInterceptor matchRequestHeaders(String headerName, String alias);
+  MatchInterceptor matchRequestHeaders(String headerName);
   MatchInterceptor matchRequestHeaders(BiFunction<ProxyContext, MultiMap, Boolean> matcher);
-  MatchInterceptor matchResponseHeaders(String paramName, String alias);
-  MatchInterceptor matchResponseHeaders(String paramName);
+  MatchInterceptor matchResponseHeaders(String headerName, String alias);
+  MatchInterceptor matchResponseHeaders(String headerName);
   MatchInterceptor matchResponseHeaders(BiFunction<ProxyContext, MultiMap, Boolean> matcher);
 
   MatchInterceptor transformRequestHeaders(BiFunction<ProxyContext, MultiMap, MultiMap> transformer);
@@ -51,11 +58,11 @@ public interface MatchInterceptor {
 
 
   // Body:
-  <T> MatchInterceptor matchRequestBody(BiFunction<ProxyContext, T, Boolean> matcher);
-  <T> MatchInterceptor matchResponseBody(BiFunction<ProxyContext, T, Boolean> matcher);
+  <T> MatchInterceptor matchRequestBody(BiFunction<ProxyContext, T, Boolean> matcher, Class<T> inputRequestType);
+  <T> MatchInterceptor matchResponseBody(BiFunction<ProxyContext, T, Boolean> matcher, Class<T> inputResponseType);
 
-  <T, R> MatchInterceptor transformRequestBody(BiFunction<ProxyContext, T, R> transformer);
-  <T, R> MatchInterceptor transformResponseBody(BiFunction<ProxyContext, T, R> transformer);
+  <T> MatchInterceptor transformRequestBody(BiFunction<ProxyContext, T, Object> transformer, Class<T> inputRequestType);
+  <T> MatchInterceptor transformResponseBody(BiFunction<ProxyContext, T, Object> transformer, Class<T> inputResponseType);
 
   MatchInterceptor updateRequestJsonField(String name, String value);
   MatchInterceptor removeRequestJsonField(String name, String value);

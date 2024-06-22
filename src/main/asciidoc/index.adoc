@@ -140,3 +140,29 @@ You can change the control, e.g you can send a response immediately to the user-
 ----
 {@link examples.HttpProxyExamples#immediateResponse}
 ----
+
+=== Pre-defined interceptors
+
+You also use pre-defined interceptors to perform common transformations.
+
+==== Common interceptors
+
+// TODO
+
+==== Match interceptor
+
+A match interceptor is a special interceptor that combines the functionality of common interceptors. It consists of two groups of methods, *matchers* and *transformers*. Matchers are used to capture the value in the request or response into the context and to decide if the interceptor continues itself; transformers are used to transform the request and response with the context.
+
+Your can use literals that start with symbol `$` to represent variables for value extraction and injection:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#matchInterceptorLiterals}
+----
+
+In addition to using literals to represent transformations, most matchers and transformers also accept functional parameters:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#matchInterceptorFunctionals}
+----
