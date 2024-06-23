@@ -18,6 +18,7 @@ import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.cache.CacheOptions;
+import io.vertx.httpproxy.interceptors.MatchInterceptor;
 
 /**
  * @author <a href="mailto:emad.albloushi@gmail.com">Emad Alblueshi</a>
@@ -127,6 +128,28 @@ public class HttpProxyExamples {
         return Future.succeededFuture(proxyResponse);
       }
     });
+  }
+
+  public void matchInterceptorLiterals() {
+    // To put the header "token" into the params and rename it "app_token"
+    MatchInterceptor.builder()
+      .matchRequestHeaders("token")
+      .updateParams("app_token", "$token");
+  }
+
+  public void matchInterceptorFunctionals() {
+    MatchInterceptor.builder()
+      .matchRequestHeaders((ctx, headers) -> {
+        if (headers.contains("token")) {
+          ctx.set("token", headers.get("token"));
+          return true; // returns true if interceptor continues
+        }
+        return false; // return false if not
+      })
+      .transformParams((ctx, params) -> {
+        params.set("app_token", ctx.get("token", String.class));
+        return params;
+      });
   }
 
   private void filter(MultiMap headers) {
