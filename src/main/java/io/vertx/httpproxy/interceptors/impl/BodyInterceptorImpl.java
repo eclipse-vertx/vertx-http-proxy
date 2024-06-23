@@ -13,6 +13,7 @@ package io.vertx.httpproxy.interceptors.impl;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
@@ -22,24 +23,18 @@ import io.vertx.httpproxy.impl.BufferingWriteStream;
 import java.util.function.Function;
 
 
-public class BodyInterceptorImpl implements ProxyInterceptor {
-  Function<Buffer, Buffer> modifyRequestBody;
-  Function<Buffer, Buffer> modifyResponseBody;
+public class BodyInterceptorImpl<T, U> implements ProxyInterceptor {
+  private final Function<T, Object> modifyRequestBody;
+  private final Function<U, Object> modifyResponseBody;
+  private final Class<T> inputRequestType;
+  private final Class<U> inputResponseType;
 
-  private BodyInterceptorImpl() {}
-
-  public static BodyInterceptorImpl forBuffer(Function<Buffer, Buffer> modifyRequestBody, Function<Buffer, Buffer> modifyResponseBody) {
-    BodyInterceptorImpl impl = new BodyInterceptorImpl();
-    impl.modifyRequestBody = modifyRequestBody;
-    impl.modifyResponseBody = modifyResponseBody;
-    return impl;
-  }
-
-  public static BodyInterceptorImpl forJsonObject(Function<JsonObject, JsonObject> modifyRequestBody, Function<JsonObject, JsonObject> modifyResponseBody) {
-    BodyInterceptorImpl impl = new BodyInterceptorImpl();
-    impl.modifyRequestBody = buffer -> modifyRequestBody.apply(buffer.toJsonObject()).toBuffer();
-    impl.modifyResponseBody = buffer -> modifyResponseBody.apply(buffer.toJsonObject()).toBuffer();
-    return impl;
+  public BodyInterceptorImpl(Function<T, Object> modifyRequestBody, Function<U, Object> modifyResponseBody,
+                             Class<T> inputRequestType, Class<U> inputResponseType) {
+    this.modifyRequestBody = modifyRequestBody;
+    this.modifyResponseBody = modifyResponseBody;
+    this.inputRequestType = inputRequestType;
+    this.inputResponseType = inputResponseType;
   }
 
   @Override
@@ -49,7 +44,8 @@ public class BodyInterceptorImpl implements ProxyInterceptor {
     Body body = context.request().getBody();
     BufferingWriteStream bws = new BufferingWriteStream();
     return body.stream().pipeTo(bws).compose(r -> {
-      context.request().setBody(Body.body(modifyRequestBody.apply(bws.content())));
+      context.request().setBody(
+        Body.body(Json.encodeToBuffer(modifyRequestBody.apply(Json.decodeValue(bws.content(), inputRequestType)))));
       return context.sendRequest();
     });
   }
@@ -61,7 +57,8 @@ public class BodyInterceptorImpl implements ProxyInterceptor {
     Body body = context.response().getBody();
     BufferingWriteStream bws = new BufferingWriteStream();
     return body.stream().pipeTo(bws).compose(r -> {
-      context.response().setBody(Body.body(modifyResponseBody.apply(bws.content())));
+      context.response().setBody(
+        Body.body(Json.encodeToBuffer(modifyResponseBody.apply(Json.decodeValue(bws.content(), inputResponseType)))));
       return context.sendResponse();
     });
   }

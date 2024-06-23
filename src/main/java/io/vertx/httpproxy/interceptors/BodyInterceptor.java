@@ -20,7 +20,9 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.interceptors.impl.BodyInterceptorImpl;
+import io.vertx.httpproxy.interceptors.impl.PathInterceptorImpl;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -35,67 +37,50 @@ public interface BodyInterceptor {
    *
    * @param modifyRequestBody the operation to apply to the request body
    * @param modifyResponseBody the operation to apply to the response body
+   * @param inputRequestType the expected class of the pre-transform request
+   * @param inputResponseType the expected class of the pre-transform response
    * @return the created interceptor
+   * @param <T> pre-transform request type
+   * @param <U> pre-transform response type
    */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor modifyBody(Function<Buffer, Buffer> modifyRequestBody, Function<Buffer, Buffer> modifyResponseBody) {
-    return BodyInterceptorImpl.forBuffer(modifyRequestBody, modifyResponseBody);
+  static <T, U> ProxyInterceptor modifyBody(
+    Function<T, Object> modifyRequestBody, Function<U, Object> modifyResponseBody,
+    Class<T> inputRequestType, Class<U> inputResponseType) {
+    Objects.requireNonNull(modifyRequestBody);
+    Objects.requireNonNull(inputRequestType);
+    Objects.requireNonNull(modifyResponseBody);
+    Objects.requireNonNull(inputResponseType);
+    return new BodyInterceptorImpl<T, U>(modifyRequestBody, modifyResponseBody, inputRequestType, inputResponseType);
   }
 
   /**
    * Apply callbacks to change the request body when the proxy receives them.
    *
    * @param modifyRequestBody the operation to apply to the request body
+   * @param inputRequestType the expected class of the pre-transform request
    * @return the created interceptor
+   * @param <T> pre-transform request type
    */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor modifyRequestBody(Function<Buffer, Buffer> modifyRequestBody) {
-    return BodyInterceptorImpl.forBuffer(modifyRequestBody, null);
+  static <T> ProxyInterceptor modifyRequestBody(
+    Function<T, Object> modifyRequestBody, Class<T> inputRequestType) {
+    Objects.requireNonNull(modifyRequestBody);
+    Objects.requireNonNull(inputRequestType);
+    return new BodyInterceptorImpl<T, Object>(modifyRequestBody, null, inputRequestType, Object.class);
   }
 
   /**
-   * Apply callbacks to change the response body when the proxy receives them.
+   * Apply callbacks to change the  response body when the proxy receives them.
    *
    * @param modifyResponseBody the operation to apply to the response body
+   * @param inputResponseType the expected class of the pre-transform response
    * @return the created interceptor
+   * @param <U> pre-transform response type
    */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor modifyResponseBody(Function<Buffer, Buffer> modifyResponseBody) {
-    return BodyInterceptorImpl.forBuffer(null, modifyResponseBody);
-  }
-
-  /**
-   * Apply callbacks to change the request and response bodies when the proxy receives them. For JsonObject only.
-   *
-   * @param modifyRequestBody the operation to apply to the request body
-   * @param modifyResponseBody the operation to apply to the response body
-   * @return the created interceptor
-   */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor modifyBodyAsJson(Function<JsonObject, JsonObject> modifyRequestBody, Function<JsonObject, JsonObject> modifyResponseBody) {
-    return BodyInterceptorImpl.forJsonObject(modifyRequestBody, modifyResponseBody);
-  }
-
-  /**
-   * Apply callbacks to change the request body when the proxy receives them. For JsonObject only.
-   *
-   * @param modifyRequestBody the operation to apply to the request body
-   * @return the created interceptor
-   */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor modifyRequestBodyAsJson(Function<JsonObject, JsonObject> modifyRequestBody) {
-    return BodyInterceptorImpl.forJsonObject(modifyRequestBody, null);
-  }
-
-  /**
-   * Apply callbacks to change the response body when the proxy receives them. For JsonObject only.
-   *
-   * @param modifyResponseBody the operation to apply to the response body
-   * @return the created interceptor
-   */
-  @GenIgnore(PERMITTED_TYPE)
-  static ProxyInterceptor modifyResponseBodyAsJson(Function<JsonObject, JsonObject> modifyResponseBody) {
-    return BodyInterceptorImpl.forJsonObject(null, modifyResponseBody);
+  static <U> ProxyInterceptor modifyResponseBody(
+    Function<U, Object> modifyResponseBody, Class<U> inputResponseType) {
+    Objects.requireNonNull(modifyResponseBody);
+    Objects.requireNonNull(inputResponseType);
+    return new BodyInterceptorImpl<Object, U>(null, modifyResponseBody, Object.class, inputResponseType);
   }
 
 }
