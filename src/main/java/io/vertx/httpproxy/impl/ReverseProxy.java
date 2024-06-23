@@ -71,7 +71,7 @@ public class ReverseProxy implements HttpProxy {
     Proxy proxy = new Proxy(proxyRequest);
     proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
-      .recover(throwable -> Future.succeededFuture(proxyRequest.response().setStatusCode(502)))
+      .recover(throwable -> Future.succeededFuture(proxyRequest.release().response().setStatusCode(502)))
       .compose(proxy::sendProxyResponse)
       .recover(throwable -> proxy.response().release().setStatusCode(502).send());
   }
