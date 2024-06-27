@@ -10,19 +10,11 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Promise;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpVersion;
-import io.vertx.core.http.impl.HttpServerRequestInternal;
+import io.vertx.core.http.*;
 import io.vertx.core.internal.ContextInternal;
+import io.vertx.core.internal.http.HttpServerRequestInternal;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
@@ -77,7 +69,7 @@ public class ProxiedRequest implements ProxyRequest {
     this.headers = MultiMap.caseInsensitiveMultiMap().addAll(proxiedRequest.headers());
     this.absoluteURI = proxiedRequest.absoluteURI();
     this.proxiedRequest = proxiedRequest;
-    this.context = (ContextInternal) ((HttpServerRequestInternal) proxiedRequest).context();
+    this.context = ((HttpServerRequestInternal) proxiedRequest).context();
     this.authority = proxiedRequest.authority();
   }
 
