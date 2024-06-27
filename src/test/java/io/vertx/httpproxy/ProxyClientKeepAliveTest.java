@@ -20,7 +20,6 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.Closeable;
@@ -289,7 +288,6 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.handler(buff -> {
           resp.request().connection().close();
-          System.out.println("closing");
         });
       }));
     }));
@@ -669,7 +667,6 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
       so.handler(buff -> {
         body.appendBuffer(buff);
         if (body.toString().endsWith("\r\n\r\n")) {
-          System.out.println(body.toString());
           so.write(responseBody.get());
         }
       });
