@@ -11,8 +11,9 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.http.*;
+import io.vertx.core.internal.logging.Logger;
+import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
@@ -23,6 +24,7 @@ import java.util.function.BiFunction;
 
 public class ReverseProxy implements HttpProxy {
 
+  private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
   private final HttpClient client;
   private final boolean supportWebSocket;
   private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
@@ -71,9 +73,15 @@ public class ReverseProxy implements HttpProxy {
     Proxy proxy = new Proxy(proxyRequest);
     proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
-      .recover(throwable -> Future.succeededFuture(proxyRequest.release().response().setStatusCode(502)))
+      .recover(throwable -> {
+        log.trace("Error in sending the request", throwable);
+        return Future.succeededFuture(proxyRequest.release().response().setStatusCode(502));
+      })
       .compose(proxy::sendProxyResponse)
-      .recover(throwable -> proxy.response().release().setStatusCode(502).send());
+      .recover(throwable -> {
+        log.trace("Error in sending the response", throwable);
+        return proxy.response().release().setStatusCode(502).send();
+      });
   }
 
   private void handleWebSocketUpgrade(ProxyRequest proxyRequest) {
@@ -194,11 +202,7 @@ public class ReverseProxy implements HttpProxy {
     }
 
     private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest) {
-      return resolveOrigin(proxyRequest.proxiedRequest()).compose(a -> sendProxyRequest(proxyRequest, a));
-    }
-
-    private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest, HttpClientRequest request) {
-      return proxyRequest.send(request);
+      return resolveOrigin(proxyRequest.proxiedRequest()).compose(proxyRequest::send);
     }
 
     private Future<Void> sendProxyResponse(ProxyResponse response) {
