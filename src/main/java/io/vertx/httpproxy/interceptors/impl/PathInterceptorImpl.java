@@ -17,6 +17,7 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -26,7 +27,7 @@ public class PathInterceptorImpl implements ProxyInterceptor {
   private final Function<String, String> pattern;
 
   public PathInterceptorImpl(Function<String, String> pattern) {
-    this.pattern = pattern;
+    this.pattern = Objects.requireNonNull(pattern);
   }
 
   public static PathInterceptorImpl addPrefix(String prefix) {

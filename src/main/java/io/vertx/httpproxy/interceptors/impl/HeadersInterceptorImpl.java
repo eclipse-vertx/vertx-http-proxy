@@ -28,20 +28,19 @@ import java.util.Set;
 public class HeadersInterceptorImpl implements ProxyInterceptor {
   private final Handler<MultiMap> changeRequestHeaders;
   private final Handler<MultiMap> changeResponseHeaders;
+  private static final Handler<MultiMap> NO_OP = mmap -> {};
 
   public HeadersInterceptorImpl(Handler<MultiMap> changeRequestHeaders, Handler<MultiMap> changeResponseHeaders) {
-    Objects.requireNonNull(changeRequestHeaders);
-    Objects.requireNonNull(changeResponseHeaders);
-    this.changeRequestHeaders = changeRequestHeaders;
-    this.changeResponseHeaders = changeResponseHeaders;
+    this.changeRequestHeaders = Objects.requireNonNull(changeRequestHeaders);
+    this.changeResponseHeaders = Objects.requireNonNull(changeResponseHeaders);
   }
 
   public static HeadersInterceptorImpl filter(Set<CharSequence> requestHeaders, Set<CharSequence> responseHeaders) {
     return new HeadersInterceptorImpl(
       requestHeaders == null || requestHeaders.isEmpty() ?
-        h -> {} : oldRequestHeader -> requestHeaders.forEach(oldRequestHeader::remove),
+        NO_OP : oldRequestHeader -> requestHeaders.forEach(oldRequestHeader::remove),
       responseHeaders == null || responseHeaders.isEmpty() ?
-        h -> {} : oldResponseHeader -> responseHeaders.forEach(oldResponseHeader::remove)
+        NO_OP : oldResponseHeader -> responseHeaders.forEach(oldResponseHeader::remove)
     );
   }
 
