@@ -8,6 +8,7 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.Body;
@@ -20,6 +21,8 @@ import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.interceptors.HeadersInterceptor;
 import io.vertx.httpproxy.interceptors.QueryInterceptor;
+import io.vertx.httpproxy.interceptors.BodyInterceptor;
+import io.vertx.httpproxy.interceptors.BodyTransformer;
 
 import java.util.Set;
 
@@ -123,6 +126,22 @@ public class HttpProxyExamples {
       QueryInterceptor.setQueryParam(key, value));
   }
 
+  public void bodyInterceptorJson(HttpProxy proxy) {
+    proxy.addInterceptor(
+      BodyInterceptor.modifyResponseBody(
+        BodyTransformer.transformJsonObject(
+          jsonObject -> operate(jsonObject)
+        )
+      ));
+  }
+
+  public void bodyInterceptorBuffer(HttpProxy proxy) {
+    proxy.addInterceptor(
+      BodyInterceptor.modifyRequestBody(
+        buffer -> operate(buffer)
+      ));
+  }
+
   public void immediateResponse(HttpProxy proxy) {
     proxy.addInterceptor(new ProxyInterceptor() {
       @Override
@@ -151,6 +170,14 @@ public class HttpProxyExamples {
   private Body filter(Body body) {
     return body;
   }
+
+  private JsonObject operate(JsonObject o) {
+    return o;
+  };
+
+  private Buffer operate(Buffer o) {
+    return o;
+  };
 
   public void more(Vertx vertx, HttpClient proxyClient) {
     HttpProxy proxy = HttpProxy.reverseProxy(proxyClient).originSelector(

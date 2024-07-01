@@ -13,52 +13,44 @@ package io.vertx.httpproxy.interceptors.impl;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.impl.BufferingWriteStream;
+
+import java.util.Objects;
 import java.util.function.Function;
 
 
-public class BodyInterceptorImpl<T, U> implements ProxyInterceptor {
-  private final Function<T, Object> modifyRequestBody;
-  private final Function<U, Object> modifyResponseBody;
-  private final Class<T> inputRequestType;
-  private final Class<U> inputResponseType;
+public class BodyInterceptorImpl implements ProxyInterceptor {
+  private final Function<Buffer, Buffer> modifyRequestBody;
+  private final Function<Buffer, Buffer> modifyResponseBody;
+  private static final Function<Buffer, Buffer> NO_OP = buffer -> buffer;
 
-  public BodyInterceptorImpl(Function<T, Object> modifyRequestBody, Function<U, Object> modifyResponseBody,
-                             Class<T> inputRequestType, Class<U> inputResponseType) {
-    this.modifyRequestBody = modifyRequestBody;
-    this.modifyResponseBody = modifyResponseBody;
-    this.inputRequestType = inputRequestType;
-    this.inputResponseType = inputResponseType;
+  public BodyInterceptorImpl(Function<Buffer, Buffer> modifyRequestBody, Function<Buffer, Buffer> modifyResponseBody) {
+    this.modifyRequestBody = Objects.requireNonNullElse(modifyRequestBody, NO_OP);
+    this.modifyResponseBody = Objects.requireNonNullElse(modifyResponseBody, NO_OP);
   }
 
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
-    if (modifyRequestBody == null) return context.sendRequest();
-
     Body body = context.request().getBody();
     BufferingWriteStream bws = new BufferingWriteStream();
     return body.stream().pipeTo(bws).compose(r -> {
       context.request().setBody(
-        Body.body(Json.encodeToBuffer(modifyRequestBody.apply(Json.decodeValue(bws.content(), inputRequestType)))));
+        Body.body(modifyRequestBody.apply(bws.content())));
       return context.sendRequest();
     });
   }
 
   @Override
   public Future<Void> handleProxyResponse(ProxyContext context) {
-    if (modifyResponseBody == null) return context.sendResponse();
-
     Body body = context.response().getBody();
     BufferingWriteStream bws = new BufferingWriteStream();
     return body.stream().pipeTo(bws).compose(r -> {
       context.response().setBody(
-        Body.body(Json.encodeToBuffer(modifyResponseBody.apply(Json.decodeValue(bws.content(), inputResponseType)))));
+        Body.body(modifyResponseBody.apply(bws.content())));
       return context.sendResponse();
     });
   }

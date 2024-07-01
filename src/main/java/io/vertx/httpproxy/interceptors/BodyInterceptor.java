@@ -35,52 +35,31 @@ public interface BodyInterceptor {
   /**
    * Apply callbacks to change the request and response bodies when the proxy receives them.
    *
-   * @param modifyRequestBody the operation to apply to the request body
-   * @param modifyResponseBody the operation to apply to the response body
-   * @param inputRequestType the expected class of the pre-transform request
-   * @param inputResponseType the expected class of the pre-transform response
+   * @param requestTransformer the operation to apply to the request body
+   * @param responseTransformer the operation to apply to the response body
    * @return the created interceptor
-   * @param <T> pre-transform request type
-   * @param <U> pre-transform response type
    */
-  static <T, U> ProxyInterceptor modifyBody(
-    Function<T, Object> modifyRequestBody, Function<U, Object> modifyResponseBody,
-    Class<T> inputRequestType, Class<U> inputResponseType) {
-    Objects.requireNonNull(modifyRequestBody);
-    Objects.requireNonNull(inputRequestType);
-    Objects.requireNonNull(modifyResponseBody);
-    Objects.requireNonNull(inputResponseType);
-    return new BodyInterceptorImpl<T, U>(modifyRequestBody, modifyResponseBody, inputRequestType, inputResponseType);
+  static ProxyInterceptor modifyBody(BodyTransformer requestTransformer, BodyTransformer responseTransformer) {
+    return new BodyInterceptorImpl(requestTransformer, responseTransformer);
   }
 
   /**
-   * Apply callbacks to change the request body when the proxy receives them.
+   * Apply callbacks to change the request body when the proxy receives it.
    *
-   * @param modifyRequestBody the operation to apply to the request body
-   * @param inputRequestType the expected class of the pre-transform request
+   * @param requestTransformer the operation to apply to the request body
    * @return the created interceptor
-   * @param <T> pre-transform request type
    */
-  static <T> ProxyInterceptor modifyRequestBody(
-    Function<T, Object> modifyRequestBody, Class<T> inputRequestType) {
-    Objects.requireNonNull(modifyRequestBody);
-    Objects.requireNonNull(inputRequestType);
-    return new BodyInterceptorImpl<T, Object>(modifyRequestBody, null, inputRequestType, Object.class);
+  static ProxyInterceptor modifyRequestBody(BodyTransformer requestTransformer) {
+    return new BodyInterceptorImpl(requestTransformer, null);
   }
 
   /**
-   * Apply callbacks to change the  response body when the proxy receives them.
+   * Apply callbacks to change the response body when the proxy receives it.
    *
-   * @param modifyResponseBody the operation to apply to the response body
-   * @param inputResponseType the expected class of the pre-transform response
+   * @param responseTransformer the operation to apply to the response body
    * @return the created interceptor
-   * @param <U> pre-transform response type
    */
-  static <U> ProxyInterceptor modifyResponseBody(
-    Function<U, Object> modifyResponseBody, Class<U> inputResponseType) {
-    Objects.requireNonNull(modifyResponseBody);
-    Objects.requireNonNull(inputResponseType);
-    return new BodyInterceptorImpl<Object, U>(null, modifyResponseBody, Object.class, inputResponseType);
+  static ProxyInterceptor modifyResponseBody(BodyTransformer responseTransformer) {
+    return new BodyInterceptorImpl(null, responseTransformer);
   }
-
 }
