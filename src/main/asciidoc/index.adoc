@@ -140,3 +140,19 @@ You can change the control, e.g you can send a response immediately to the user-
 ----
 {@link examples.HttpProxyExamples#immediateResponse}
 ----
+
+==== Body interceptor
+
+You can use body interceptor to create body transformations for common data types, like json and string:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyInterceptorJson}
+----
+
+Or work with raw bytes using buffer:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyInterceptorBuffer}
+----
