@@ -6,6 +6,7 @@ module io.vertx.httpproxy {
   requires static vertx.docgen;
   exports io.vertx.httpproxy;
   exports io.vertx.httpproxy.cache;
+  exports io.vertx.httpproxy.interceptors;
   exports io.vertx.httpproxy.spi.cache;
   exports io.vertx.httpproxy.impl to io.vertx.tests;
 }
