@@ -143,7 +143,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
   @Test
   public void testTransformText(TestContext ctx) {
     Async latch = ctx.async();
-    byte[] content = new byte[]{-78, -30, -54, -44}; // gbk encoding, represents 测试 in gbk, ���� in utf-8
+    byte[] content = new byte[]{-78, -30, -54, -44}; // gbk encoding, represents 测试 in gbk
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.response()
         .end(Buffer.buffer(content));
