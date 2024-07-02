@@ -130,15 +130,8 @@ public class HttpProxyExamples {
     proxy.addInterceptor(
       BodyInterceptor.modifyResponseBody(
         BodyTransformer.transformJsonObject(
-          jsonObject -> operate(jsonObject)
+          jsonObject -> removeSomeFields(jsonObject)
         )
-      ));
-  }
-
-  public void bodyInterceptorBuffer(HttpProxy proxy) {
-    proxy.addInterceptor(
-      BodyInterceptor.modifyRequestBody(
-        buffer -> operate(buffer)
       ));
   }
 
@@ -171,11 +164,7 @@ public class HttpProxyExamples {
     return body;
   }
 
-  private JsonObject operate(JsonObject o) {
-    return o;
-  };
-
-  private Buffer operate(Buffer o) {
+  private JsonObject removeSomeFields(JsonObject o) {
     return o;
   };
 

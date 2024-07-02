@@ -165,16 +165,12 @@ You can also refer to {@link io.vertx.httpproxy.interceptors.QueryInterceptor} f
 
 ==== Body interceptor
 
-You can use body interceptor to create body transformations for common data types, like json and string:
+You can use body interceptor to create body transformations for common data types, like {@link io.vertx.core.json.JsonObject}:
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#bodyInterceptorJson}
 ----
 
-Or work with raw bytes using buffer:
+Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for other supported transformations.
 
-[source,java]
-----
-{@link examples.HttpProxyExamples#bodyInterceptorBuffer}
-----
