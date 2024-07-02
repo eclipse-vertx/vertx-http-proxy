@@ -140,3 +140,36 @@ You can change the control, e.g you can send a response immediately to the user-
 ----
 {@link examples.HttpProxyExamples#immediateResponse}
 ----
+
+==== Header interceptor
+
+You can apply header interceptors to change headers from the request and response with common operations:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#headerInterceptorFilter}
+----
+
+Or apply a callback:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#headerInterceptorCallback}
+----
+
+==== Query interceptor
+
+You can use query interceptors to update or remove the query parameters:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#queryInterceptorAdd}
+----
+
+Or apply a callback as well:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#queryInterceptorCallback}
+----
+

@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * The general interceptor for path. Extended by other implementations.
+ * The general interceptor for path.
  */
 public class PathInterceptorImpl implements ProxyInterceptor {
   private final Function<String, String> pattern;

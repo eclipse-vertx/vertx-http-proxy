@@ -23,7 +23,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * The general interceptor for headers. Extended by other implementations.
+ * The general interceptor for headers.
  */
 public class HeadersInterceptorImpl implements ProxyInterceptor {
   private final Handler<MultiMap> changeRequestHeaders;

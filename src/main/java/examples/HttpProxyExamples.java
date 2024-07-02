@@ -18,6 +18,10 @@ import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.cache.CacheOptions;
+import io.vertx.httpproxy.interceptors.HeadersInterceptor;
+import io.vertx.httpproxy.interceptors.QueryInterceptor;
+
+import java.util.Set;
 
 /**
  * @author <a href="mailto:emad.albloushi@gmail.com">Emad Alblueshi</a>
@@ -106,6 +110,33 @@ public class HttpProxyExamples {
         return context.sendResponse();
       }
     });
+  }
+
+  public void headerInterceptorFilter(HttpProxy proxy, Set<CharSequence> shouldRemove) {
+    // remove a set of headers
+    proxy.addInterceptor(
+      HeadersInterceptor.filterResponseHeaders(shouldRemove));
+  }
+
+  public void headerInterceptorCallback(HttpProxy proxy) {
+    proxy.addInterceptor(
+      HeadersInterceptor.changeHeaders(reqHeaders -> {
+        // operations here
+      }, respHeaders -> {
+        // operations here
+      }));
+  }
+
+  public void queryInterceptorAdd(HttpProxy proxy, String key, String value) {
+    proxy.addInterceptor(
+      QueryInterceptor.setQueryParam(key, value));
+  }
+
+  public void queryInterceptorCallback(HttpProxy proxy) {
+    proxy.addInterceptor(
+      QueryInterceptor.changeQueryParams(params -> {
+        // operations here
+      }));
   }
 
   public void immediateResponse(HttpProxy proxy) {
