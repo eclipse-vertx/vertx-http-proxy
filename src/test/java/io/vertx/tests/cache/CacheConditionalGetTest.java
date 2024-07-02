@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy.cache;
+package io.vertx.tests.cache;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.http.HttpClient;

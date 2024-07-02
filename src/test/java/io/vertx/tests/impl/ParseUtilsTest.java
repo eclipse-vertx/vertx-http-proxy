@@ -1,5 +1,7 @@
-package io.vertx.httpproxy.impl;
+package io.vertx.tests.impl;
 
+import io.vertx.httpproxy.impl.ParseUtils;
+import junit.framework.TestCase;
 import org.junit.Test;
 
 import java.time.Instant;
@@ -18,7 +20,7 @@ public class ParseUtilsTest {
    */
   @Test
   public void testParseHttpDateRFC_1123_DATE_TIME() throws Exception {
-    assertEquals(RESULT_DATE, ParseUtils.parseHttpDate("Tue, 2 Jan 2024 12:34:56 GMT"));
+    TestCase.assertEquals(RESULT_DATE, ParseUtils.parseHttpDate("Tue, 2 Jan 2024 12:34:56 GMT"));
     assertEquals(RESULT_DATE, ParseUtils.parseHttpDate("Tue, 02 Jan 2024 13:34:56 +0100"));
   }
 

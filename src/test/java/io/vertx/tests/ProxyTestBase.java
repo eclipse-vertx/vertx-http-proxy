@@ -8,9 +8,10 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.tests;
 
 import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
+import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.cache.CacheOptions;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

@@ -8,10 +8,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.tests;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -27,6 +26,8 @@ import io.vertx.core.net.impl.SocketAddressImpl;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.httpproxy.HttpProxy;
+import io.vertx.httpproxy.ProxyOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -34,7 +35,6 @@ import org.junit.runner.RunWith;
 import java.io.Closeable;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>

@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy;
+package io.vertx.tests;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -20,6 +20,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.httpproxy.*;
 import org.junit.Test;
 
 import java.io.Closeable;
