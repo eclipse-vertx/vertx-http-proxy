@@ -52,17 +52,6 @@
       <artifactId>vertx-core</artifactId>
     </dependency>
 
-    <!-- Only for fatjar -->
-<!--
-    <dependency>
-      &lt;!&ndash; declare this dependency to force shiro to use this one. It is the version used by vert.x &ndash;&gt;
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.16</version>
-      <optional>true</optional>
-    </dependency>
--->
-
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-docgen</artifactId>
@@ -73,14 +62,6 @@
       <artifactId>vertx-codegen</artifactId>
       <scope>provided</scope>
     </dependency>
-
-<!--
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-      <version>1.0.13</version>
-    </dependency>
--->
 
     <dependency>
       <groupId>junit</groupId>
