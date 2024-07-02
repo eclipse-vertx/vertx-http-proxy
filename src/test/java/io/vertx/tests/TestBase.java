@@ -22,7 +22,6 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.core.net.impl.SocketAddressImpl;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -134,7 +133,7 @@ public abstract class TestBase {
     Async async = ctx.async();
     backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
     async.awaitSuccess();
-    return new SocketAddressImpl(options.getPort(), "localhost");
+    return SocketAddress.inetSocketAddress(options.getPort(), "localhost");
   }
 
   protected SocketAddress startNetBackend(TestContext ctx, int port, Handler<NetSocket> handler) {
@@ -143,7 +142,7 @@ public abstract class TestBase {
     Async async = ctx.async();
     backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
     async.awaitSuccess();
-    return new SocketAddressImpl(port, "localhost");
+    return SocketAddress.inetSocketAddress(port, "localhost");
   }
 
 }

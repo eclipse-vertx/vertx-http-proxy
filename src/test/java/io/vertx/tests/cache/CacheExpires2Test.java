@@ -17,7 +17,7 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.net.impl.SocketAddressImpl;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.impl.ParseUtils;
@@ -77,7 +77,7 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content2")));
-    startProxy(new SocketAddressImpl(8081, "localhost"));
+    startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
         .compose(req -> req
@@ -153,7 +153,7 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withHeader("Etag", "tag1")
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
-    startProxy(new SocketAddressImpl(8081, "localhost"));
+    startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1
@@ -226,7 +226,7 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withHeader("ETag", "tag0")
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
-    startProxy(new SocketAddressImpl(8081, "localhost"));
+    startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1.send()
@@ -277,7 +277,7 @@ public class CacheExpires2Test extends CacheTestBase {
                 .withHeader("ETag", "tag0")
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
-    startProxy(new SocketAddressImpl(8081, "localhost"));
+    startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.HEAD, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1.send().compose(resp1 -> {

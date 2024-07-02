@@ -14,7 +14,7 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.net.impl.SocketAddressImpl;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.impl.ParseUtils;
@@ -63,7 +63,7 @@ public class CacheConditionalGetTest extends CacheTestBase {
                 .withHeader("Last-Modified", ParseUtils.formatHttpDate(Instant.ofEpochMilli(now).minus(5000, ChronoUnit.MILLIS)))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.ofEpochMilli(now).plus(5000, ChronoUnit.MILLIS)))
                 .withBody("content")));
-    startProxy(new SocketAddressImpl(8081, "localhost"));
+    startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg").compose(req1 ->
       req1.send().compose(resp1 -> {

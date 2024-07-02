@@ -2,7 +2,6 @@ package io.vertx.httpproxy.cache;
 
 import io.vertx.codegen.annotations.DataObject;
 import io.vertx.codegen.json.annotations.JsonGen;
-import io.vertx.core.impl.Arguments;
 import io.vertx.core.json.JsonObject;
 import io.vertx.httpproxy.impl.CacheImpl;
 import io.vertx.httpproxy.spi.cache.Cache;
@@ -39,7 +38,9 @@ public class CacheOptions {
    * @return a reference to this, so the API can be used fluently
    */
   public CacheOptions setMaxSize(int maxSize) {
-    Arguments.require(maxSize > 0, "Max size must be > 0");
+    if (maxSize <= 0) {
+      throw new IllegalArgumentException("Max size must be > 0");
+    }
     this.maxSize = maxSize;
     return this;
   }
