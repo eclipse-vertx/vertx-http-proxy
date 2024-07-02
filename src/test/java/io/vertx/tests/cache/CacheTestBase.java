@@ -8,10 +8,11 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.httpproxy.cache;
+package io.vertx.tests.cache;
 
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.TestBase;
+import io.vertx.httpproxy.cache.CacheOptions;
+import io.vertx.tests.TestBase;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>

@@ -1,11 +1,12 @@
-package io.vertx.httpproxy.impl;
+package io.vertx.tests.impl;
 
+import io.vertx.httpproxy.impl.ParseUtils;
 import org.junit.Test;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class ParseUtilsTest {
 

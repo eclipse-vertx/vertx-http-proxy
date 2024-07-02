@@ -65,7 +65,7 @@ public class ReverseProxy implements HttpProxy {
     }
 
     // WebSocket upgrade tunneling
-    if (supportWebSocket && io.vertx.core.http.impl.HttpUtils.canUpgradeToWebSocket(request)) {
+    if (supportWebSocket && request.canUpgradeToWebSocket()) {
       handleWebSocketUpgrade(proxyRequest);
       return;
     }

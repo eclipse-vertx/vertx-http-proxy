@@ -1,4 +1,4 @@
-package io.vertx.httpproxy;
+package io.vertx.tests;
 
 import io.vertx.core.http.Cookie;
 import io.vertx.core.http.HttpClient;
@@ -6,6 +6,7 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.httpproxy.ProxyOptions;
 import org.junit.Test;
 
 /**
