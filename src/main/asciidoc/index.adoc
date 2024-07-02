@@ -150,12 +150,7 @@ You can apply header interceptors to change headers from the request and respons
 {@link examples.HttpProxyExamples#headerInterceptorFilter}
 ----
 
-Or apply a callback:
-
-[source,java]
-----
-{@link examples.HttpProxyExamples#headerInterceptorCallback}
-----
+Check out the {@link io.vertx.httpproxy.interceptors.HeadersInterceptor} class for details about the available methods.
 
 ==== Query interceptor
 
@@ -166,10 +161,5 @@ You can use query interceptors to update or remove the query parameters:
 {@link examples.HttpProxyExamples#queryInterceptorAdd}
 ----
 
-Or apply a callback as well:
-
-[source,java]
-----
-{@link examples.HttpProxyExamples#queryInterceptorCallback}
-----
+You can also refer to {@link io.vertx.httpproxy.interceptors.QueryInterceptor} for more information.
 

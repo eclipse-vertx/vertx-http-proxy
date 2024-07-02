@@ -26,8 +26,10 @@ import java.util.Set;
  * The general interceptor for headers.
  */
 public class HeadersInterceptorImpl implements ProxyInterceptor {
+
   private final Handler<MultiMap> changeRequestHeaders;
   private final Handler<MultiMap> changeResponseHeaders;
+
   private static final Handler<MultiMap> NO_OP = mmap -> {};
 
   public HeadersInterceptorImpl(Handler<MultiMap> changeRequestHeaders, Handler<MultiMap> changeResponseHeaders) {

@@ -118,25 +118,9 @@ public class HttpProxyExamples {
       HeadersInterceptor.filterResponseHeaders(shouldRemove));
   }
 
-  public void headerInterceptorCallback(HttpProxy proxy) {
-    proxy.addInterceptor(
-      HeadersInterceptor.changeHeaders(reqHeaders -> {
-        // operations here
-      }, respHeaders -> {
-        // operations here
-      }));
-  }
-
   public void queryInterceptorAdd(HttpProxy proxy, String key, String value) {
     proxy.addInterceptor(
       QueryInterceptor.setQueryParam(key, value));
-  }
-
-  public void queryInterceptorCallback(HttpProxy proxy) {
-    proxy.addInterceptor(
-      QueryInterceptor.changeQueryParams(params -> {
-        // operations here
-      }));
   }
 
   public void immediateResponse(HttpProxy proxy) {
