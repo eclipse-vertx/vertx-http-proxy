@@ -8,16 +8,13 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.httpproxy.Body;
-import io.vertx.httpproxy.HttpProxy;
-import io.vertx.httpproxy.ProxyContext;
-import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.ProxyRequest;
-import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
+import io.vertx.httpproxy.interceptors.BodyInterceptor;
+import io.vertx.httpproxy.interceptors.BodyTransformer;
 import io.vertx.httpproxy.interceptors.HeadersInterceptor;
 import io.vertx.httpproxy.interceptors.QueryInterceptor;
 
@@ -123,6 +120,15 @@ public class HttpProxyExamples {
       QueryInterceptor.setQueryParam(key, value));
   }
 
+  public void bodyInterceptorJson(HttpProxy proxy) {
+    proxy.addInterceptor(
+      BodyInterceptor.modifyResponseBody(
+        BodyTransformer.transformJsonObject(
+          jsonObject -> removeSomeFields(jsonObject)
+        )
+      ));
+  }
+
   public void immediateResponse(HttpProxy proxy) {
     proxy.addInterceptor(new ProxyInterceptor() {
       @Override
@@ -151,6 +157,12 @@ public class HttpProxyExamples {
   private Body filter(Body body) {
     return body;
   }
+
+  private JsonObject removeSomeFields(JsonObject o) {
+    return o;
+  }
+
+  ;
 
   public void more(Vertx vertx, HttpClient proxyClient) {
     HttpProxy proxy = HttpProxy.reverseProxy(proxyClient).originSelector(

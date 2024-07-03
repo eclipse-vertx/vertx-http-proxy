@@ -11,14 +11,12 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
-class BufferingWriteStream implements WriteStream<Buffer> {
+public class BufferingWriteStream implements WriteStream<Buffer> {
 
   private final Buffer content;
 
