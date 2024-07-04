@@ -140,3 +140,37 @@ You can change the control, e.g you can send a response immediately to the user-
 ----
 {@link examples.HttpProxyExamples#immediateResponse}
 ----
+
+==== Header interceptor
+
+You can apply header interceptors to change headers from the request and response with common operations:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#headerInterceptorFilter}
+----
+
+Check out the {@link io.vertx.httpproxy.interceptors.HeadersInterceptor} class for details about the available methods.
+
+==== Query interceptor
+
+You can use query interceptors to update or remove the query parameters:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#queryInterceptorAdd}
+----
+
+You can also refer to {@link io.vertx.httpproxy.interceptors.QueryInterceptor} for more information.
+
+==== Body interceptor
+
+You can use body interceptor to create body transformations for common data types, like {@link io.vertx.core.json.JsonObject}:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyInterceptorJson}
+----
+
+Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for other supported transformations.
+
