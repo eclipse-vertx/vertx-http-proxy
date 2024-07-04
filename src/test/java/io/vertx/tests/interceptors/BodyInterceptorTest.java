@@ -13,6 +13,7 @@ package io.vertx.tests.interceptors;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
@@ -31,8 +32,23 @@ import org.junit.Test;
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
 public class BodyInterceptorTest extends ProxyTestBase {
+
+  HttpClient client = null;
+
   public BodyInterceptorTest(ProxyOptions options) {
     super(options);
+  }
+
+  @Override
+  public void setUp() {
+    super.setUp();
+    client = vertx.createHttpClient();
+  }
+
+  @Override
+  public void tearDown(TestContext context) {
+    if (client != null) client.close();
+    super.tearDown(context);
   }
 
   @Test
@@ -56,7 +72,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
       }))));
 
     String content = "{\"k2\": 2}";
-    vertx.createHttpClient().request(HttpMethod.POST, 8080, "localhost", "/")
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(request -> request
         .putHeader("Content-Type", "application/json")
         .putHeader("Content-Length", "" + content.length())
@@ -86,7 +102,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
           return jsonObject;
         }))));
 
-    vertx.createHttpClient().request(HttpMethod.POST, 8080, "localhost", "/")
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
         response.body().compose((buffer -> {
@@ -117,7 +133,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
         }
       ))));
 
-    vertx.createHttpClient().request(HttpMethod.POST, 8080, "localhost", "/")
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
         response.body().compose((buffer -> {
@@ -139,7 +155,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(BodyInterceptor.modifyResponseBody(BodyTransformer.discard())));
 
-    vertx.createHttpClient().request(HttpMethod.POST, 8080, "localhost", "/")
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
         response.body().compose((buffer -> {
@@ -166,7 +182,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
           return text;
         }, "gbk"))));
 
-    vertx.createHttpClient().request(HttpMethod.POST, 8080, "localhost", "/")
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
         response.body().compose((buffer -> {
@@ -201,7 +217,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
     String[] contents = new String[]{"{\"k\": 2}", "2", "[2, 1]"};
     for (String content : contents) {
-      vertx.createHttpClient().request(HttpMethod.POST, 8080, "localhost", "/")
+      client.request(HttpMethod.POST, 8080, "localhost", "/")
         .compose(request -> request
           .putHeader("Content-Type", "application/json")
           .putHeader("Content-Length", "" + content.length())
