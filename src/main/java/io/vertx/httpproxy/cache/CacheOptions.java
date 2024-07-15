@@ -45,8 +45,8 @@ public class CacheOptions {
     return this;
   }
 
-  public <K, V> Cache<K, V> newCache() {
-    return new CacheImpl<>(this);
+  public Cache newCache() {
+    return new CacheImpl(this);
   }
 
   @Override

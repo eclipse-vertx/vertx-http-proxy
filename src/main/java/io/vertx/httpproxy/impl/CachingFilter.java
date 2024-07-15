@@ -10,31 +10,23 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.spi.cache.Cache;
+import io.vertx.httpproxy.spi.cache.Resource;
 
 import java.time.Instant;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 class CachingFilter implements ProxyInterceptor {
 
-  private static final BiFunction<String, Resource, Resource> CACHE_GET_AND_VALIDATE = (key, resource) -> {
-    long now = System.currentTimeMillis();
-    long val = resource.timestamp + resource.maxAge;
-    return val < now ? null : resource;
-  };
+  private final Cache cache;
 
-  private final Cache<String, Resource> cache;
-
-  public CachingFilter(Cache<String, Resource> cache) {
+  public CachingFilter(Cache cache) {
     this.cache = cache;
   }
 
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
-    Future<ProxyResponse> future = tryHandleProxyRequestFromCache(context);
-    if (future != null) {
-      return future;
-    }
-    return context.sendRequest();
+    return tryHandleProxyRequestFromCache(context);
   }
 
   @Override
@@ -66,23 +58,24 @@ class CachingFilter implements ProxyInterceptor {
           System.currentTimeMillis(),
           response.maxAge());
         Body body = response.getBody();
-        response.setBody(Body.body(new BufferingReadStream(body.stream(), res.content), body.length()));
+        response.setBody(Body.body(new BufferingReadStream(body.stream(), res.getContent()), body.length()));
         Future<Void> fut = context.sendResponse();
         fut.onSuccess(v -> {
           cache.put(absoluteUri, res);
         });
         return fut;
+      } else if (request.getMethod() != HttpMethod.HEAD) {
+        return context.sendResponse();
       } else {
-        if (request.getMethod() == HttpMethod.HEAD) {
-          Resource resource = cache.get(request.absoluteURI());
+        return cache.get(request.absoluteURI()).compose(resource -> {
           if (resource != null) {
             if (!revalidateResource(response, resource)) {
               // Invalidate cache
               cache.remove(request.absoluteURI());
             }
           }
-        }
-        return context.sendResponse();
+          return context.sendResponse();
+        });
       }
     } else {
       return context.sendResponse();
@@ -90,8 +83,8 @@ class CachingFilter implements ProxyInterceptor {
   }
 
   private static boolean revalidateResource(ProxyResponse response, Resource resource) {
-    if (resource.etag != null && response.etag() != null) {
-      return resource.etag.equals(response.etag());
+    if (resource.getEtag() != null && response.etag() != null) {
+      return resource.getEtag().equals(response.etag());
     }
     return true;
   }
@@ -102,49 +95,54 @@ class CachingFilter implements ProxyInterceptor {
 
     HttpServerRequest response = proxyRequest.proxiedRequest();
 
-    Resource resource;
     HttpMethod method = response.method();
-    if (method == HttpMethod.GET || method == HttpMethod.HEAD) {
-      String cacheKey = proxyRequest.absoluteURI();
-      resource = cache.computeIfPresent(cacheKey, CACHE_GET_AND_VALIDATE);
-      if (resource == null) {
-        return null;
-      }
-    } else {
-      return null;
+    if (method != HttpMethod.GET && method != HttpMethod.HEAD) {
+      return context.sendRequest();
     }
 
-    String cacheControlHeader = response.getHeader(HttpHeaders.CACHE_CONTROL);
-    if (cacheControlHeader != null) {
-      CacheControl cacheControl = new CacheControl().parse(cacheControlHeader);
-      if (cacheControl.maxAge() >= 0) {
-        long now = System.currentTimeMillis();
-        long currentAge = now - resource.timestamp;
-        if (currentAge > cacheControl.maxAge() * 1000) {
-          String etag = resource.headers.get(HttpHeaders.ETAG);
-          if (etag != null) {
-            proxyRequest.headers().set(HttpHeaders.IF_NONE_MATCH, resource.etag);
-            context.set("cached_resource", resource);
-            return context.sendRequest();
-          } else {
-            return null;
+    String cacheKey = proxyRequest.absoluteURI();
+    return cache.get(cacheKey).compose(resource -> {
+      if (resource == null) {
+        return context.sendRequest();
+      }
+
+      long now = System.currentTimeMillis();
+      long val = resource.getTimestamp() + resource.getMaxAge();
+      if (val < now) {
+        return cache.remove(cacheKey).compose(v -> context.sendRequest());
+      }
+
+      String cacheControlHeader = response.getHeader(HttpHeaders.CACHE_CONTROL);
+      if (cacheControlHeader != null) {
+        CacheControl cacheControl = new CacheControl().parse(cacheControlHeader);
+        if (cacheControl.maxAge() >= 0) {
+          long currentAge = now - resource.getTimestamp();
+          if (currentAge > cacheControl.maxAge() * 1000) {
+            String etag = resource.getHeaders().get(HttpHeaders.ETAG);
+            if (etag != null) {
+              proxyRequest.headers().set(HttpHeaders.IF_NONE_MATCH, resource.getEtag());
+              context.set("cached_resource", resource);
+              return context.sendRequest();
+            } else {
+              return context.sendRequest();
+            }
           }
         }
       }
-    }
 
-    //
-    String ifModifiedSinceHeader = response.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
-    if ((response.method() == HttpMethod.GET || response.method() == HttpMethod.HEAD) && ifModifiedSinceHeader != null && resource.lastModified != null) {
-      Instant ifModifiedSince = ParseUtils.parseHeaderDate(ifModifiedSinceHeader);
-      if (!ifModifiedSince.isAfter(resource.lastModified)) {
-        response.response().setStatusCode(304).end();
-        return Future.succeededFuture();
+      //
+      String ifModifiedSinceHeader = response.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
+      if ((response.method() == HttpMethod.GET || response.method() == HttpMethod.HEAD) && ifModifiedSinceHeader != null && resource.getLastModified() != null) {
+        Instant ifModifiedSince = ParseUtils.parseHeaderDate(ifModifiedSinceHeader);
+        if (!ifModifiedSince.isAfter(resource.getLastModified())) {
+          return Future.succeededFuture(proxyRequest.release().response().setStatusCode(304));
+        }
       }
-    }
-    proxyRequest.release();
-    ProxyResponse proxyResponse = proxyRequest.response();
-    resource.init(proxyResponse);
-    return Future.succeededFuture(proxyResponse);
+      proxyRequest.release();
+      ProxyResponse proxyResponse = proxyRequest.response();
+      resource.init(proxyResponse);
+      return Future.succeededFuture(proxyResponse);
+    });
+
   }
 }
