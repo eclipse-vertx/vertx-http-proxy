@@ -15,6 +15,8 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.internal.ContextInternal;
 import io.vertx.core.internal.http.HttpServerRequestInternal;
+import io.vertx.core.internal.logging.Logger;
+import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class ProxiedRequest implements ProxyRequest {
+  private final static Logger log = LoggerFactory.getLogger(ProxiedRequest.class);
 
   private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
@@ -147,6 +150,14 @@ public class ProxiedRequest implements ProxyRequest {
   }
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
+    proxiedRequest.connection().closeHandler(unused -> {
+      if (log.isTraceEnabled()) {
+        log.trace("Frontend connection closed,uri: " + proxiedRequest.uri());
+      }
+
+      request.reset();
+      proxiedRequest.response().reset();
+    });
 
     request.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
