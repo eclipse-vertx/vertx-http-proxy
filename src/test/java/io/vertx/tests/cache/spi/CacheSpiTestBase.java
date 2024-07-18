@@ -42,6 +42,7 @@ public abstract class CacheSpiTestBase {
   private Resource generateResource(String absoluteURI, long maxAge) {
     return new Resource(
       absoluteURI,
+      MultiMap.caseInsensitiveMultiMap(),
       200,
       "OK",
       MultiMap.caseInsensitiveMultiMap(),
