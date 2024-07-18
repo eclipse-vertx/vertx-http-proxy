@@ -28,6 +28,7 @@ public class Resource implements ClusterSerializable {
   private static final String UTF_8 = "utf-8";
 
   private String absoluteUri;
+  private MultiMap requestVaryHeader;
   private int statusCode;
   private String statusMessage;
   private MultiMap headers;
@@ -41,9 +42,10 @@ public class Resource implements ClusterSerializable {
   public Resource() {
   }
 
-  public Resource(String absoluteUri, int statusCode, String statusMessage, MultiMap headers, long timestamp, long maxAge) {
+  public Resource(String absoluteUri, MultiMap requestVaryHeader, int statusCode, String statusMessage, MultiMap headers, long timestamp, long maxAge) {
     String lastModifiedHeader = headers.get(HttpHeaders.LAST_MODIFIED);
     this.absoluteUri = absoluteUri;
+    this.requestVaryHeader = requestVaryHeader;
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
     this.headers = headers;
@@ -53,11 +55,14 @@ public class Resource implements ClusterSerializable {
     this.etag = headers.get(HttpHeaders.ETAG);
   }
 
-  public void init(ProxyResponse proxyResponse) {
-    proxyResponse.setStatusCode(200);
+  public void init(ProxyResponse proxyResponse, boolean withBody) {
+    proxyResponse.headers().remove(HttpHeaders.CONTENT_LENGTH);
+    proxyResponse.setStatusCode(statusCode);
     proxyResponse.setStatusMessage(statusMessage);
     proxyResponse.headers().addAll(headers);
-    proxyResponse.setBody(Body.body(content));
+    if (withBody) {
+      proxyResponse.setBody(Body.body(content));
+    }
   }
 
   private static class Cursor {
@@ -67,6 +72,7 @@ public class Resource implements ClusterSerializable {
   @Override
   public void writeToBuffer(Buffer buffer) {
     appendString(buffer, absoluteUri);
+    appendMultiMap(buffer, requestVaryHeader);
     appendInt(buffer, statusCode);
     appendString(buffer, statusMessage);
     appendMultiMap(buffer, headers);
@@ -83,6 +89,7 @@ public class Resource implements ClusterSerializable {
     cursor.i = pos;
 
     setAbsoluteUri(readString(buffer, cursor));
+    setRequestVaryHeader(readMultiMap(buffer, cursor));
     setStatusCode(readInt(buffer, cursor));
     setStatusMessage(readString(buffer, cursor));
     setHeaders(readMultiMap(buffer, cursor));
@@ -183,6 +190,10 @@ public class Resource implements ClusterSerializable {
     return absoluteUri;
   }
 
+  public MultiMap getRequestVaryHeader() {
+    return requestVaryHeader;
+  }
+
   public int getStatusCode() {
     return statusCode;
   }
@@ -217,6 +228,10 @@ public class Resource implements ClusterSerializable {
 
   public void setAbsoluteUri(String absoluteUri) {
     this.absoluteUri = absoluteUri;
+  }
+
+  public void setRequestVaryHeader(MultiMap requestVaryHeader) {
+    this.requestVaryHeader = requestVaryHeader;
   }
 
   public void setStatusCode(int statusCode) {

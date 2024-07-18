@@ -10,17 +10,38 @@
  */
 package io.vertx.httpproxy.impl;
 
+import java.math.BigInteger;
+
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class CacheControl {
 
   private int maxAge;
+  private int maxStale;
+  private int minFresh;
+  private boolean noCache;
+  private boolean noStore;
+  private boolean noTransform;
+  private boolean onlyIfCached;
+  private boolean mustRevalidate;
+  private boolean mustUnderstand;
+  private boolean _private;
+  private boolean proxyRevalidate;
   private boolean _public;
+  private int sMaxage;
 
   public CacheControl parse(String header) {
-    maxAge = -1;
+    noCache = false;
+    noStore = false;
+    noTransform = false;
+    onlyIfCached = false;
+    mustRevalidate = false;
+    mustUnderstand = false;
+    _private = false;
+    proxyRevalidate = false;
     _public = false;
+
     String[] parts = header.split(","); // No regex
     for (String part : parts) {
       part = part.trim().toLowerCase();
@@ -28,15 +49,49 @@ public class CacheControl {
         case "public":
           _public = true;
           break;
+        case "no-cache":
+          noCache = true;
+          break;
+        case "no-store":
+          noStore = true;
+          break;
+        case "no-transform":
+          noTransform = true;
+          break;
+        case "only-if-cached":
+          onlyIfCached = true;
+          break;
+        case "must-revalidate":
+          mustRevalidate = true;
+          break;
+        case "must-understand":
+          mustUnderstand = true;
+          break;
+        case "private":
+          _private = true;
+          break;
+        case "proxy-revalidate":
+          proxyRevalidate = true;
+          break;
         default:
-          if (part.startsWith("max-age=")) {
-            maxAge = Integer.parseInt(part.substring(8));
-
-          }
+          maxAge = loadInt(part, "max-age=");
+          maxStale = loadInt(part, "max-stale=");
+          minFresh = loadInt(part, "min-fresh=");
+          sMaxage = loadInt(part, "s-maxage=");
           break;
       }
     }
     return this;
+  }
+
+  private static int loadInt(String part, String prefix) {
+    if (part.startsWith(prefix)) {
+      BigInteger valueRaw = new BigInteger(part.substring(prefix.length()));
+      return valueRaw
+        .min(BigInteger.valueOf(Integer.MAX_VALUE))
+        .max(BigInteger.ZERO).intValueExact();
+    }
+    return -1;
   }
 
   public int maxAge() {
@@ -47,4 +102,47 @@ public class CacheControl {
     return _public;
   }
 
+  public int maxStale() {
+    return maxStale;
+  }
+
+  public int minFresh() {
+    return minFresh;
+  }
+
+  public boolean isNoCache() {
+    return noCache;
+  }
+
+  public boolean isNoStore() {
+    return noStore;
+  }
+
+  public boolean isNoTransform() {
+    return noTransform;
+  }
+
+  public boolean isOnlyIfCached() {
+    return onlyIfCached;
+  }
+
+  public boolean isMustRevalidate() {
+    return mustRevalidate;
+  }
+
+  public boolean isMustUnderstand() {
+    return mustUnderstand;
+  }
+
+  public boolean isPrivate() {
+    return _private;
+  }
+
+  public boolean isProxyRevalidate() {
+    return proxyRevalidate;
+  }
+
+  public int sMaxage() {
+    return sMaxage;
+  }
 }
