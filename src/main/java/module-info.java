@@ -1,4 +1,5 @@
 module io.vertx.httpproxy {
+  requires io.netty.codec.http;
   requires transitive io.vertx.core;
   requires io.vertx.core.logging;
   requires static io.vertx.codegen.api;
