@@ -14,10 +14,14 @@ import io.vertx.httpproxy.spi.cache.Cache;
 import io.vertx.httpproxy.spi.cache.Resource;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 class CachingFilter implements ProxyInterceptor {
+
+  private static final String SKIP_CACHE_RESPONSE_HANDLING = "skip_cache_response_handling";
+  private static final String CACHED_RESOURCE = "cached_resource";
 
   private final Cache cache;
 
@@ -32,14 +36,19 @@ class CachingFilter implements ProxyInterceptor {
 
   @Override
   public Future<Void> handleProxyResponse(ProxyContext context) {
-    return sendAndTryCacheProxyResponse(context);
+    Boolean skip = context.get(SKIP_CACHE_RESPONSE_HANDLING, Boolean.class);
+    if (skip != null && skip) {
+      return context.sendResponse();
+    } else {
+      return sendAndTryCacheProxyResponse(context);
+    }
   }
 
   private Future<Void> sendAndTryCacheProxyResponse(ProxyContext context) {
 
     ProxyResponse response = context.response();
     ProxyRequest request = response.request();
-    Resource cached = context.get("cached_resource", Resource.class);
+    Resource cached = context.get(CACHED_RESOURCE, Resource.class);
     String absoluteUri = request.absoluteURI();
 
     if (cached != null && response.getStatusCode() == 304) {
@@ -65,7 +74,7 @@ class CachingFilter implements ProxyInterceptor {
           canCache = false;
         }
       }
-      if (response.headers().get(HttpHeaders.AUTHORIZATION) != null) {
+      if (request.headers().get(HttpHeaders.AUTHORIZATION) != null) {
         if (
           responseCacheControl == null || (
             !responseCacheControl.isMustRevalidate()
@@ -76,6 +85,9 @@ class CachingFilter implements ProxyInterceptor {
         }
       }
       if (requestCacheControl != null && requestCacheControl.isNoStore()) {
+        canCache = false;
+      }
+      if ("*".equals(response.headers().get(HttpHeaders.VARY))) {
         canCache = false;
       }
       if (canCache) {
@@ -114,9 +126,6 @@ class CachingFilter implements ProxyInterceptor {
     MultiMap result = MultiMap.caseInsensitiveMultiMap();
     String vary = responseHeaders.get(HttpHeaders.VARY);
     if (vary != null) {
-      if (vary.trim().equals("*")) {
-        return result.addAll(requestHeaders);
-      }
       for (String toVary : vary.split(",")) {
         toVary = toVary.trim();
         String toVaryValue = requestHeaders.get(toVary);
@@ -149,53 +158,13 @@ class CachingFilter implements ProxyInterceptor {
     return cache.get(cacheKey).compose(resource -> {
       if (resource == null || !checkVaryHeaders(proxyRequest.headers(), resource.getRequestVaryHeader())) {
         if (requestCacheControl != null && requestCacheControl.isOnlyIfCached()) {
+          context.set(SKIP_CACHE_RESPONSE_HANDLING, true);
           return Future.succeededFuture(proxyRequest.release().response().setStatusCode(504));
         }
         return context.sendRequest();
       }
 
-      boolean validInboundCache = false;
-      String inboundIfModifiedSince = inboundRequest.getHeader(HttpHeaders.IF_MODIFIED_SINCE);
-      String inboundIfNoneMatch = inboundRequest.getHeader(HttpHeaders.IF_NONE_MATCH);
-      Instant resourceLastModified = resource.getLastModified();
-      String resourceETag = resource.getEtag();
-      if (resource.getStatusCode() == 200) { // TODO: status code 206
-        if (inboundIfNoneMatch != null && resourceETag != null) {
-          String[] inboundETags = inboundIfNoneMatch.split(",");
-          for (String inboundETag : inboundETags) {
-            inboundETag = inboundETag.trim();
-            if (inboundETag.equals(resourceETag)) {
-              validInboundCache = true;
-              break;
-            }
-            return context.sendRequest();
-          }
-        } else if (inboundIfModifiedSince != null && resourceLastModified != null) {
-          if (ParseUtils.parseHeaderDate(inboundIfModifiedSince).isAfter(resourceLastModified)) { // TODO: is it wrong???
-            validInboundCache = true;
-          }
-        }
-      }
-      if (validInboundCache) {
-        MultiMap infoHeaders = MultiMap.caseInsensitiveMultiMap();
-        List<CharSequence> headersNeeded = List.of(
-          HttpHeaders.CACHE_CONTROL,
-          HttpHeaders.CONTENT_LOCATION,
-          HttpHeaders.DATE,
-          HttpHeaders.ETAG,
-          HttpHeaders.EXPIRES,
-          HttpHeaders.VARY
-        );
-        for (CharSequence header : headersNeeded) {
-          String value = resource.getHeaders().get(header);
-          if (value != null) infoHeaders.add(header, value);
-        }
-        ProxyResponse resp = proxyRequest.release().response();
-        resp.headers().setAll(infoHeaders);
-        resp.setStatusCode(304);
-        return Future.succeededFuture(resp);
-      }
-
+      // to check if the resource is fresh
       boolean needValidate = false;
       String resourceCacheControlHeader = resource.getHeaders().get(HttpHeaders.CACHE_CONTROL);
       CacheControl resourceCacheControl = resourceCacheControlHeader == null ? null : new CacheControl().parse(resourceCacheControlHeader);
@@ -203,9 +172,8 @@ class CachingFilter implements ProxyInterceptor {
       if (requestCacheControl != null && requestCacheControl.isNoCache()) needValidate = true;
       long age = Math.subtractExact(System.currentTimeMillis(), resource.getTimestamp()); // in ms
       long maxAge = Math.max(0, resource.getMaxAge());
-      if (resourceCacheControl != null && (resourceCacheControl.isMustRevalidate() || resourceCacheControl.isProxyRevalidate())) {
-        if (age > maxAge) needValidate = true;
-      } else if (requestCacheControl != null) {
+      boolean responseValidateOverride = resourceCacheControl != null && (resourceCacheControl.isMustRevalidate() || resourceCacheControl.isProxyRevalidate());
+      if (!responseValidateOverride && requestCacheControl != null) {
         if (requestCacheControl.maxAge() != -1) {
           maxAge = Math.min(maxAge, SafeMathUtils.safeMultiply(requestCacheControl.maxAge(), 1000));
         }
@@ -214,8 +182,8 @@ class CachingFilter implements ProxyInterceptor {
         } else if (requestCacheControl.maxStale() != -1) {
           maxAge += SafeMathUtils.safeMultiply(requestCacheControl.maxStale(), 1000);
         }
-        if (age > maxAge) needValidate = true;
       }
+      if (age > maxAge) needValidate = true;
       String etag = resource.getHeaders().get(HttpHeaders.ETAG);
       String lastModified = resource.getHeaders().get(HttpHeaders.LAST_MODIFIED);
       if (needValidate) {
@@ -225,13 +193,68 @@ class CachingFilter implements ProxyInterceptor {
         if (lastModified != null) {
           proxyRequest.headers().set(HttpHeaders.IF_MODIFIED_SINCE, lastModified);
         }
-        context.set("cached_resource", resource);
+        context.set(CACHED_RESOURCE, resource);
         return context.sendRequest();
       } else {
-        proxyRequest.release();
-        ProxyResponse proxyResponse = proxyRequest.response();
-        resource.init(proxyResponse, inboundRequest.method() == HttpMethod.GET);
-        return Future.succeededFuture(proxyResponse);
+        // check if the client already have valid cache using current cache
+        boolean validInboundCache = false;
+        Instant inboundIfModifiedSince = ParseUtils.parseHeaderDate(inboundRequest.getHeader(HttpHeaders.IF_MODIFIED_SINCE));
+        String inboundIfNoneMatch = inboundRequest.getHeader(HttpHeaders.IF_NONE_MATCH);
+        Instant resourceLastModified = resource.getLastModified();
+        Instant resourceDate = ParseUtils.parseHeaderDate(resource.getHeaders().get(HttpHeaders.DATE));
+        String resourceETag = resource.getEtag();
+        if (resource.getStatusCode() == 200) {
+          if (inboundIfNoneMatch != null) {
+            if (resourceETag != null) {
+              String[] inboundETags = inboundIfNoneMatch.split(",");
+              for (String inboundETag : inboundETags) {
+                inboundETag = inboundETag.trim();
+                if (inboundETag.equals(resourceETag)) {
+                  validInboundCache = true;
+                  break;
+                }
+              }
+            }
+          } else if (inboundIfModifiedSince != null) {
+            if (resourceLastModified != null) {
+              if (!inboundIfModifiedSince.isBefore(resourceLastModified)) {
+                validInboundCache = true;
+              }
+            } else if (resourceDate != null) {
+              if (!inboundIfModifiedSince.isBefore(resourceDate)) {
+                validInboundCache = true;
+              }
+            }
+
+          }
+        }
+        if (validInboundCache) {
+          MultiMap infoHeaders = MultiMap.caseInsensitiveMultiMap();
+          List<CharSequence> headersNeeded = new ArrayList<>(List.of(
+            HttpHeaders.CACHE_CONTROL,
+            HttpHeaders.CONTENT_LOCATION,
+            HttpHeaders.DATE,
+            HttpHeaders.ETAG,
+            HttpHeaders.EXPIRES,
+            HttpHeaders.VARY
+          ));
+          if (inboundIfNoneMatch == null) headersNeeded.add(HttpHeaders.LAST_MODIFIED);
+          for (CharSequence header : headersNeeded) {
+            String value = resource.getHeaders().get(header);
+            if (value != null) infoHeaders.add(header, value);
+          }
+          ProxyResponse resp = proxyRequest.release().response();
+          resp.headers().setAll(infoHeaders);
+          resp.setStatusCode(304);
+          context.set(SKIP_CACHE_RESPONSE_HANDLING, true);
+          return Future.succeededFuture(resp);
+        } else {
+          proxyRequest.release();
+          ProxyResponse proxyResponse = proxyRequest.response();
+          resource.init(proxyResponse, inboundRequest.method() == HttpMethod.GET);
+          context.set(SKIP_CACHE_RESPONSE_HANDLING, true);
+          return Future.succeededFuture(proxyResponse);
+        }
       }
 
     });
@@ -241,11 +264,9 @@ class CachingFilter implements ProxyInterceptor {
 
   private static boolean checkVaryHeaders(MultiMap requestHeaders, MultiMap varyHeaders) {
     for (Map.Entry<String, String> e: varyHeaders) {
-      String fromVary = e.getValue().toLowerCase();
+      String fromVary = e.getValue();
       String fromRequest = requestHeaders.get(e.getKey());
-      if (fromRequest == null) return false;
-      fromRequest = fromVary.toLowerCase();
-      if (!fromRequest.equals(fromVary)) return false;
+      if (fromRequest == null || !fromRequest.equals(fromVary)) return false;
     }
     return true;
   }

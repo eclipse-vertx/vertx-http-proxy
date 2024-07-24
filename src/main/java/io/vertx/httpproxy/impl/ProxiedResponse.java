@@ -74,25 +74,23 @@ class ProxiedResponse implements ProxyResponse {
     long maxAge = -1;
     boolean publicCacheControl = false;
     String cacheControlHeader = response.getHeader(HttpHeaders.CACHE_CONTROL);
-    if (cacheControlHeader != null) {
-      CacheControl cacheControl = new CacheControl().parse(cacheControlHeader);
-      if (cacheControl.isPublic()) {
-        publicCacheControl = true;
-        if (cacheControl.sMaxage() >= 0) {
-          maxAge = (long) cacheControl.sMaxage() * 1000;
-        } else if (cacheControl.maxAge() >= 0) {
-          maxAge = (long) cacheControl.maxAge() * 1000;
-        } else {
-          String dateHeader = response.getHeader(HttpHeaders.DATE);
-          String expiresHeader = response.getHeader(HttpHeaders.EXPIRES);
-          if (dateHeader != null) {
-            if (expiresHeader != null) {
-              maxAge = Math.max(0, ParseUtils.parseHeaderDate(expiresHeader).toEpochMilli() - ParseUtils.parseHeaderDate(dateHeader).toEpochMilli());
-            } else if (heuristicallyCacheable(response)) {
-              String lastModifiedHeader = response.getHeader(HttpHeaders.LAST_MODIFIED);
-              maxAge = Math.max(0, (ParseUtils.parseHeaderDate(lastModifiedHeader).toEpochMilli() - ParseUtils.parseHeaderDate(dateHeader).toEpochMilli()) / 10);
-            }
-          }
+    CacheControl cacheControl = cacheControlHeader == null ? null : new CacheControl().parse(cacheControlHeader);
+    if (cacheControl != null && cacheControl.isPublic()) {
+      publicCacheControl = true;
+    }
+    if (cacheControl != null && cacheControl.sMaxage() >= 0) {
+      maxAge = (long) cacheControl.sMaxage() * 1000;
+    } else if (cacheControl != null && cacheControl.maxAge() >= 0) {
+      maxAge = (long) cacheControl.maxAge() * 1000;
+    } else {
+      String dateHeader = response.getHeader(HttpHeaders.DATE);
+      String expiresHeader = response.getHeader(HttpHeaders.EXPIRES);
+      if (dateHeader != null) {
+        if (expiresHeader != null) {
+          maxAge = Math.max(0, ParseUtils.parseHeaderDate(expiresHeader).toEpochMilli() - ParseUtils.parseHeaderDate(dateHeader).toEpochMilli());
+        } else if (heuristicallyCacheable(response)) {
+          String lastModifiedHeader = response.getHeader(HttpHeaders.LAST_MODIFIED);
+          maxAge = Math.max(0, (ParseUtils.parseHeaderDate(lastModifiedHeader).toEpochMilli() - ParseUtils.parseHeaderDate(dateHeader).toEpochMilli()) / 10);
         }
       }
     }

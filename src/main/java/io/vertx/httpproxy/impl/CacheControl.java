@@ -41,6 +41,10 @@ public class CacheControl {
     _private = false;
     proxyRevalidate = false;
     _public = false;
+    maxAge = -1;
+    maxStale = -1;
+    minFresh = -1;
+    sMaxage = -1;
 
     String[] parts = header.split(","); // No regex
     for (String part : parts) {
@@ -74,10 +78,10 @@ public class CacheControl {
           proxyRevalidate = true;
           break;
         default:
-          maxAge = loadInt(part, "max-age=");
-          maxStale = loadInt(part, "max-stale=");
-          minFresh = loadInt(part, "min-fresh=");
-          sMaxage = loadInt(part, "s-maxage=");
+          maxAge = Math.max(maxAge, loadInt(part, "max-age="));
+          maxStale = Math.max(maxStale, loadInt(part, "max-stale="));
+          minFresh = Math.max(minFresh, loadInt(part, "min-fresh="));
+          sMaxage = Math.max(sMaxage, loadInt(part, "s-maxage="));
           break;
       }
     }
