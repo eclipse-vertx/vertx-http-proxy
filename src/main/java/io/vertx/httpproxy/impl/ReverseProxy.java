@@ -11,10 +11,12 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.internal.logging.Logger;
 import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
+import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
@@ -64,13 +66,8 @@ public class ReverseProxy implements HttpProxy {
       return;
     }
 
-    // WebSocket upgrade tunneling
-    if (supportWebSocket && request.canUpgradeToWebSocket()) {
-      handleWebSocketUpgrade(proxyRequest);
-      return;
-    }
-
-    Proxy proxy = new Proxy(proxyRequest);
+    boolean isWebSocket = supportWebSocket && request.canUpgradeToWebSocket();
+    Proxy proxy = new Proxy(proxyRequest, isWebSocket);
     proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
       .recover(throwable -> {
@@ -82,57 +79,6 @@ public class ReverseProxy implements HttpProxy {
         log.trace("Error in sending the response", throwable);
         return proxy.response().release().setStatusCode(502).send();
       });
-  }
-
-  private void handleWebSocketUpgrade(ProxyRequest proxyRequest) {
-    HttpServerRequest proxiedRequest = proxyRequest.proxiedRequest();
-    resolveOrigin(proxiedRequest).onComplete(ar -> {
-      if (ar.succeeded()) {
-        HttpClientRequest request = ar.result();
-        request.setMethod(HttpMethod.GET);
-        request.setURI(proxiedRequest.uri());
-        request.headers().addAll(proxiedRequest.headers());
-        Future<HttpClientResponse> fut2 = request.connect();
-        proxiedRequest.handler(request::write);
-        proxiedRequest.endHandler(v -> request.end());
-        proxiedRequest.resume();
-        fut2.onComplete(ar2 -> {
-          if (ar2.succeeded()) {
-            HttpClientResponse proxiedResponse = ar2.result();
-            if (proxiedResponse.statusCode() == 101) {
-              HttpServerResponse response = proxiedRequest.response();
-              response.setStatusCode(101);
-              response.headers().addAll(proxiedResponse.headers());
-              Future<NetSocket> otherso = proxiedRequest.toNetSocket();
-              otherso.onComplete(ar3 -> {
-                if (ar3.succeeded()) {
-                  NetSocket responseSocket = ar3.result();
-                  NetSocket proxyResponseSocket = proxiedResponse.netSocket();
-                  responseSocket.handler(proxyResponseSocket::write);
-                  proxyResponseSocket.handler(responseSocket::write);
-                  responseSocket.closeHandler(v -> proxyResponseSocket.close());
-                  proxyResponseSocket.closeHandler(v -> responseSocket.close());
-                } else {
-                  // Find reproducer
-                  System.err.println("Handle this case");
-                  ar3.cause().printStackTrace();
-                }
-              });
-            } else {
-              // Rejection
-              proxiedRequest.resume();
-              end(proxyRequest, proxiedResponse.statusCode());
-            }
-          } else {
-            proxiedRequest.resume();
-            end(proxyRequest, 502);
-          }
-        });
-      } else {
-        proxiedRequest.resume();
-        end(proxyRequest, 502);
-      }
-    });
   }
 
   private void end(ProxyRequest proxyRequest, int sc) {
@@ -155,9 +101,16 @@ public class ReverseProxy implements HttpProxy {
     private ProxyResponse response;
     private final Map<String, Object> attachments = new HashMap<>();
     private ListIterator<ProxyInterceptor> filters;
+    private final boolean isWebSocket;
 
-    private Proxy(ProxyRequest request) {
+    private Proxy(ProxyRequest request, boolean isWebSocket) {
       this.request = request;
+      this.isWebSocket = isWebSocket;
+    }
+
+    @Override
+    public boolean isWebSocket() {
+      return isWebSocket;
     }
 
     @Override
@@ -182,6 +135,20 @@ public class ReverseProxy implements HttpProxy {
         ProxyInterceptor next = filters.next();
         return next.handleProxyRequest(this);
       } else {
+        if (isWebSocket) {
+          HttpServerRequest proxiedRequest = request().proxiedRequest();
+          return resolveOrigin(proxiedRequest).compose(request -> {
+            request.setMethod(request().getMethod());
+            request.setURI(request().getURI());
+            request.headers().addAll(request().headers());
+            Future<HttpClientResponse> responseFuture = request.connect();
+            ReadStream<Buffer> readStream = request().getBody().stream();
+            readStream.handler(request::write);
+            readStream.resume();
+            proxiedRequest.resume();
+            return responseFuture;
+          }).map(response -> new ProxiedResponse((ProxiedRequest) request(), request().proxiedRequest().response(), response));
+        }
         return sendProxyRequest(request);
       }
     }
@@ -197,6 +164,33 @@ public class ReverseProxy implements HttpProxy {
         ProxyInterceptor filter = filters.previous();
         return filter.handleProxyResponse(this);
       } else {
+        if (isWebSocket) {
+          HttpClientResponse proxiedResponse = response().proxiedResponse();
+          if (response.getStatusCode() == 101) {
+            HttpServerResponse clientResponse = request().proxiedRequest().response();
+            clientResponse.setStatusCode(101);
+            clientResponse.headers().addAll(response.headers());
+            Future<NetSocket> otherso = request.proxiedRequest().toNetSocket();
+            otherso.onComplete(ar3 -> {
+              if (ar3.succeeded()) {
+                NetSocket responseSocket = ar3.result();
+                NetSocket proxyResponseSocket = proxiedResponse.netSocket();
+                responseSocket.handler(proxyResponseSocket::write);
+                proxyResponseSocket.handler(responseSocket::write);
+                responseSocket.closeHandler(v -> proxyResponseSocket.close());
+                proxyResponseSocket.closeHandler(v -> responseSocket.close());
+              } else {
+                // Find reproducer
+                System.err.println("Handle this case");
+                ar3.cause().printStackTrace();
+              }
+            });
+          } else {
+            request().proxiedRequest().resume();
+            end(request(), proxiedResponse.statusCode());
+          }
+          return Future.succeededFuture();
+        }
         return response.send();
       }
     }

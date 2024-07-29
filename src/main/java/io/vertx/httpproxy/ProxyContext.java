@@ -30,6 +30,11 @@ public interface ProxyContext {
   Future<Void> sendResponse();
 
   /**
+   * @return if this request or response is the handshake of WebSocket
+   */
+  boolean isWebSocket();
+
+  /**
    * Attach a payload to the context
    *
    * @param name the payload name
