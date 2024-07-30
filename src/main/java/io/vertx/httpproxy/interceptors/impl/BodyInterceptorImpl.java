@@ -35,8 +35,6 @@ public class BodyInterceptorImpl implements ProxyInterceptor {
 
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
-    if (context.isWebSocket()) return context.sendRequest();
-
     Body body = context.request().getBody();
     BufferingWriteStream bws = new BufferingWriteStream();
     return body.stream().pipeTo(bws).compose(r -> {
@@ -48,8 +46,6 @@ public class BodyInterceptorImpl implements ProxyInterceptor {
 
   @Override
   public Future<Void> handleProxyResponse(ProxyContext context) {
-    if (context.isWebSocket()) return context.sendResponse();
-
     Body body = context.response().getBody();
     BufferingWriteStream bws = new BufferingWriteStream();
     return body.stream().pipeTo(bws).compose(r -> {
