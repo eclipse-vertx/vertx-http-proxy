@@ -133,6 +133,9 @@ public class ReverseProxy implements HttpProxy {
     public Future<ProxyResponse> sendRequest() {
       if (filters.hasNext()) {
         ProxyInterceptor next = filters.next();
+        if (isWebSocket && !next.allowApplyToWebSocket()) {
+          return sendRequest();
+        }
         return next.handleProxyRequest(this);
       } else {
         if (isWebSocket) {
@@ -162,6 +165,9 @@ public class ReverseProxy implements HttpProxy {
     public Future<Void> sendResponse() {
       if (filters.hasPrevious()) {
         ProxyInterceptor filter = filters.previous();
+        if (isWebSocket && !filter.allowApplyToWebSocket()) {
+          return sendResponse();
+        }
         return filter.handleProxyResponse(this);
       } else {
         if (isWebSocket) {
