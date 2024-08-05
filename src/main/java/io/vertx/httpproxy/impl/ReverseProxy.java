@@ -12,7 +12,11 @@ package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.*;
+import io.vertx.core.internal.CloseFuture;
+import io.vertx.core.internal.VertxInternal;
+import io.vertx.core.internal.http.*;
 import io.vertx.core.internal.logging.Logger;
 import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
@@ -35,11 +39,25 @@ public class ReverseProxy implements HttpProxy {
   public ReverseProxy(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
     if (cacheOptions != null) {
-      Cache cache = cacheOptions.newCache();
+      Cache cache = newCache(cacheOptions, ((HttpClientInternal) client).vertx());
       addInterceptor(new CachingFilter(cache));
     }
     this.client = client;
     this.supportWebSocket = options.getSupportWebSocket();
+  }
+
+  public Cache newCache(CacheOptions options, Vertx vertx) {
+    if (options.getShared()) {
+      CloseFuture closeFuture = new CloseFuture();
+      return ((VertxInternal) vertx).createSharedResource("__vertx.shared.proxyCache", options.getName(), closeFuture, (cf_) -> {
+        Cache cache = new CacheImpl(options);
+        cf_.add(completion -> {
+          cache.close().onComplete(completion);
+        });
+        return cache;
+      });
+    }
+    return new CacheImpl(options);
   }
 
   @Override

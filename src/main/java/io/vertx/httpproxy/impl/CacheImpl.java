@@ -1,6 +1,7 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 import io.vertx.httpproxy.spi.cache.Resource;
@@ -16,25 +17,22 @@ import java.util.Map;
 public class CacheImpl implements Cache {
 
   private final int maxSize;
-  private final Map<String, Resource> data;
-  private final LinkedList<String> records;
+  private final LinkedHashMap<String, Resource> data;
 
   public CacheImpl(CacheOptions options) {
     this.maxSize = options.getMaxSize();
-    this.data = new HashMap<>();
-    this.records = new LinkedList<>();
+    this.data = new LinkedHashMap<>() {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<String, Resource> eldest) {
+        return size() > maxSize;
+      }
+    };
   }
 
 
   @Override
   public Future<Void> put(String key, Resource value) {
-    while (records.size() >= maxSize) {
-      String toRemove = records.removeLast();
-      data.remove(toRemove);
-    }
-
     data.put(key, value);
-    records.addFirst(key);
     return Future.succeededFuture();
   }
 
@@ -45,8 +43,12 @@ public class CacheImpl implements Cache {
 
   @Override
   public Future<Void> remove(String key) {
-    records.remove(key);
     data.remove(key);
+    return Future.succeededFuture();
+  }
+
+  @Override
+  public Future<Void> close() {
     return Future.succeededFuture();
   }
 }
