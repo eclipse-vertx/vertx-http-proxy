@@ -18,6 +18,8 @@ import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.impl.ParseUtils;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 /**
@@ -25,7 +27,7 @@ import java.time.Instant;
  */
 public class Resource implements ClusterSerializable {
 
-  private static final String UTF_8 = "utf-8";
+  private static final Charset UTF_8 = StandardCharsets.UTF_8;
 
   private String absoluteUri;
   private int statusCode;
@@ -148,7 +150,7 @@ public class Resource implements ClusterSerializable {
   }
 
   private static void appendString(Buffer buffer, String string) {
-    appendBuffer(buffer, string == null ? null : Buffer.buffer(string, UTF_8));
+    appendBuffer(buffer, string == null ? null : Buffer.buffer(string.getBytes(UTF_8)));
   }
 
   private static String readString(Buffer buffer, Cursor cursor) {
