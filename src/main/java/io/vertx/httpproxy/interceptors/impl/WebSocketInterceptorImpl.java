@@ -6,7 +6,7 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyResponse;
 
 public class WebSocketInterceptorImpl implements ProxyInterceptor {
-  ProxyInterceptor interceptor;
+  private final ProxyInterceptor interceptor;
 
   public WebSocketInterceptorImpl(ProxyInterceptor interceptor) {
     this.interceptor = interceptor;
