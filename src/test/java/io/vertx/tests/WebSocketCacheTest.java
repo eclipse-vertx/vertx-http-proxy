@@ -37,11 +37,11 @@ public class WebSocketCacheTest extends ProxyTestBase {
                 latch.complete();
               }));
             });
-            ws2.write(Buffer.buffer("v2"));
+            ws2.write(Buffer.buffer("v2")); // second WebSocket, send and reply "v2"
           }));
         }));
       });
-      ws1.write(Buffer.buffer("v1"));
+      ws1.write(Buffer.buffer("v1")); // first WebSocket, send and reply "v1"
     }));
   }
 }

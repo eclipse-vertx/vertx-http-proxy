@@ -178,7 +178,7 @@ Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for oth
 
 ==== WebSocket interceptor
 
-You can use WebSocket interceptor to wrap a interceptor to let it allow WebSocket handling:
+You can use WebSocket interceptor to wrap an interceptor to let it allow WebSocket handling:
 
 [source,java]
 ----

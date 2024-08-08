@@ -40,6 +40,14 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
     });
   }
 
+  /**
+   * The interceptor adds a suffix to the uri. If uri is changed by the interceptor, it calls a hit.
+   *
+   * @param ctx the test context
+   * @param interceptor the added interceptor
+   * @param httpHit if interceptor changes the regular HTTP packet
+   * @param wsHit if interceptor changes the WebSocket packet
+   */
   private void testWithInterceptor(TestContext ctx, ProxyInterceptor interceptor, boolean httpHit, boolean wsHit) {
     Async latch = ctx.async(4);
     SocketAddress backend = backend(ctx, latch);
@@ -77,18 +85,21 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
 
   @Test
   public void testNotApplySocket(TestContext ctx) {
+    // this interceptor only applies to regular HTTP traffic
     ProxyInterceptor interceptor = PathInterceptor.changePath(x -> x + "/updated");
     testWithInterceptor(ctx, interceptor, true, false);
   }
 
   @Test
   public void testWithSocketInterceptor(TestContext ctx) {
+    // this interceptor applies to both regular HTTP traffic and WebSocket handshake
     ProxyInterceptor interceptor = WebSocketInterceptor.allow(PathInterceptor.changePath(x -> x + "/updated"));
     testWithInterceptor(ctx, interceptor, true, true);
   }
 
   @Test
   public void testOnlyHitSocket(TestContext ctx) {
+    // this interceptor only applies to WebSocket handshake
     ProxyInterceptor interceptor = new ProxyInterceptor() {
       @Override
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
