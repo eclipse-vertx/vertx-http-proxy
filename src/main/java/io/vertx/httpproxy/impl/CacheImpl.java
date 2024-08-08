@@ -6,10 +6,7 @@ import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 import io.vertx.httpproxy.spi.cache.Resource;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Simplistic implementation.
@@ -17,16 +14,16 @@ import java.util.Map;
 public class CacheImpl implements Cache {
 
   private final int maxSize;
-  private final LinkedHashMap<String, Resource> data;
+  private final Map<String, Resource> data;
 
   public CacheImpl(CacheOptions options) {
     this.maxSize = options.getMaxSize();
-    this.data = new LinkedHashMap<>() {
+    this.data = Collections.synchronizedMap(new LinkedHashMap<>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<String, Resource> eldest) {
         return size() > maxSize;
       }
-    };
+    });
   }
 
 
