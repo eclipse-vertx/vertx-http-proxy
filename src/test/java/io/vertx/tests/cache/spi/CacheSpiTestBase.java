@@ -16,7 +16,7 @@ import org.junit.runner.RunWith;
 import java.time.Instant;
 
 @RunWith(VertxUnitRunner.class)
-public abstract class CacheSpiBase {
+public abstract class CacheSpiTestBase {
 
   protected Cache cache;
   protected CacheOptions cacheOptions;

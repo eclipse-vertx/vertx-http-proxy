@@ -122,10 +122,8 @@ class CachingFilter implements ProxyInterceptor {
             if (etag != null) {
               proxyRequest.headers().set(HttpHeaders.IF_NONE_MATCH, resource.getEtag());
               context.set("cached_resource", resource);
-              return context.sendRequest();
-            } else {
-              return context.sendRequest();
             }
+            return context.sendRequest();
           }
         }
       }
