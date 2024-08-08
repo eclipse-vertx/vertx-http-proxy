@@ -22,6 +22,8 @@ import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.impl.ReverseProxy;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -76,6 +78,30 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
     return origin(SocketAddress.inetSocketAddress(port, host));
   }
 
+//  /**
+//   * Set a selector that resolves the <i><b>origin</b></i> address based on the incoming HTTP request.
+//   *
+//   * @param selector the selector
+//   * @return a reference to this, so the API can be used fluently
+//   */
+//  @Fluent
+//  default HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
+//    return originRequestProvider((req, client) -> selector
+//      .apply(req)
+//      .flatMap(server -> client.request(new RequestOptions().setServer(server))));
+//  }
+//
+//  /**
+//   * Set a provider that creates the request to the <i><b>origin</b></i> server based the incoming HTTP request.
+//   * Setting a provider overrides any origin selector previously set.
+//   *
+//   * @param provider the provider
+//   * @return a reference to this, so the API can be used fluently
+//   */
+//  @GenIgnore()
+//  @Fluent
+//  HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider);
+
   /**
    * Set a selector that resolves the <i><b>origin</b></i> address based on the incoming HTTP request.
    *
@@ -83,9 +109,9 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  default HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
-    return originRequestProvider((req, client) -> selector
-      .apply(req)
+  default HttpProxy originSelector(Function<ProxyContext, Future<SocketAddress>> selector) {
+    return originRequestProvider((context, client) -> selector
+      .apply(context)
       .flatMap(server -> client.request(new RequestOptions().setServer(server))));
   }
 
@@ -98,7 +124,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    */
   @GenIgnore()
   @Fluent
-  HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider);
+  HttpProxy originRequestProvider(BiFunction<ProxyContext, HttpClient, Future<HttpClientRequest>> provider);
 
   /**
    * Add an interceptor to the interceptor chain.
@@ -131,6 +157,16 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    *
    * @param request the outbound {@code HttpServerRequest}
    */
-  void handle(HttpServerRequest request);
+  default void handle(HttpServerRequest request) {
+    handle(request, new HashMap<>());
+  }
+
+  /**
+   * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.
+   *
+   * @param request the outbound {@code HttpServerRequest}
+   * @param attachments the contextual data holder for {@code ProxyContext}. Must be mutable.
+   */
+  void handle(HttpServerRequest request, Map<String, Object> attachments);
 
 }
