@@ -120,6 +120,8 @@ Likewise with the proxy response
 {@link examples.HttpProxyExamples#outboundInterceptor}
 ----
 
+Interceptors will not apply to WebSocket handshake packets by default. While in some use cases (e.g. changing the WebSocket request path), you can overwrite {@link io.vertx.httpproxy.ProxyInterceptor#allowApplyToWebSocket} method to allow interceptors apply to WebSocket.
+
 ==== Body filtering
 
 You can filter body by simply replacing the original {@link io.vertx.httpproxy.Body} with a new one
@@ -173,4 +175,13 @@ You can use body interceptor to create body transformations for common data type
 ----
 
 Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for other supported transformations.
+
+==== WebSocket interceptor
+
+You can use WebSocket interceptor to wrap an interceptor to let it allow WebSocket handling:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#webSocketInterceptorPath}
+----
 

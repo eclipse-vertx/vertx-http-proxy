@@ -135,6 +135,11 @@ class ProxiedResponse implements ProxyResponse {
   }
 
   @Override
+  public HttpClientResponse proxiedResponse() {
+    return response;
+  }
+
+  @Override
   public boolean publicCacheControl() {
     return publicCacheControl;
   }
