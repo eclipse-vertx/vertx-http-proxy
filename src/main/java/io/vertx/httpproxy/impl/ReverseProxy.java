@@ -29,7 +29,7 @@ public class ReverseProxy implements HttpProxy {
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
   private final HttpClient client;
   private final boolean supportWebSocket;
-  private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
+  private BiFunction<ProxyContext, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptor> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
@@ -43,7 +43,7 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider) {
+  public HttpProxy originRequestProvider(BiFunction<ProxyContext, HttpClient, Future<HttpClientRequest>> provider) {
     selector = provider;
     return this;
   }
@@ -56,7 +56,7 @@ public class ReverseProxy implements HttpProxy {
 
 
   @Override
-  public void handle(HttpServerRequest request) {
+  public void handle(HttpServerRequest request, Map<String, Object> attachments) {
     ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request);
 
     // Encoding sanity check
@@ -67,7 +67,7 @@ public class ReverseProxy implements HttpProxy {
     }
 
     boolean isWebSocket = supportWebSocket && request.canUpgradeToWebSocket();
-    Proxy proxy = new Proxy(proxyRequest, isWebSocket);
+    Proxy proxy = new Proxy(proxyRequest, isWebSocket, attachments);
     proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
       .recover(throwable -> {
@@ -91,21 +91,22 @@ public class ReverseProxy implements HttpProxy {
       .send();
   }
 
-  private Future<HttpClientRequest> resolveOrigin(HttpServerRequest proxiedRequest) {
-    return selector.apply(proxiedRequest, client);
+  private Future<HttpClientRequest> resolveOrigin(ProxyContext context) {
+    return selector.apply(context, client);
   }
 
   private class Proxy implements ProxyContext {
 
     private final ProxyRequest request;
     private ProxyResponse response;
-    private final Map<String, Object> attachments = new HashMap<>();
+    private final Map<String, Object> attachments;
     private ListIterator<ProxyInterceptor> filters;
     private final boolean isWebSocket;
 
-    private Proxy(ProxyRequest request, boolean isWebSocket) {
+    private Proxy(ProxyRequest request, boolean isWebSocket, Map<String, Object> attachments) {
       this.request = request;
       this.isWebSocket = isWebSocket;
+      this.attachments = attachments;
     }
 
     @Override
@@ -140,7 +141,7 @@ public class ReverseProxy implements HttpProxy {
       } else {
         if (isWebSocket) {
           HttpServerRequest proxiedRequest = request().proxiedRequest();
-          return resolveOrigin(proxiedRequest).compose(request -> {
+          return resolveOrigin(this).compose(request -> {
             request.setMethod(request().getMethod());
             request.setURI(request().getURI());
             request.headers().addAll(request().headers());
@@ -202,7 +203,7 @@ public class ReverseProxy implements HttpProxy {
     }
 
     private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest) {
-      return resolveOrigin(proxyRequest.proxiedRequest()).compose(proxyRequest::send);
+      return resolveOrigin(this).compose(proxyRequest::send);
     }
 
     private Future<Void> sendProxyResponse(ProxyResponse response) {
