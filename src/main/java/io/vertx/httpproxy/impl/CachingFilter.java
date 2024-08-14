@@ -42,7 +42,7 @@ class CachingFilter implements ProxyInterceptor {
     if (cached != null && response.getStatusCode() == 304) {
       // Warning: this relies on the fact that HttpServerRequest will not send a body for HEAD
       response.release();
-      cached.init(response);
+      fillResponseFromResource(response, cached);
       return context.sendResponse();
     }
 
@@ -138,9 +138,16 @@ class CachingFilter implements ProxyInterceptor {
       }
       proxyRequest.release();
       ProxyResponse proxyResponse = proxyRequest.response();
-      resource.init(proxyResponse);
+      fillResponseFromResource(proxyResponse, resource);
       return Future.succeededFuture(proxyResponse);
     });
 
+  }
+
+  public void fillResponseFromResource(ProxyResponse proxyResponse, Resource resource) {
+    proxyResponse.setStatusCode(200);
+    proxyResponse.setStatusMessage(resource.getStatusMessage());
+    proxyResponse.headers().addAll(resource.getHeaders());
+    proxyResponse.setBody(Body.body(resource.getContent()));
   }
 }

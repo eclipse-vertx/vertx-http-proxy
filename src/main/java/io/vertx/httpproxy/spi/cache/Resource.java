@@ -55,13 +55,6 @@ public class Resource implements ClusterSerializable {
     this.etag = headers.get(HttpHeaders.ETAG);
   }
 
-  public void init(ProxyResponse proxyResponse) {
-    proxyResponse.setStatusCode(200);
-    proxyResponse.setStatusMessage(statusMessage);
-    proxyResponse.headers().addAll(headers);
-    proxyResponse.setBody(Body.body(content));
-  }
-
   private static class Cursor {
     int i;
   }

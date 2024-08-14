@@ -24,7 +24,7 @@ public interface Cache {
    * Being called when the proxy attempts to fetch a cache item.
    *
    * @param key the URI of the resource
-   * @return the cached response, null if not exist
+   * @return the cached response, null if not exist, should all wrap with future
    */
   Future<Resource> get(String key);
 
