@@ -13,10 +13,7 @@ import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
-import io.vertx.httpproxy.interceptors.BodyInterceptor;
-import io.vertx.httpproxy.interceptors.BodyTransformer;
-import io.vertx.httpproxy.interceptors.HeadersInterceptor;
-import io.vertx.httpproxy.interceptors.QueryInterceptor;
+import io.vertx.httpproxy.interceptors.*;
 
 import java.util.Set;
 
@@ -127,6 +124,12 @@ public class HttpProxyExamples {
           jsonObject -> removeSomeFields(jsonObject)
         )
       ));
+  }
+
+  public void webSocketInterceptorPath(HttpProxy proxy) {
+    proxy.addInterceptor(
+      WebSocketInterceptor.allow(PathInterceptor.addPrefix("/api"))
+    );
   }
 
   public void immediateResponse(HttpProxy proxy) {
