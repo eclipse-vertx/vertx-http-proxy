@@ -266,7 +266,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
 
   @Test
   public void testFrontendCloseChunkedResponse(TestContext ctx) {
-    testFrontendCloseResponse(ctx, true);
+    testBackendCloseResponse(ctx, true);
   }
 
   private void testFrontendCloseResponse(TestContext ctx, boolean chunked) {
@@ -279,11 +279,13 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         resp.putHeader("content-length", "10000");
       }
       resp.write("part");
-      resp.closeHandler(unused -> async.complete());
+      resp.exceptionHandler(err -> {
+        async.complete();
+      });
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
+    client.request(GET, 8081, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.handler(buff -> {
           resp.request().connection().close();
