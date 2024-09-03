@@ -10,13 +10,19 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.*;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.impl.HttpServerRequestInternal;
 import io.vertx.core.impl.ContextInternal;
-import io.vertx.core.impl.logging.Logger;
-import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
@@ -27,7 +33,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public class ProxiedRequest implements ProxyRequest {
-  private final static Logger log = LoggerFactory.getLogger(ProxiedRequest.class);
 
   private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
@@ -150,14 +155,6 @@ public class ProxiedRequest implements ProxyRequest {
   }
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
-    proxiedRequest.connection().closeHandler(unused -> {
-      if (log.isTraceEnabled()) {
-        log.trace("Frontend connection closed,uri: " + proxiedRequest.uri());
-      }
-
-      request.reset();
-      proxiedRequest.response().reset();
-    });
 
     request.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
