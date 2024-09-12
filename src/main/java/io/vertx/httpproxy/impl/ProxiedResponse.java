@@ -167,12 +167,6 @@ class ProxiedResponse implements ProxyResponse {
 
   @Override
   public Future<Void> send() {
-    Promise<Void> promise = request.context.promise();
-    send(promise);
-    return promise.future();
-  }
-
-  public void send(Handler<AsyncResult<Void>> completionHandler) {
     // Set stuff
     proxiedResponse.setStatusCode(statusCode);
 
@@ -222,32 +216,30 @@ class ProxiedResponse implements ProxyResponse {
 
     //
     if (body == null) {
-      proxiedResponse.end();
-      return;
-    }
-
-    long len = body.length();
-    if (len >= 0) {
-      proxiedResponse.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
+      return proxiedResponse.end();
     } else {
-      if (request.proxiedRequest().version() == HttpVersion.HTTP_1_0) {
-        // Special handling for HTTP 1.0 clients that cannot handle chunked encoding
-        // we need to buffer the content
-        BufferingWriteStream buffer = new BufferingWriteStream();
-        body.stream().pipeTo(buffer).onComplete(ar -> {
-          if (ar.succeeded()) {
-            Buffer content = buffer.content();
-            proxiedResponse.end(content).onComplete(completionHandler);
-          } else {
-            System.out.println("Not implemented");
-          }
-        });
-        return;
+      long len = body.length();
+      if (len >= 0) {
+        proxiedResponse.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
+      } else {
+        if (request.proxiedRequest().version() == HttpVersion.HTTP_1_0) {
+          // Special handling for HTTP 1.0 clients that cannot handle chunked encoding
+          // we need to buffer the content
+          BufferingWriteStream buffer = new BufferingWriteStream();
+          return
+            body
+            .stream()
+            .pipeTo(buffer)
+            .compose(v -> {
+              Buffer content = buffer.content();
+              return proxiedResponse.end(content);
+            });
+        }
+        proxiedResponse.setChunked(true);
       }
-      proxiedResponse.setChunked(true);
+      ReadStream<Buffer> bodyStream = body.stream();
+      return sendResponse(bodyStream);
     }
-    ReadStream<Buffer> bodyStream = body.stream();
-    sendResponse(bodyStream, completionHandler);
   }
 
   @Override
@@ -261,16 +253,17 @@ class ProxiedResponse implements ProxyResponse {
     return this;
   }
 
-  private void sendResponse(ReadStream<Buffer> body, Handler<AsyncResult<Void>> completionHandler) {
+  private Future<Void> sendResponse(ReadStream<Buffer> body) {
     Pipe<Buffer> pipe = body.pipe();
     pipe.endOnSuccess(true);
     pipe.endOnFailure(false);
-    pipe.to(proxiedResponse).onComplete(ar -> {
+    return pipe
+      .to(proxiedResponse)
+      .andThen(ar -> {
       if (ar.failed()) {
         request.request.reset();
         proxiedResponse.reset();
       }
-      completionHandler.handle(ar);
     });
   }
 }

@@ -146,13 +146,7 @@ public class ProxiedRequest implements ProxyRequest {
     return new ProxiedResponse(this, proxiedRequest.response());
   }
 
-  void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
-
-    request.response().<ProxyResponse>map(r -> {
-      r.pause(); // Pause it
-      return new ProxiedResponse(this, proxiedRequest.response(), r);
-    }).onComplete(responseHandler);
-
+  Future<ProxyResponse> sendRequest() {
 
     request.setMethod(method);
     request.setURI(uri);
@@ -192,6 +186,11 @@ public class ProxiedRequest implements ProxyRequest {
         request.reset();
       }
     });
+
+    return request.response().<ProxyResponse>map(r -> {
+      r.pause(); // Pause it
+      return new ProxiedResponse(this, proxiedRequest.response(), r);
+    });
   }
 
   private static boolean equals(HostAndPort hp1, HostAndPort hp2) {
@@ -214,9 +213,7 @@ public class ProxiedRequest implements ProxyRequest {
 
   @Override
   public Future<ProxyResponse> send(HttpClientRequest request) {
-    Promise<ProxyResponse> promise = context.promise();
     this.request = request;
-    sendRequest(promise);
-    return promise.future();
+    return sendRequest();
   }
 }
