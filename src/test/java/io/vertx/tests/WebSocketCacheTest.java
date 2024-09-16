@@ -1,6 +1,7 @@
 package io.vertx.tests;
 
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.WebSocketClient;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -26,11 +27,12 @@ public class WebSocketCacheTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    vertx.createWebSocketClient().connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws1 -> {
+    WebSocketClient client = vertx.createWebSocketClient();
+    client.connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws1 -> {
       ws1.handler(buffer -> {
         ctx.assertEquals(buffer.toString(), "v1");
         ws1.close().onComplete(ctx.asyncAssertSuccess(v -> {
-          vertx.createWebSocketClient().connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws2 -> {
+          client.connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws2 -> {
             ws2.handler(buffer2 -> {
               ctx.assertEquals(buffer2.toString(), "v2");
               ws2.close().onComplete(ctx.asyncAssertSuccess(v2 -> {
@@ -43,5 +45,6 @@ public class WebSocketCacheTest extends ProxyTestBase {
       });
       ws1.write(Buffer.buffer("v1")); // first WebSocket, send and reply "v1"
     }));
+    latch.awaitSuccess(20_000);
   }
 }
