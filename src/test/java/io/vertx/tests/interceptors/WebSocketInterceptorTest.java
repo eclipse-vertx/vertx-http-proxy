@@ -2,9 +2,7 @@ package io.vertx.tests.interceptors;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -49,31 +47,33 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
    * @param wsHit if interceptor changes the WebSocket packet
    */
   private void testWithInterceptor(TestContext ctx, ProxyInterceptor interceptor, boolean httpHit, boolean wsHit) {
-    Async latch = ctx.async(4);
+    Async latch = ctx.async(3);
     SocketAddress backend = backend(ctx, latch);
 
     startProxy(proxy -> {
       proxy.origin(backend);
-      if (interceptor != null) proxy.addInterceptor(interceptor);
+      if (interceptor != null) {
+        proxy.addInterceptor(interceptor);
+      };
     });
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/http")
-      .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> {
-        resp.body().onSuccess(body -> {
-          ctx.assertEquals(body.toString().endsWith("/updated"), httpHit);
-          latch.countDown();
+    HttpClientAgent httpClient = vertx.createHttpClient();
+    WebSocketClient webSocketClient = vertx.createWebSocketClient();
 
-          vertx.createWebSocketClient().connect(8080, "localhost", "/ws")
-            .onComplete(ctx.asyncAssertSuccess(webSocket -> {
-              webSocket.handler(buffer -> {
-                ctx.assertEquals(buffer.toString().endsWith("/updated"), wsHit);
-                latch.countDown();
-                webSocket.close();
-              });
-              webSocket.write(Buffer.buffer("hello"));
-            }));
+    Buffer body = httpClient
+      .request(HttpMethod.GET, 8080, "localhost", "/http")
+      .compose(req -> req.send()
+        .expecting(HttpResponseExpectation.SC_OK))
+      .compose(HttpClientResponse::body).await();
+    ctx.assertEquals(body.toString().endsWith("/updated"), httpHit);
+    webSocketClient.connect(8080, "localhost", "/ws")
+      .onComplete(ctx.asyncAssertSuccess(webSocket -> {
+        webSocket.handler(buffer -> {
+          ctx.assertEquals(buffer.toString().endsWith("/updated"), wsHit);
+          latch.countDown();
+          webSocket.close();
         });
+        webSocket.write(Buffer.buffer("hello"));
       }));
     latch.await(5000);
   }
