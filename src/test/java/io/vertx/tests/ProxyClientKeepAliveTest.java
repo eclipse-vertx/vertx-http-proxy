@@ -266,7 +266,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
 
   @Test
   public void testFrontendCloseChunkedResponse(TestContext ctx) {
-    testBackendCloseResponse(ctx, true);
+    testFrontendCloseResponse(ctx, true);
   }
 
   private void testFrontendCloseResponse(TestContext ctx, boolean chunked) {
