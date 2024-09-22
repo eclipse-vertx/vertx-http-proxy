@@ -50,11 +50,7 @@ public class ReverseProxy implements HttpProxy {
     if (options.getShared()) {
       CloseFuture closeFuture = new CloseFuture();
       return ((VertxInternal) vertx).createSharedResource("__vertx.shared.proxyCache", options.getName(), closeFuture, (cf_) -> {
-        Cache cache = new CacheImpl(options);
-        cf_.add(completion -> {
-          cache.close().onComplete(completion);
-        });
-        return cache;
+        return new CacheImpl(options);
       });
     }
     return new CacheImpl(options);

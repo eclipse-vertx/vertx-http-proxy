@@ -44,8 +44,4 @@ public class CacheImpl implements Cache {
     return Future.succeededFuture();
   }
 
-  @Override
-  public Future<Void> close() {
-    return Future.succeededFuture();
-  }
 }

@@ -36,9 +36,7 @@ public abstract class CacheSpiTestBase {
 
   @After
   public void tearDown(TestContext context) {
-    cache.close().onComplete(context.asyncAssertSuccess(
-      v -> vertx.close().onComplete(context.asyncAssertSuccess())
-    ));
+    vertx.close().onComplete(context.asyncAssertSuccess());
   }
 
   private Resource generateResource(String absoluteURI, long maxAge) {

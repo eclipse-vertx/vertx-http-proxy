@@ -8,11 +8,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 public class ResourceParseTest {
 
-  public static boolean weakEquals(Resource r1, Resource r2) {
+  public static boolean resourceEquals(Resource r1, Resource r2) {
     boolean same = r1.getStatusCode() == r2.getStatusCode()
       && r1.getTimestamp() == r2.getTimestamp()
       && r1.getMaxAge() == r2.getMaxAge()
@@ -24,12 +25,17 @@ public class ResourceParseTest {
 
     if (r1.getHeaders() == null ^ r2.getHeaders() == null) return false;
     if (r1.getHeaders() != null && r2.getHeaders() != null) {
-      if (r1.getHeaders().size() != r2.getHeaders().size()) return false;
+      MultiMap h1 = r1.getHeaders();
+      MultiMap h2 = r2.getHeaders();
+      if (h1.size() != h2.size()) return false;
+      for (Map.Entry<String, String> e : h1.entries()) {
+        if (!Objects.equals(e.getValue(), h2.get(e.getKey()))) return false;
+      }
     }
 
     if (r1.getContent() == null ^ r2.getContent() == null) return false;
     if (r1.getContent() != null && r2.getContent() != null) {
-      if (r1.getContent().length() != r2.getContent().length()) return false;
+      if (!Arrays.equals(r1.getContent().getBytes(), r2.getContent().getBytes())) return false;
     }
 
     return true;
@@ -54,7 +60,7 @@ public class ResourceParseTest {
     Resource recovered = new Resource();
     recovered.readFromBuffer(0, buffer);
 
-    Assert.assertTrue(weakEquals(resource, recovered));
+    Assert.assertTrue(resourceEquals(resource, recovered));
   }
 
   @Test
@@ -73,7 +79,7 @@ public class ResourceParseTest {
     Resource recovered = new Resource();
     recovered.readFromBuffer(4, buffer);
 
-    Assert.assertTrue(weakEquals(resource, recovered));
+    Assert.assertTrue(resourceEquals(resource, recovered));
   }
 
   @Test
@@ -85,7 +91,7 @@ public class ResourceParseTest {
     Resource recovered = new Resource();
     recovered.readFromBuffer(0, buffer);
 
-    Assert.assertTrue(weakEquals(resource, recovered));
+    Assert.assertTrue(resourceEquals(resource, recovered));
   }
 
 

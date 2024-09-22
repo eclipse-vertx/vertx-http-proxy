@@ -33,13 +33,13 @@ public class CacheOptions {
   private boolean shared = DEFAULT_SHARED;
 
   /**
-   * Default constructor
+   * Default constructor.
    */
   public CacheOptions() {
   }
 
   /**
-   * Copy constructor
+   * Copy constructor.
    *
    * @param other the options to copy
    */
@@ -50,7 +50,7 @@ public class CacheOptions {
   }
 
   /**
-   * Constructor to create an options from JSON
+   * Constructor to create an options from JSON.
    *
    * @param json  the JSON
    */
@@ -124,7 +124,7 @@ public class CacheOptions {
   }
 
   /**
-   * Convert to JSON
+   * Convert to JSON.
    *
    * @return the JSON
    */

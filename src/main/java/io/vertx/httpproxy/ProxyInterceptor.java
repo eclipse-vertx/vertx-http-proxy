@@ -32,6 +32,7 @@ public interface ProxyInterceptor {
   /**
    * Used to set whether to apply the interceptor to the WebSocket
    * handshake packet. The default value is false.
+   *
    * @return the boolean value
    */
   default boolean allowApplyToWebSocket() {

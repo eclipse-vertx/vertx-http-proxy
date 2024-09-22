@@ -1,5 +1,6 @@
 package io.vertx.httpproxy.spi.cache;
 
+import io.vertx.codegen.annotations.Unstable;
 import io.vertx.core.Future;
 import io.vertx.core.dns.SrvRecord;
 
@@ -7,6 +8,7 @@ import io.vertx.core.dns.SrvRecord;
 /**
  * Cache SPI.
  */
+@Unstable
 public interface Cache {
 
   /**
@@ -37,11 +39,4 @@ public interface Cache {
    * @return a succeed void future
    */
   Future<Void> remove(String key);
-
-  /**
-   * Being called when need to close the cache.
-   *
-   * @return a succeed void future
-   */
-  Future<Void> close();
 }
