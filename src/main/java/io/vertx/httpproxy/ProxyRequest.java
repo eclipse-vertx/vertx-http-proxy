@@ -101,7 +101,7 @@ public interface ProxyRequest {
   ProxyRequest setBody(Body body);
 
   /**
-   * Set the request authority
+   * Set the request authority.
    *
    * <ul>
    *   <li>for HTTP/1 the {@literal Host} header</li>
@@ -128,7 +128,7 @@ public interface ProxyRequest {
   MultiMap headers();
 
   /**
-   * Put an HTTP header
+   * Put an HTTP header.
    *
    * @param name  The header name
    * @param value The header value
@@ -157,7 +157,7 @@ public interface ProxyRequest {
   Future<ProxyResponse> send(HttpClientRequest request);
 
   /**
-   * Release the proxy request and its associated resources
+   * Release the proxy request and its associated resources.
    *
    * <p> The HTTP server request is resumed, no HTTP server response is sent.
    *
