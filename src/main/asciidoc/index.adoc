@@ -184,4 +184,3 @@ You can use WebSocket interceptor to wrap an interceptor to let it allow WebSock
 ----
 {@link examples.HttpProxyExamples#webSocketInterceptorPath}
 ----
-
