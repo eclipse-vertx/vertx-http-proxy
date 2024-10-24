@@ -41,25 +41,25 @@ public class WebSocketTest extends ProxyTestBase {
 
   @Test
   public void testWebSocketV00(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V00);
+    testWebSocket(ctx, WebSocketVersion.V00);
   }
 
   @Test
   public void testWebSocketV07(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V07);
+    testWebSocket(ctx, WebSocketVersion.V07);
   }
 
   @Test
   public void testWebSocketV08(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V08);
+    testWebSocket(ctx, WebSocketVersion.V08);
   }
 
   @Test
   public void testWebSocketV13(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V13);
+    testWebSocket(ctx, WebSocketVersion.V13);
   }
 
-  private void testWebSocket(TestContext ctx, WebsocketVersion version) {
+  private void testWebSocket(TestContext ctx, WebSocketVersion version) {
     Async async = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
