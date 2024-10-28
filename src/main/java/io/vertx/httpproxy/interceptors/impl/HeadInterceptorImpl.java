@@ -1,14 +1,3 @@
-/*
- * Copyright (c) 2011-2024 Contributors to the Eclipse Foundation
- *
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License 2.0 which is available at
- * http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
- * which is available at https://www.apache.org/licenses/LICENSE-2.0.
- *
- * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
- */
-
 package io.vertx.httpproxy.interceptors.impl;
 
 import io.netty.handler.codec.http.QueryStringDecoder;
@@ -17,28 +6,57 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.httpproxy.ProxyContext;
-import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 
-import java.util.Objects;
+import java.util.function.Function;
 
-public class QueryInterceptorImpl implements ProxyInterceptor {
-  private final Handler<MultiMap> changeQueryParams;
+class HeadInterceptorImpl implements HeadInterceptor {
+
+  private final Handler<MultiMap> queryUpdater;
+  private final Function<String, String> pathUpdater;
+  private final Handler<MultiMap> requestHeadersUpdater;
+  private final Handler<MultiMap> responseHeadersUpdater;
+
+
+  public HeadInterceptorImpl(Handler<MultiMap> queryUpdater, Function<String, String> pathUpdater, Handler<MultiMap> requestHeadersUpdater, Handler<MultiMap> responseHeadersUpdater) {
+    this.queryUpdater = queryUpdater;
+    this.pathUpdater = pathUpdater;
+    this.requestHeadersUpdater = requestHeadersUpdater;
+    this.responseHeadersUpdater = responseHeadersUpdater;
+  }
 
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+    if (queryUpdater != null) {
+      queryHandleProxyRequest(context);
+    }
+    if (pathUpdater != null) {
+      pathHandleProxyRequest(context);
+    }
+    if (requestHeadersUpdater != null) {
+      headersHandleProxyRequest(context);
+    }
+    return context.sendRequest();
+  }
+
+  @Override
+  public Future<Void> handleProxyResponse(ProxyContext context) {
+    if (responseHeadersUpdater != null) {
+      headersHandleProxyResponse(context);
+    }
+    return context.sendResponse();
+  }
+
+  public void queryHandleProxyRequest(ProxyContext context) {
     String rawUri = context.request().getURI();
     MultiMap params = queryParams(rawUri);
     String cleanedUri = cleanedUri(rawUri);
 
-    changeQueryParams.handle(params);
+    queryUpdater.handle(params);
     String newUri = buildUri(cleanedUri, params);
     context.request().setURI(newUri);
-    return context.sendRequest();
-  }
-
-  public QueryInterceptorImpl(Handler<MultiMap> changeQueryParams) {
-    this.changeQueryParams = Objects.requireNonNull(changeQueryParams);
   }
 
   // ref: https://github.com/vert-x3/vertx-web/blob/master/vertx-web-client/src/main/java/io/vertx/ext/web/client/impl/HttpRequestImpl.java
@@ -75,5 +93,20 @@ public class QueryInterceptorImpl implements ProxyInterceptor {
     });
     uri = encoder.toString();
     return uri;
+  }
+
+  public void pathHandleProxyRequest(ProxyContext context) {
+    ProxyRequest proxyRequest = context.request();
+    proxyRequest.setURI(pathUpdater.apply(proxyRequest.getURI()));
+  }
+
+  private void headersHandleProxyRequest(ProxyContext context) {
+    ProxyRequest request = context.request();
+    requestHeadersUpdater.handle(request.headers());
+  }
+
+  private void headersHandleProxyResponse(ProxyContext context) {
+    ProxyResponse response = context.response();
+    responseHeadersUpdater.handle(response.headers());
   }
 }

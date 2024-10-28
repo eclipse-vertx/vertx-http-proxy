@@ -7,7 +7,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
-import io.vertx.httpproxy.interceptors.PathInterceptor;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.httpproxy.interceptors.WebSocketInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
@@ -86,14 +86,14 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
   @Test
   public void testNotApplySocket(TestContext ctx) {
     // this interceptor only applies to regular HTTP traffic
-    ProxyInterceptor interceptor = PathInterceptor.changePath(x -> x + "/updated");
+    ProxyInterceptor interceptor = HeadInterceptor.builder().updatingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, false);
   }
 
   @Test
   public void testWithSocketInterceptor(TestContext ctx) {
     // this interceptor applies to both regular HTTP traffic and WebSocket handshake
-    ProxyInterceptor interceptor = WebSocketInterceptor.allow(PathInterceptor.changePath(x -> x + "/updated"));
+    ProxyInterceptor interceptor = WebSocketInterceptor.allow(HeadInterceptor.builder().updatingPath(x -> x + "/updated").build());
     testWithInterceptor(ctx, interceptor, true, true);
   }
 

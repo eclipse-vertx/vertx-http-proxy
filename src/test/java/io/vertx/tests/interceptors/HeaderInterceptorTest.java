@@ -17,7 +17,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.interceptors.HeadersInterceptor;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
@@ -42,7 +42,7 @@ public class HeaderInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadersInterceptor.filterRequestHeaders(Set.of("k2"))));
+      .addInterceptor(HeadInterceptor.builder().filteringRequestHeaders(Set.of("k2")).build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(request -> request
@@ -65,7 +65,7 @@ public class HeaderInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadersInterceptor.filterResponseHeaders(Set.of("k2"))));
+      .addInterceptor(HeadInterceptor.builder().filteringResponseHeaders(Set.of("k2")).build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
