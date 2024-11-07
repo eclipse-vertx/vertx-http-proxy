@@ -22,6 +22,9 @@ import io.vertx.httpproxy.spi.cache.Cache;
 import java.util.*;
 import java.util.function.BiFunction;
 
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.UPGRADE;
+
 public class ReverseProxy implements HttpProxy {
 
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
@@ -91,7 +94,7 @@ public class ReverseProxy implements HttpProxy {
         HttpClientRequest request = ar.result();
         request.setMethod(HttpMethod.GET);
         request.setURI(proxiedRequest.uri());
-        request.headers().addAll(proxiedRequest.headers());
+        request.headers().addAll(proxiedRequest.headers()).set(CONNECTION, UPGRADE);
         Future<HttpClientResponse> fut2 = request.connect();
         proxiedRequest.handler(request::write);
         proxiedRequest.endHandler(v -> request.end());

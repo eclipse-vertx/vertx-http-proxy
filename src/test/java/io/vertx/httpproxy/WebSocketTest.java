@@ -12,28 +12,13 @@ package io.vertx.httpproxy;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.ServerWebSocket;
-import io.vertx.core.http.UpgradeRejectedException;
-import io.vertx.core.http.WebSocketConnectOptions;
-import io.vertx.core.http.WebsocketVersion;
+import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static io.vertx.core.http.HttpMethod.GET;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -126,6 +111,36 @@ public class WebSocketTest extends ProxyTestBase {
     client.webSocket(options, ctx.asyncAssertFailure(err -> {
       ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
       async.complete();
+    }));
+  }
+
+  @Test
+  public void testWebSocketFirefox(TestContext ctx) {
+    Async async = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      Future<ServerWebSocket> fut = req.toWebSocket();
+      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        ws.closeHandler(v -> {
+          async.complete();
+        });
+      }));
+    });
+    startProxy(backend);
+    HttpClient httpClient = vertx.createHttpClient();
+    RequestOptions options = new RequestOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws")
+      .putHeader("Origin", "http://localhost:8080")
+      .putHeader("Connection", "keep-alive, Upgrade")
+      .putHeader("Upgrade", "Websocket")
+      .putHeader("Sec-WebSocket-Version", "13")
+      .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
+    httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
+      clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(101, response.statusCode());
+        response.netSocket().close();
+      }));
     }));
   }
 }
