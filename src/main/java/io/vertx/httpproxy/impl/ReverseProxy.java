@@ -24,6 +24,9 @@ import io.vertx.httpproxy.spi.cache.Cache;
 import java.util.*;
 import java.util.function.BiFunction;
 
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.UPGRADE;
+
 public class ReverseProxy implements HttpProxy {
 
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
@@ -143,7 +146,11 @@ public class ReverseProxy implements HttpProxy {
           return resolveOrigin(proxiedRequest).compose(request -> {
             request.setMethod(request().getMethod());
             request.setURI(request().getURI());
-            request.headers().addAll(request().headers());
+            // Firefox is known to send an unexpected connection header value
+            // Connection=keep-alive, Upgrade
+            // It leads to a failure in websocket proxying
+            // So we make sure the standard value is sent to the backend
+            request.headers().addAll(request().headers()).set(CONNECTION, UPGRADE);
             Future<HttpClientResponse> responseFuture = request.connect();
             ReadStream<Buffer> readStream = request().getBody().stream();
             readStream.handler(request::write);
