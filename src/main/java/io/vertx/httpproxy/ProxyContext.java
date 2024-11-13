@@ -35,7 +35,7 @@ public interface ProxyContext {
   boolean isWebSocket();
 
   /**
-   * Attach a payload to the context
+   * Attach a payload to the context.
    *
    * @param name the payload name
    * @param value any payload value
@@ -43,7 +43,7 @@ public interface ProxyContext {
   void set(String name, Object value);
 
   /**
-   * Get a payload attached to this context
+   * Get a payload attached to this context.
    *
    * @param name the payload name
    * @param type the expected payload type
