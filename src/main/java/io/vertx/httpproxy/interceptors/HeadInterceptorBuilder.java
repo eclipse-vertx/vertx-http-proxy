@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) 2011-2024 Contributors to the Eclipse Foundation
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
+ * which is available at https://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+ */
+
 package io.vertx.httpproxy.interceptors;
 
 import io.vertx.codegen.annotations.Fluent;
@@ -12,6 +23,13 @@ import java.util.function.Function;
 
 import static io.vertx.codegen.annotations.GenIgnore.PERMITTED_TYPE;
 
+/**
+ * Configuration for an interceptor updating HTTP request/response head attributes (headers, path, query params).
+ * <p>
+ * All configuration methods can be invoked several times.
+ * Operations on the path will be invoked in the order of configuration.
+ * That goes for operations on request headers, response headers and query parameters.
+ */
 @VertxGen
 @Unstable
 public interface HeadInterceptorBuilder {
@@ -24,7 +42,7 @@ public interface HeadInterceptorBuilder {
   /**
    * Apply modifications to the query parameters.
    *
-   * @param updater the operation to apply to the request query parameters
+   * @param updater the operation to apply to the request query parameters (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
@@ -33,8 +51,8 @@ public interface HeadInterceptorBuilder {
   /**
    * Add a query parameter to the request.
    *
-   * @param name the parameter name
-   * @param value the parameter value
+   * @param name the parameter name (can be null, but in this case nothing happens)
+   * @param value the parameter value (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
@@ -43,7 +61,7 @@ public interface HeadInterceptorBuilder {
   /**
    * Remove a query parameter from the request.
    *
-   * @param name the parameter name
+   * @param name the parameter name (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
@@ -52,7 +70,7 @@ public interface HeadInterceptorBuilder {
   /**
    * Apply a callback to change the request URI when the proxy receives it.
    *
-   * @param mutator the operation that applied to the path
+   * @param mutator the operation that applied to the path (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
@@ -61,7 +79,7 @@ public interface HeadInterceptorBuilder {
   /**
    * Add a prefix to the URI.
    *
-   * @param prefix the prefix that need to be added
+   * @param prefix the prefix that need to be added (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
@@ -70,26 +88,34 @@ public interface HeadInterceptorBuilder {
   /**
    * Remove a prefix to the URI. Do nothing if it doesn't exist.
    *
-   * @param prefix the prefix that need to be removed
+   * @param prefix the prefix that need to be removed (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
   HeadInterceptorBuilder removingPathPrefix(String prefix);
 
   /**
-   * Apply callbacks to change the request and response headers when the proxy receives them.
+   * Apply callbacks to change the request headers when the proxy receives them.
    *
-   * @param requestHeadersMutator the operation to apply to the request headers
-   * @param responseHeadersUpdater the operation to apply to the response headers
+   * @param requestHeadersUpdater the operation to apply to the request headers (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder updatingHeaders(Handler<MultiMap> requestHeadersMutator, Handler<MultiMap> responseHeadersUpdater);
+  HeadInterceptorBuilder updatingRequestHeaders(Handler<MultiMap> requestHeadersUpdater);
+
+  /**
+   * Apply callbacks to change the response headers when the proxy receives them.
+   *
+   * @param responseHeadersUpdater the operation to apply to the response headers (can be null, but in this case nothing happens)
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  HeadInterceptorBuilder updatingResponseHeaders(Handler<MultiMap> responseHeadersUpdater);
 
   /**
    * Filter the request headers in the given set.
    *
-   * @param forbiddenRequestHeaders a set of the headers that need to be filtered
+   * @param forbiddenRequestHeaders a set of the headers that need to be filtered (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @GenIgnore(PERMITTED_TYPE)
@@ -99,21 +125,10 @@ public interface HeadInterceptorBuilder {
   /**
    * Filter the response headers in the given set.
    *
-   * @param forbiddenResponseHeaders a set of the headers that need to be filtered
+   * @param forbiddenResponseHeaders a set of the headers that need to be filtered (can be null, but in this case nothing happens)
    * @return a reference to this, so the API can be used fluently
    */
   @GenIgnore(PERMITTED_TYPE)
   @Fluent
   HeadInterceptorBuilder filteringResponseHeaders(Set<CharSequence> forbiddenResponseHeaders);
-
-  /**
-   * Filter the request and response headers in the given sets.
-   *
-   * @param forbiddenRequestHeaders a set of the request headers that need to be filtered
-   * @param forbiddenResponseHeaders a set of the response headers that need to be filtered
-   * @return a reference to this, so the API can be used fluently
-   */
-  @GenIgnore(PERMITTED_TYPE)
-  @Fluent
-  HeadInterceptorBuilder filteringHeaders(Set<CharSequence> forbiddenRequestHeaders, Set<CharSequence> forbiddenResponseHeaders);
 }

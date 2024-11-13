@@ -62,4 +62,19 @@ public class PathInterceptorTest extends ProxyTestBase {
       .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
   }
 
+  @Test
+  public void absentPrefixTest(TestContext ctx) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals(req.uri(), "/hello");
+      req.response().end("Hello");
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(HeadInterceptor.builder().removingPathPrefix("/prefix").build()));
+
+    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
+      .compose(HttpClientRequest::send)
+      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+  }
 }
