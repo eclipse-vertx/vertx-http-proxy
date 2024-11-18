@@ -147,9 +147,15 @@ You can change the control, e.g you can send a response immediately to the user-
 
 You can use the {@link io.vertx.httpproxy.interceptors.HeadInterceptor} to change HTTP request/response heads:
 
-- headers
 - request path
 - query params
+- request and response headers
+
+A {@link io.vertx.httpproxy.interceptors.HeadInterceptor} is created and configured with a {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder}.
+
+The builder methods can be invoked several times.
+Operations on the path will be invoked in the order of configuration.
+That goes for operations on query parameters, request headers and response headers.
 
 ===== Headers interception
 
