@@ -109,12 +109,12 @@ public class HttpProxyExamples {
   public void headerInterceptorFilter(HttpProxy proxy, Set<CharSequence> shouldRemove) {
     // remove a set of headers
     proxy.addInterceptor(
-      HeadersInterceptor.filterResponseHeaders(shouldRemove));
+      HeadInterceptor.builder().filteringResponseHeaders(shouldRemove).build());
   }
 
   public void queryInterceptorAdd(HttpProxy proxy, String key, String value) {
     proxy.addInterceptor(
-      QueryInterceptor.setQueryParam(key, value));
+      HeadInterceptor.builder().settingQueryParam(key, value).build());
   }
 
   public void bodyInterceptorJson(HttpProxy proxy) {
@@ -128,7 +128,7 @@ public class HttpProxyExamples {
 
   public void webSocketInterceptorPath(HttpProxy proxy) {
     proxy.addInterceptor(
-      WebSocketInterceptor.allow(PathInterceptor.addPrefix("/api"))
+      WebSocketInterceptor.allow(HeadInterceptor.builder().addingPathPrefix("/api").build())
     );
   }
 
