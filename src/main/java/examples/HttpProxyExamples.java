@@ -13,7 +13,9 @@ import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
-import io.vertx.httpproxy.interceptors.*;
+import io.vertx.httpproxy.interceptors.BodyInterceptor;
+import io.vertx.httpproxy.interceptors.BodyTransformer;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 
 import java.util.Set;
 
@@ -127,9 +129,10 @@ public class HttpProxyExamples {
   }
 
   public void webSocketInterceptorPath(HttpProxy proxy) {
-    proxy.addInterceptor(
-      WebSocketInterceptor.allow(HeadInterceptor.builder().addingPathPrefix("/api").build())
-    );
+    HeadInterceptor interceptor = HeadInterceptor.builder()
+      .addingPathPrefix("/api")
+      .build();
+    proxy.addInterceptor(interceptor, true);
   }
 
   public void immediateResponse(HttpProxy proxy) {
