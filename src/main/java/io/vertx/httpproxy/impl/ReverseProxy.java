@@ -33,7 +33,7 @@ public class ReverseProxy implements HttpProxy {
   private final HttpClient client;
   private final boolean supportWebSocket;
   private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
-  private final List<ProxyInterceptor> interceptors = new ArrayList<>();
+  private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
@@ -52,11 +52,10 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy addInterceptor(ProxyInterceptor interceptor) {
-    interceptors.add(interceptor);
+  public HttpProxy addInterceptor(ProxyInterceptor interceptor, boolean supportsWebSocketUpgrade) {
+    interceptors.add(new ProxyInterceptorEntry(Objects.requireNonNull(interceptor), supportsWebSocketUpgrade));
     return this;
   }
-
 
   @Override
   public void handle(HttpServerRequest request) {
@@ -71,7 +70,6 @@ public class ReverseProxy implements HttpProxy {
 
     boolean isWebSocket = supportWebSocket && request.canUpgradeToWebSocket();
     Proxy proxy = new Proxy(proxyRequest, isWebSocket);
-    proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
       .recover(throwable -> {
         log.trace("Error in sending the request", throwable);
@@ -103,12 +101,13 @@ public class ReverseProxy implements HttpProxy {
     private final ProxyRequest request;
     private ProxyResponse response;
     private final Map<String, Object> attachments = new HashMap<>();
-    private ListIterator<ProxyInterceptor> filters;
+    private final ListIterator<ProxyInterceptorEntry> filters;
     private final boolean isWebSocket;
 
     private Proxy(ProxyRequest request, boolean isWebSocket) {
       this.request = request;
       this.isWebSocket = isWebSocket;
+      this.filters = interceptors.listIterator();
     }
 
     @Override
@@ -135,11 +134,11 @@ public class ReverseProxy implements HttpProxy {
     @Override
     public Future<ProxyResponse> sendRequest() {
       if (filters.hasNext()) {
-        ProxyInterceptor next = filters.next();
-        if (isWebSocket && !next.allowApplyToWebSocket()) {
+        ProxyInterceptorEntry next = filters.next();
+        if (isWebSocket && !next.supportsWebSocketUpgrade) {
           return sendRequest();
         }
-        return next.handleProxyRequest(this);
+        return next.interceptor.handleProxyRequest(this);
       } else {
         if (isWebSocket) {
           HttpServerRequest proxiedRequest = request().proxiedRequest();
@@ -171,11 +170,11 @@ public class ReverseProxy implements HttpProxy {
     @Override
     public Future<Void> sendResponse() {
       if (filters.hasPrevious()) {
-        ProxyInterceptor filter = filters.previous();
-        if (isWebSocket && !filter.allowApplyToWebSocket()) {
+        ProxyInterceptorEntry previous = filters.previous();
+        if (isWebSocket && !previous.supportsWebSocketUpgrade) {
           return sendResponse();
         }
-        return filter.handleProxyResponse(this);
+        return previous.interceptor.handleProxyResponse(this);
       } else {
         if (isWebSocket) {
           HttpClientResponse proxiedResponse = response().proxiedResponse();
@@ -225,6 +224,17 @@ public class ReverseProxy implements HttpProxy {
       }
 
       return sendResponse();
+    }
+  }
+
+  private static class ProxyInterceptorEntry {
+
+    final ProxyInterceptor interceptor;
+    final boolean supportsWebSocketUpgrade;
+
+    ProxyInterceptorEntry(ProxyInterceptor interceptor, boolean supportsWebSocketUpgrade) {
+      this.interceptor = interceptor;
+      this.supportsWebSocketUpgrade = supportsWebSocketUpgrade;
     }
   }
 }
