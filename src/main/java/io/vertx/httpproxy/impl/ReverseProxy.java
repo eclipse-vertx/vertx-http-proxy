@@ -36,9 +36,10 @@ public class ReverseProxy implements HttpProxy {
   private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
+    addInterceptor(new ProxyTransform());
     CacheOptions cacheOptions = options.getCacheOptions();
     if (cacheOptions != null) {
-      Cache<String, Resource> cache = cacheOptions.newCache();
+      Cache cache = cacheOptions.newCache();
       addInterceptor(new CachingFilter(cache));
     }
     this.client = client;
