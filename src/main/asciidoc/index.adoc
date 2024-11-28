@@ -192,7 +192,7 @@ Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for oth
 
 By default, interceptors are not invoked during WebSocket upgrades.
 
-To make an interceptor available during the WebSocket handshake, use {@link io.vertx.httpproxy.HttpProxy#addInterceptor(io.vertx.httpproxy.ProxyInterceptor, boolean):
+To make an interceptor available during the WebSocket handshake, use {@link io.vertx.httpproxy.HttpProxy#addInterceptor(io.vertx.httpproxy.ProxyInterceptor, boolean)}:
 
 [source,java]
 ----
