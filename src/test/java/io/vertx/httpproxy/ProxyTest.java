@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -26,6 +26,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -101,6 +103,46 @@ public class ProxyTest extends ProxyTestBase {
       ).onSuccess(buff -> {
         latch.countDown();
       });
+  }
+
+  @Test
+  public void testFilterNullBodies(TestContext ctx) {
+    Async latch = ctx.async(3);
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.body().onComplete(ctx.asyncAssertSuccess(body -> {
+        ctx.assertEquals(0, body.length());
+        ctx.assertEquals("0", req.getHeader(CONTENT_LENGTH));
+        req.response().end("IGNORED_BACKEND_RESPONSE_BODY");
+      }));
+    });
+    startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
+      @Override
+      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+        context.request().setBody(null);
+        Future<ProxyResponse> fut = context.sendRequest();
+        fut.onComplete(ctx.asyncAssertSuccess(v -> latch.countDown()));
+        return fut;
+      }
+
+      @Override
+      public Future<Void> handleProxyResponse(ProxyContext context) {
+        context.response().setBody(null);
+        Future<Void> fut = context.sendResponse();
+        fut.onComplete(ctx.asyncAssertSuccess(v -> latch.countDown()));
+        return fut;
+      }
+    }));
+    HttpClient client = vertx.createHttpClient();
+    client
+      .request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(req -> req
+        .send("IGNORED_CLIENT_REQUEST_BODY")
+        .compose(resp -> resp.body().map(resp))
+      ).onComplete(ctx.asyncAssertSuccess(resp -> {
+        ctx.assertEquals(0, resp.body().result().length());
+        ctx.assertEquals("0", resp.getHeader(CONTENT_LENGTH));
+        latch.countDown();
+      }));
   }
 
   @Test

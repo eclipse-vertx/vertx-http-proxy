@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -30,6 +30,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
 
 class ProxiedResponse implements ProxyResponse {
 
@@ -215,9 +217,11 @@ class ProxiedResponse implements ProxyResponse {
       }
     });
 
-    //
     if (body == null) {
-      proxiedResponse.end();
+      if (response != null && response.headers().contains(CONTENT_LENGTH)) {
+        proxiedResponse.putHeader(CONTENT_LENGTH, "0");
+      }
+      proxiedResponse.end().onComplete(completionHandler);
       return;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -32,19 +32,27 @@ import io.vertx.httpproxy.ProxyResponse;
 import java.util.Map;
 import java.util.Objects;
 
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
+import static io.vertx.core.http.HttpHeaders.KEEP_ALIVE;
+import static io.vertx.core.http.HttpHeaders.PROXY_AUTHENTICATE;
+import static io.vertx.core.http.HttpHeaders.PROXY_AUTHORIZATION;
+import static io.vertx.core.http.HttpHeaders.TRANSFER_ENCODING;
+import static io.vertx.core.http.HttpHeaders.UPGRADE;
+
 public class ProxiedRequest implements ProxyRequest {
 
   private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
   private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
-    .add(HttpHeaders.CONNECTION, "whatever")
-    .add(HttpHeaders.KEEP_ALIVE, "whatever")
-    .add(HttpHeaders.PROXY_AUTHENTICATE, "whatever")
-    .add(HttpHeaders.PROXY_AUTHORIZATION, "whatever")
+    .add(CONNECTION, "whatever")
+    .add(KEEP_ALIVE, "whatever")
+    .add(PROXY_AUTHENTICATE, "whatever")
+    .add(PROXY_AUTHORIZATION, "whatever")
     .add("te", "whatever")
     .add("trailer", "whatever")
-    .add(HttpHeaders.TRANSFER_ENCODING, "whatever")
-    .add(HttpHeaders.UPGRADE, "whatever");
+    .add(TRANSFER_ENCODING, "whatever")
+    .add(UPGRADE, "whatever");
 
   final ContextInternal context;
   private HttpMethod method;
@@ -61,7 +69,7 @@ public class ProxiedRequest implements ProxyRequest {
 
     // Determine content length
     long contentLength = -1L;
-    String contentLengthHeader = proxiedRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
+    String contentLengthHeader = proxiedRequest.getHeader(CONTENT_LENGTH);
     if (contentLengthHeader != null) {
       try {
         contentLength = Long.parseLong(contentLengthHeader);
@@ -184,22 +192,29 @@ public class ProxiedRequest implements ProxyRequest {
       }
     }
 
-    long len = body.length();
-    if (len >= 0) {
-      request.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
-    } else {
-      Boolean isChunked = HttpUtils.isChunked(proxiedRequest.headers());
-      request.setChunked(len == -1 && Boolean.TRUE == isChunked);
-    }
-
-    Pipe<Buffer> pipe = body.stream().pipe();
-    pipe.endOnComplete(true);
-    pipe.endOnFailure(false);
-    pipe.to(request, ar -> {
-      if (ar.failed()) {
-        request.reset();
+    if (body == null) {
+      if (proxiedRequest.headers().contains(CONTENT_LENGTH)) {
+        request.putHeader(CONTENT_LENGTH, "0");
       }
-    });
+      request.end();
+    } else {
+      long len = body.length();
+      if (len >= 0) {
+        request.putHeader(CONTENT_LENGTH, Long.toString(len));
+      } else {
+        Boolean isChunked = HttpUtils.isChunked(proxiedRequest.headers());
+        request.setChunked(len == -1 && Boolean.TRUE == isChunked);
+      }
+
+      Pipe<Buffer> pipe = body.stream().pipe();
+      pipe.endOnComplete(true);
+      pipe.endOnFailure(false);
+      pipe.to(request, ar -> {
+        if (ar.failed()) {
+          request.reset();
+        }
+      });
+    }
   }
 
   private static boolean equals(HostAndPort hp1, HostAndPort hp2) {
