@@ -6,13 +6,13 @@ import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.httpproxy.*;
-import io.vertx.httpproxy.interceptors.PathInterceptor;
-import io.vertx.httpproxy.interceptors.WebSocketInterceptor;
+import io.vertx.httpproxy.ProxyContext;
+import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyOptions;
+import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
-
-
 
 public class WebSocketInterceptorTest extends ProxyTestBase {
 
@@ -53,7 +53,7 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
     startProxy(proxy -> {
       proxy.origin(backend);
       if (interceptor != null) {
-        proxy.addInterceptor(interceptor);
+        proxy.addInterceptor(interceptor, wsHit);
       };
     });
 
@@ -86,14 +86,14 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
   @Test
   public void testNotApplySocket(TestContext ctx) {
     // this interceptor only applies to regular HTTP traffic
-    ProxyInterceptor interceptor = PathInterceptor.changePath(x -> x + "/updated");
+    ProxyInterceptor interceptor = HeadInterceptor.builder().updatingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, false);
   }
 
   @Test
   public void testWithSocketInterceptor(TestContext ctx) {
     // this interceptor applies to both regular HTTP traffic and WebSocket handshake
-    ProxyInterceptor interceptor = WebSocketInterceptor.allow(PathInterceptor.changePath(x -> x + "/updated"));
+    ProxyInterceptor interceptor = HeadInterceptor.builder().updatingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, true);
   }
 
@@ -107,11 +107,6 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
           context.request().setURI(context.request().getURI() + "/updated");
         }
         return context.sendRequest();
-      }
-
-      @Override
-      public boolean allowApplyToWebSocket() {
-        return true;
       }
     };
     testWithInterceptor(ctx, interceptor, false, true);

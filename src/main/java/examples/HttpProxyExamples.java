@@ -13,7 +13,9 @@ import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
-import io.vertx.httpproxy.interceptors.*;
+import io.vertx.httpproxy.interceptors.BodyInterceptor;
+import io.vertx.httpproxy.interceptors.BodyTransformer;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 
 import java.util.Set;
 
@@ -109,12 +111,12 @@ public class HttpProxyExamples {
   public void headerInterceptorFilter(HttpProxy proxy, Set<CharSequence> shouldRemove) {
     // remove a set of headers
     proxy.addInterceptor(
-      HeadersInterceptor.filterResponseHeaders(shouldRemove));
+      HeadInterceptor.builder().filteringResponseHeaders(shouldRemove).build());
   }
 
   public void queryInterceptorAdd(HttpProxy proxy, String key, String value) {
     proxy.addInterceptor(
-      QueryInterceptor.setQueryParam(key, value));
+      HeadInterceptor.builder().settingQueryParam(key, value).build());
   }
 
   public void bodyInterceptorJson(HttpProxy proxy) {
@@ -127,9 +129,10 @@ public class HttpProxyExamples {
   }
 
   public void webSocketInterceptorPath(HttpProxy proxy) {
-    proxy.addInterceptor(
-      WebSocketInterceptor.allow(PathInterceptor.addPrefix("/api"))
-    );
+    HeadInterceptor interceptor = HeadInterceptor.builder()
+      .addingPathPrefix("/api")
+      .build();
+    proxy.addInterceptor(interceptor, true);
   }
 
   public void immediateResponse(HttpProxy proxy) {

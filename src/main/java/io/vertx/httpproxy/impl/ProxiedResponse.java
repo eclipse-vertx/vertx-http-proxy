@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -10,11 +10,8 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
@@ -30,6 +27,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
 
 class ProxiedResponse implements ProxyResponse {
 
@@ -214,8 +213,10 @@ class ProxiedResponse implements ProxyResponse {
       }
     });
 
-    //
     if (body == null) {
+      if (response != null && response.headers().contains(CONTENT_LENGTH)) {
+        proxiedResponse.putHeader(CONTENT_LENGTH, "0");
+      }
       return proxiedResponse.end();
     } else {
       long len = body.length();

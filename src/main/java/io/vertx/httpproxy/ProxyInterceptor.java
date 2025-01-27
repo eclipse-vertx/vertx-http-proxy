@@ -28,14 +28,4 @@ public interface ProxyInterceptor {
   default Future<Void> handleProxyResponse(ProxyContext context) {
     return context.sendResponse();
   }
-
-  /**
-   * Used to set whether to apply the interceptor to the WebSocket
-   * handshake packet. The default value is false.
-   *
-   * @return the boolean value
-   */
-  default boolean allowApplyToWebSocket() {
-    return false;
-  }
 }

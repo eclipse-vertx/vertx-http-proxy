@@ -28,13 +28,16 @@ import io.vertx.httpproxy.spi.cache.Cache;
 import java.util.*;
 import java.util.function.BiFunction;
 
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.UPGRADE;
+
 public class ReverseProxy implements HttpProxy {
 
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
   private final HttpClient client;
   private final boolean supportWebSocket;
   private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
-  private final List<ProxyInterceptor> interceptors = new ArrayList<>();
+  private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
@@ -63,11 +66,10 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy addInterceptor(ProxyInterceptor interceptor) {
-    interceptors.add(interceptor);
+  public HttpProxy addInterceptor(ProxyInterceptor interceptor, boolean supportsWebSocketUpgrade) {
+    interceptors.add(new ProxyInterceptorEntry(Objects.requireNonNull(interceptor), supportsWebSocketUpgrade));
     return this;
   }
-
 
   @Override
   public void handle(HttpServerRequest request) {
@@ -82,7 +84,6 @@ public class ReverseProxy implements HttpProxy {
 
     boolean isWebSocket = supportWebSocket && request.canUpgradeToWebSocket();
     Proxy proxy = new Proxy(proxyRequest, isWebSocket);
-    proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
       .recover(throwable -> {
         log.trace("Error in sending the request", throwable);
@@ -114,12 +115,13 @@ public class ReverseProxy implements HttpProxy {
     private final ProxyRequest request;
     private ProxyResponse response;
     private final Map<String, Object> attachments = new HashMap<>();
-    private ListIterator<ProxyInterceptor> filters;
+    private final ListIterator<ProxyInterceptorEntry> filters;
     private final boolean isWebSocket;
 
     private Proxy(ProxyRequest request, boolean isWebSocket) {
       this.request = request;
       this.isWebSocket = isWebSocket;
+      this.filters = interceptors.listIterator();
     }
 
     @Override
@@ -146,18 +148,22 @@ public class ReverseProxy implements HttpProxy {
     @Override
     public Future<ProxyResponse> sendRequest() {
       if (filters.hasNext()) {
-        ProxyInterceptor next = filters.next();
-        if (isWebSocket && !next.allowApplyToWebSocket()) {
+        ProxyInterceptorEntry next = filters.next();
+        if (isWebSocket && !next.supportsWebSocketUpgrade) {
           return sendRequest();
         }
-        return next.handleProxyRequest(this);
+        return next.interceptor.handleProxyRequest(this);
       } else {
         if (isWebSocket) {
           HttpServerRequest proxiedRequest = request().proxiedRequest();
           return resolveOrigin(proxiedRequest).compose(request -> {
             request.setMethod(request().getMethod());
             request.setURI(request().getURI());
-            request.headers().addAll(request().headers());
+            // Firefox is known to send an unexpected connection header value
+            // Connection=keep-alive, Upgrade
+            // It leads to a failure in websocket proxying
+            // So we make sure the standard value is sent to the backend
+            request.headers().addAll(request().headers()).set(CONNECTION, UPGRADE);
             Future<HttpClientResponse> responseFuture = request.connect();
             ReadStream<Buffer> readStream = request().getBody().stream();
             readStream.handler(request::write);
@@ -178,11 +184,11 @@ public class ReverseProxy implements HttpProxy {
     @Override
     public Future<Void> sendResponse() {
       if (filters.hasPrevious()) {
-        ProxyInterceptor filter = filters.previous();
-        if (isWebSocket && !filter.allowApplyToWebSocket()) {
+        ProxyInterceptorEntry previous = filters.previous();
+        if (isWebSocket && !previous.supportsWebSocketUpgrade) {
           return sendResponse();
         }
-        return filter.handleProxyResponse(this);
+        return previous.interceptor.handleProxyResponse(this);
       } else {
         if (isWebSocket) {
           HttpClientResponse proxiedResponse = response().proxiedResponse();
@@ -232,6 +238,17 @@ public class ReverseProxy implements HttpProxy {
       }
 
       return sendResponse();
+    }
+  }
+
+  private static class ProxyInterceptorEntry {
+
+    final ProxyInterceptor interceptor;
+    final boolean supportsWebSocketUpgrade;
+
+    ProxyInterceptorEntry(ProxyInterceptor interceptor, boolean supportsWebSocketUpgrade) {
+      this.interceptor = interceptor;
+      this.supportsWebSocketUpgrade = supportsWebSocketUpgrade;
     }
   }
 }

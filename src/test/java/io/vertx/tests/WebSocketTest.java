@@ -28,11 +28,13 @@ import org.junit.runner.RunWith;
 public class WebSocketTest extends ProxyTestBase {
 
   private WebSocketClient wsClient;
+  private HttpClient httpClient;
 
   @Override
   public void tearDown(TestContext context) {
     super.tearDown(context);
     wsClient = null;
+    httpClient = null;
   }
 
   public WebSocketTest() {
@@ -41,25 +43,25 @@ public class WebSocketTest extends ProxyTestBase {
 
   @Test
   public void testWebSocketV00(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V00);
+    testWebSocket(ctx, WebSocketVersion.V00);
   }
 
   @Test
   public void testWebSocketV07(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V07);
+    testWebSocket(ctx, WebSocketVersion.V07);
   }
 
   @Test
   public void testWebSocketV08(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V08);
+    testWebSocket(ctx, WebSocketVersion.V08);
   }
 
   @Test
   public void testWebSocketV13(TestContext ctx) {
-    testWebSocket(ctx, WebsocketVersion.V13);
+    testWebSocket(ctx, WebSocketVersion.V13);
   }
 
-  private void testWebSocket(TestContext ctx, WebsocketVersion version) {
+  private void testWebSocket(TestContext ctx, WebSocketVersion version) {
     Async async = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
@@ -120,6 +122,36 @@ public class WebSocketTest extends ProxyTestBase {
     wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
       ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
       async.complete();
+    }));
+  }
+
+  @Test
+  public void testWebSocketFirefox(TestContext ctx) {
+    Async async = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      Future<ServerWebSocket> fut = req.toWebSocket();
+      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        ws.closeHandler(v -> {
+          async.complete();
+        });
+      }));
+    });
+    startProxy(backend);
+    httpClient = vertx.createHttpClient();
+    RequestOptions options = new RequestOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws")
+      .putHeader("Origin", "http://localhost:8080")
+      .putHeader("Connection", "keep-alive, Upgrade")
+      .putHeader("Upgrade", "Websocket")
+      .putHeader("Sec-WebSocket-Version", "13")
+      .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
+    httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
+      clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(101, response.statusCode());
+        response.netSocket().close();
+      }));
     }));
   }
 }

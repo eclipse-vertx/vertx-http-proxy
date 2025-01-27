@@ -12,7 +12,7 @@
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-@ModuleGen(name = "vertx-http-proxy", groupPackage = "io.vertx", useFutures = true)
+@ModuleGen(name = "vertx-http-proxy", groupPackage = "io.vertx")
 package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.ModuleGen;

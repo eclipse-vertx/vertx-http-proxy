@@ -20,7 +20,7 @@
   <parent>
     <groupId>io.vertx</groupId>
     <artifactId>vertx5-parent</artifactId>
-    <version>4</version>
+    <version>9</version>
   </parent>
 
   <artifactId>vertx-http-proxy</artifactId>
@@ -36,7 +36,6 @@
 
   <properties>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
-    <jar.manifest>${project.basedir}/src/main/resources/META-INF/MANIFEST.MF</jar.manifest>
   </properties>
 
   <dependencyManagement>
