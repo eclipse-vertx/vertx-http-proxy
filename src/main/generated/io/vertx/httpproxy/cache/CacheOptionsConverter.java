@@ -19,6 +19,16 @@ public class CacheOptionsConverter {
             obj.setMaxSize(((Number)member.getValue()).intValue());
           }
           break;
+        case "name":
+          if (member.getValue() instanceof String) {
+            obj.setName((String)member.getValue());
+          }
+          break;
+        case "shared":
+          if (member.getValue() instanceof Boolean) {
+            obj.setShared((Boolean)member.getValue());
+          }
+          break;
       }
     }
   }
@@ -29,5 +39,9 @@ public class CacheOptionsConverter {
 
    static void toJson(CacheOptions obj, java.util.Map<String, Object> json) {
     json.put("maxSize", obj.getMaxSize());
+    if (obj.getName() != null) {
+      json.put("name", obj.getName());
+    }
+    json.put("shared", obj.isShared());
   }
 }
