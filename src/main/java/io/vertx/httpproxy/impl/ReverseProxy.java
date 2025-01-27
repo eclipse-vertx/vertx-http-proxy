@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -11,21 +11,36 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.*;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.internal.CloseFuture;
 import io.vertx.core.internal.VertxInternal;
-import io.vertx.core.internal.http.*;
+import io.vertx.core.internal.http.HttpClientInternal;
 import io.vertx.core.internal.logging.Logger;
 import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.streams.ReadStream;
-import io.vertx.httpproxy.*;
+import io.vertx.httpproxy.HttpProxy;
+import io.vertx.httpproxy.ProxyContext;
+import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyOptions;
+import io.vertx.httpproxy.ProxyRequest;
+import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
@@ -50,7 +65,7 @@ public class ReverseProxy implements HttpProxy {
   }
 
   public Cache newCache(CacheOptions options, Vertx vertx) {
-    if (options.getShared()) {
+    if (options.isShared()) {
       CloseFuture closeFuture = new CloseFuture();
       return ((VertxInternal) vertx).createSharedResource("__vertx.shared.proxyCache", options.getName(), closeFuture, (cf_) -> {
         return new CacheImpl(options);

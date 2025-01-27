@@ -42,6 +42,6 @@ public class CacheOptionsConverter {
     if (obj.getName() != null) {
       json.put("name", obj.getName());
     }
-    json.put("shared", obj.getShared());
+    json.put("shared", obj.isShared());
   }
 }
