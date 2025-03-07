@@ -285,7 +285,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    client.request(GET, 8081, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         resp.handler(buff -> {
           resp.request().connection().close();
