@@ -3,7 +3,8 @@ module io.vertx.httpproxy {
   requires io.vertx.core.logging;
   requires static io.vertx.codegen.api;
   requires static io.vertx.codegen.json;
-  requires static vertx.docgen;
+  requires io.netty.codec.http;
+  requires static io.vertx.docgen;
   exports io.vertx.httpproxy;
   exports io.vertx.httpproxy.cache;
   exports io.vertx.httpproxy.interceptors;

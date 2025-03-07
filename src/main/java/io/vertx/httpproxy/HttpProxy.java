@@ -102,12 +102,29 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
 
   /**
    * Add an interceptor to the interceptor chain.
+   * <p>
+   * Interceptors are invoked in order of configuration.
+   * When added with this method, it is considered the interceptor doesn't support WebSocket upgrades.
    *
-   * @param interceptor
+   * @param interceptor the {@link ProxyInterceptor} to add
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HttpProxy addInterceptor(ProxyInterceptor interceptor);
+  default HttpProxy addInterceptor(ProxyInterceptor interceptor) {
+    return addInterceptor(interceptor, false);
+  }
+
+  /**
+   * Add an interceptor to the interceptor chain.
+   * <p>
+   * Interceptors are invoked in order of configuration.
+   *
+   * @param interceptor the {@link ProxyInterceptor} to add
+   * @param supportsWebSocketUpgrade whether the interceptor supports WebSocket upgrades
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  HttpProxy addInterceptor(ProxyInterceptor interceptor, boolean supportsWebSocketUpgrade);
 
   /**
    * Handle the <i><b>outbound</b></i> {@code HttpServerRequest}.

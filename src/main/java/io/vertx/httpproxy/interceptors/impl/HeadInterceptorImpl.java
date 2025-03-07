@@ -17,28 +17,53 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.httpproxy.ProxyContext;
-import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
-public class QueryInterceptorImpl implements ProxyInterceptor {
-  private final Handler<MultiMap> changeQueryParams;
+class HeadInterceptorImpl implements HeadInterceptor {
+
+  private final List<Handler<MultiMap>> queryUpdaters;
+  private final List<Function<String, String>> pathUpdaters;
+  private final List<Handler<MultiMap>> requestHeadersUpdaters;
+  private final List<Handler<MultiMap>> responseHeadersUpdaters;
+
+  HeadInterceptorImpl(List<Handler<MultiMap>> queryUpdaters, List<Function<String, String>> pathUpdaters, List<Handler<MultiMap>> requestHeadersUpdaters, List<Handler<MultiMap>> responseHeadersUpdaters) {
+    this.queryUpdaters = Objects.requireNonNull(queryUpdaters);
+    this.pathUpdaters = Objects.requireNonNull(pathUpdaters);
+    this.requestHeadersUpdaters = Objects.requireNonNull(requestHeadersUpdaters);
+    this.responseHeadersUpdaters = Objects.requireNonNull(responseHeadersUpdaters);
+  }
 
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+    queryHandleProxyRequest(context);
+    pathHandleProxyRequest(context);
+    headersHandleProxyRequest(context);
+    return context.sendRequest();
+  }
+
+  @Override
+  public Future<Void> handleProxyResponse(ProxyContext context) {
+    headersHandleProxyResponse(context);
+    return context.sendResponse();
+  }
+
+  private void queryHandleProxyRequest(ProxyContext context) {
     String rawUri = context.request().getURI();
     MultiMap params = queryParams(rawUri);
     String cleanedUri = cleanedUri(rawUri);
 
-    changeQueryParams.handle(params);
+    for (Handler<MultiMap> queryUpdater : queryUpdaters) {
+      queryUpdater.handle(params);
+    }
+
     String newUri = buildUri(cleanedUri, params);
     context.request().setURI(newUri);
-    return context.sendRequest();
-  }
-
-  public QueryInterceptorImpl(Handler<MultiMap> changeQueryParams) {
-    this.changeQueryParams = Objects.requireNonNull(changeQueryParams);
   }
 
   // ref: https://github.com/vert-x3/vertx-web/blob/master/vertx-web-client/src/main/java/io/vertx/ext/web/client/impl/HttpRequestImpl.java
@@ -75,5 +100,26 @@ public class QueryInterceptorImpl implements ProxyInterceptor {
     });
     uri = encoder.toString();
     return uri;
+  }
+
+  private void pathHandleProxyRequest(ProxyContext context) {
+    ProxyRequest proxyRequest = context.request();
+    for (Function<String, String> pathUpdater : pathUpdaters) {
+      proxyRequest.setURI(pathUpdater.apply(proxyRequest.getURI()));
+    }
+  }
+
+  private void headersHandleProxyRequest(ProxyContext context) {
+    ProxyRequest request = context.request();
+    for (Handler<MultiMap> requestHeadersUpdater : requestHeadersUpdaters) {
+      requestHeadersUpdater.handle(request.headers());
+    }
+  }
+
+  private void headersHandleProxyResponse(ProxyContext context) {
+    ProxyResponse response = context.response();
+    for (Handler<MultiMap> responseHeadersUpdater : responseHeadersUpdaters) {
+      responseHeadersUpdater.handle(response.headers());
+    }
   }
 }

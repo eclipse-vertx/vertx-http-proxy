@@ -17,7 +17,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.interceptors.PathInterceptor;
+import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ public class PathInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(PathInterceptor.addPrefix("/prefix")));
+      .addInterceptor(HeadInterceptor.builder().addingPathPrefix("/prefix").build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)
@@ -55,11 +55,26 @@ public class PathInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(PathInterceptor.removePrefix("/prefix")));
+      .addInterceptor(HeadInterceptor.builder().removingPathPrefix("/prefix").build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/prefix/hello")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
   }
 
+  @Test
+  public void absentPrefixTest(TestContext ctx) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals(req.uri(), "/hello");
+      req.response().end("Hello");
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(HeadInterceptor.builder().removingPathPrefix("/prefix").build()));
+
+    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
+      .compose(HttpClientRequest::send)
+      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+  }
 }

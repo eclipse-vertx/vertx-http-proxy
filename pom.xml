@@ -20,7 +20,7 @@
   <parent>
     <groupId>io.vertx</groupId>
     <artifactId>vertx5-parent</artifactId>
-    <version>3</version>
+    <version>9</version>
   </parent>
 
   <artifactId>vertx-http-proxy</artifactId>
@@ -36,7 +36,6 @@
 
   <properties>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
-    <jar.manifest>${project.basedir}/src/main/resources/META-INF/MANIFEST.MF</jar.manifest>
   </properties>
 
   <dependencyManagement>
@@ -59,13 +58,18 @@
 
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-docgen</artifactId>
-      <scope>provided</scope>
+      <artifactId>vertx-codegen-api</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-codegen</artifactId>
-      <scope>provided</scope>
+      <artifactId>vertx-codegen-json</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-docgen-api</artifactId>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -96,20 +100,17 @@
           <executions>
             <execution>
               <id>default-compile</id>
-              <phase>compile</phase>
               <configuration>
-                <annotationProcessors>
-                  <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
-                  <annotationProcessor>io.vertx.docgen.JavaDocGenProcessor</annotationProcessor>
-                </annotationProcessors>
                 <annotationProcessorPaths>
                   <annotationProcessorPath>
                     <groupId>io.vertx</groupId>
                     <artifactId>vertx-codegen</artifactId>
+                    <classifier>processor</classifier>
                   </annotationProcessorPath>
                   <annotationProcessorPath>
                     <groupId>io.vertx</groupId>
-                    <artifactId>vertx-docgen</artifactId>
+                    <artifactId>vertx-docgen-processor</artifactId>
+                    <classifier>processor</classifier>
                   </annotationProcessorPath>
                 </annotationProcessorPaths>
               </configuration>

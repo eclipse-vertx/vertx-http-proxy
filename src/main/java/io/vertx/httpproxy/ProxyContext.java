@@ -30,7 +30,12 @@ public interface ProxyContext {
   Future<Void> sendResponse();
 
   /**
-   * Attach a payload to the context
+   * @return if this request or response is the handshake of WebSocket
+   */
+  boolean isWebSocket();
+
+  /**
+   * Attach a payload to the context.
    *
    * @param name the payload name
    * @param value any payload value
@@ -38,7 +43,7 @@ public interface ProxyContext {
   void set(String name, Object value);
 
   /**
-   * Get a payload attached to this context
+   * Get a payload attached to this context.
    *
    * @param name the payload name
    * @param type the expected payload type

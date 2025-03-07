@@ -12,6 +12,7 @@
 package io.vertx.tests.interceptors;
 
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
@@ -24,52 +25,42 @@ import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-/**
- * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
- */
-public class QueryInterceptorTest extends ProxyTestBase {
+public class HeadInterceptorTest extends ProxyTestBase {
 
-  public QueryInterceptorTest(ProxyOptions options) {
+  public HeadInterceptorTest(ProxyOptions options) {
     super(options);
   }
 
   @Test
-  public void addParamTest(TestContext ctx) {
+  public void testCombined(TestContext ctx) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals(req.path(), "/prefix/hello");
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
       ctx.assertEquals(parameters.get("k1").get(0), "v1");
       ctx.assertEquals(parameters.get("k2").get(0), "v2");
+      MultiMap headers = req.headers();
+      ctx.assertEquals(headers.get("k1"), "v2");
+      ctx.assertEquals(headers.get("k2"), null);
       req.response().end("Hello");
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadInterceptor.builder().settingQueryParam("k1", "v1").build()));
+      .addInterceptor(HeadInterceptor.builder()
+        .settingQueryParam("k1", "v1")
+        .addingPathPrefix("/prefix")
+        .filteringRequestHeaders(Set.of("k2"))
+        .updatingRequestHeaders(headers -> {
+          ctx.assertNull(headers.get("k2"));
+          headers.set("k1", "v2");
+        })
+        .build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello/world?k2=v2")
+    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello?k2=v2")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
   }
-
-  @Test
-  public void removeParamTest(TestContext ctx) {
-    Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
-      Map<String, List<String>> parameters = decoder.parameters();
-      ctx.assertEquals(parameters.get("k1").get(0), "v1");
-      ctx.assertTrue(parameters.get("k2") == null);
-      req.response().end("Hello");
-    });
-
-    startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadInterceptor.builder().removingQueryParam("k2").build()));
-
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello/world?k1=v1&k2=v2")
-      .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
-  }
-
 }

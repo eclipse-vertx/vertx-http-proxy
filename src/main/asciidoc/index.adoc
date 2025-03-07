@@ -141,27 +141,41 @@ You can change the control, e.g you can send a response immediately to the user-
 {@link examples.HttpProxyExamples#immediateResponse}
 ----
 
-==== Header interceptor
+==== Head interceptor
 
-You can apply header interceptors to change headers from the request and response with common operations:
+You can use the {@link io.vertx.httpproxy.interceptors.HeadInterceptor} to change HTTP request/response heads:
+
+- request path
+- query params
+- request and response headers
+
+A {@link io.vertx.httpproxy.interceptors.HeadInterceptor} is created and configured with a {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder}.
+
+The builder methods can be invoked several times.
+Operations on the path will be invoked in the order of configuration.
+That goes for operations on query parameters, request headers and response headers.
+
+===== Headers interception
+
+You can apply the interceptor to change headers from the request and response with common operations:
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#headerInterceptorFilter}
 ----
 
-Check out the {@link io.vertx.httpproxy.interceptors.HeadersInterceptor} class for details about the available methods.
+Check out {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder} for details about the available methods.
 
-==== Query interceptor
+===== Query params interception
 
-You can use query interceptors to update or remove the query parameters:
+You can apply the interceptor to update or remove query parameters:
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#queryInterceptorAdd}
 ----
 
-You can also refer to {@link io.vertx.httpproxy.interceptors.QueryInterceptor} for more information.
+You can also refer to {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder} for more information.
 
 ==== Body interceptor
 
@@ -173,4 +187,15 @@ You can use body interceptor to create body transformations for common data type
 ----
 
 Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for other supported transformations.
+
+==== Interception and WebSocket upgrades
+
+By default, interceptors are not invoked during WebSocket upgrades.
+
+To make an interceptor available during the WebSocket handshake, use {@link io.vertx.httpproxy.HttpProxy#addInterceptor(io.vertx.httpproxy.ProxyInterceptor, boolean)}:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#webSocketInterceptorPath}
+----
 

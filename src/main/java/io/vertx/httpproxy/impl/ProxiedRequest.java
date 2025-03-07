@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -10,13 +10,16 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.*;
+import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.*;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpVersion;
 import io.vertx.core.internal.ContextInternal;
 import io.vertx.core.internal.http.HttpServerRequestInternal;
-import io.vertx.core.internal.logging.Logger;
-import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
@@ -26,20 +29,27 @@ import io.vertx.httpproxy.ProxyResponse;
 import java.util.Map;
 import java.util.Objects;
 
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
+import static io.vertx.core.http.HttpHeaders.KEEP_ALIVE;
+import static io.vertx.core.http.HttpHeaders.PROXY_AUTHENTICATE;
+import static io.vertx.core.http.HttpHeaders.PROXY_AUTHORIZATION;
+import static io.vertx.core.http.HttpHeaders.TRANSFER_ENCODING;
+import static io.vertx.core.http.HttpHeaders.UPGRADE;
+
 public class ProxiedRequest implements ProxyRequest {
-  private final static Logger log = LoggerFactory.getLogger(ProxiedRequest.class);
 
   private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
   private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
-    .add(HttpHeaders.CONNECTION, "whatever")
-    .add(HttpHeaders.KEEP_ALIVE, "whatever")
-    .add(HttpHeaders.PROXY_AUTHENTICATE, "whatever")
-    .add(HttpHeaders.PROXY_AUTHORIZATION, "whatever")
+    .add(CONNECTION, "whatever")
+    .add(KEEP_ALIVE, "whatever")
+    .add(PROXY_AUTHENTICATE, "whatever")
+    .add(PROXY_AUTHORIZATION, "whatever")
     .add("te", "whatever")
     .add("trailer", "whatever")
-    .add(HttpHeaders.TRANSFER_ENCODING, "whatever")
-    .add(HttpHeaders.UPGRADE, "whatever");
+    .add(TRANSFER_ENCODING, "whatever")
+    .add(UPGRADE, "whatever");
 
   final ContextInternal context;
   private HttpMethod method;
@@ -56,7 +66,7 @@ public class ProxiedRequest implements ProxyRequest {
 
     // Determine content length
     long contentLength = -1L;
-    String contentLengthHeader = proxiedRequest.getHeader(HttpHeaders.CONTENT_LENGTH);
+    String contentLengthHeader = proxiedRequest.getHeader(CONTENT_LENGTH);
     if (contentLengthHeader != null) {
       try {
         contentLength = Long.parseLong(contentLengthHeader);
@@ -149,21 +159,7 @@ public class ProxiedRequest implements ProxyRequest {
     return new ProxiedResponse(this, proxiedRequest.response());
   }
 
-  void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
-    proxiedRequest.connection().closeHandler(unused -> {
-      if (log.isTraceEnabled()) {
-        log.trace("Frontend connection closed,uri: " + proxiedRequest.uri());
-      }
-
-      request.reset();
-      proxiedRequest.response().reset();
-    });
-
-    request.response().<ProxyResponse>map(r -> {
-      r.pause(); // Pause it
-      return new ProxiedResponse(this, proxiedRequest.response(), r);
-    }).onComplete(responseHandler);
-
+  Future<ProxyResponse> sendRequest() {
 
     request.setMethod(method);
     request.setURI(uri);
@@ -187,21 +183,33 @@ public class ProxiedRequest implements ProxyRequest {
       }
     }
 
-    long len = body.length();
-    if (len >= 0) {
-      request.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
+    if (body == null) {
+      if (proxiedRequest.headers().contains(CONTENT_LENGTH)) {
+        request.putHeader(CONTENT_LENGTH, "0");
+      }
+      request.end();
     } else {
-      Boolean isChunked = HttpUtils.isChunked(proxiedRequest.headers());
-      request.setChunked(len == -1 && Boolean.TRUE == isChunked);
+      long len = body.length();
+      if (len >= 0) {
+        request.putHeader(CONTENT_LENGTH, Long.toString(len));
+      } else {
+        Boolean isChunked = HttpUtils.isChunked(proxiedRequest.headers());
+        request.setChunked(len == -1 && Boolean.TRUE == isChunked);
+      }
+
+      Pipe<Buffer> pipe = body.stream().pipe();
+      pipe.endOnComplete(true);
+      pipe.endOnFailure(false);
+      pipe.to(request).onComplete(ar -> {
+        if (ar.failed()) {
+          request.reset();
+        }
+      });
     }
 
-    Pipe<Buffer> pipe = body.stream().pipe();
-    pipe.endOnComplete(true);
-    pipe.endOnFailure(false);
-    pipe.to(request).onComplete(ar -> {
-      if (ar.failed()) {
-        request.reset();
-      }
+    return request.response().map(r -> {
+      r.pause(); // Pause it
+      return new ProxiedResponse(this, proxiedRequest.response(), r);
     });
   }
 
@@ -225,9 +233,7 @@ public class ProxiedRequest implements ProxyRequest {
 
   @Override
   public Future<ProxyResponse> send(HttpClientRequest request) {
-    Promise<ProxyResponse> promise = context.promise();
     this.request = request;
-    sendRequest(promise);
-    return promise.future();
+    return sendRequest();
   }
 }
