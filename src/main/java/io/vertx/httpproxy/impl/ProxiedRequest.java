@@ -160,7 +160,8 @@ public class ProxiedRequest implements ProxyRequest {
   }
 
   Future<ProxyResponse> sendRequest() {
-
+    proxiedRequest.response().exceptionHandler(throwable -> request.reset(0L, throwable));
+    
     request.setMethod(method);
     request.setURI(uri);
 
