@@ -10,17 +10,9 @@
  */
 package io.vertx.httpproxy.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Promise;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpVersion;
+import io.vertx.core.http.*;
 import io.vertx.core.http.impl.HttpServerRequestInternal;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.net.HostAndPort;
@@ -32,13 +24,7 @@ import io.vertx.httpproxy.ProxyResponse;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.vertx.core.http.HttpHeaders.CONNECTION;
-import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
-import static io.vertx.core.http.HttpHeaders.KEEP_ALIVE;
-import static io.vertx.core.http.HttpHeaders.PROXY_AUTHENTICATE;
-import static io.vertx.core.http.HttpHeaders.PROXY_AUTHORIZATION;
-import static io.vertx.core.http.HttpHeaders.TRANSFER_ENCODING;
-import static io.vertx.core.http.HttpHeaders.UPGRADE;
+import static io.vertx.core.http.HttpHeaders.*;
 
 public class ProxiedRequest implements ProxyRequest {
 
@@ -163,6 +149,7 @@ public class ProxiedRequest implements ProxyRequest {
   }
 
   void sendRequest(Handler<AsyncResult<ProxyResponse>> responseHandler) {
+    proxiedRequest.response().exceptionHandler(throwable -> request.reset(0L, throwable));
 
     request.response().<ProxyResponse>map(r -> {
       r.pause(); // Pause it
