@@ -198,4 +198,3 @@ To make an interceptor available during the WebSocket handshake, use {@link io.v
 ----
 {@link examples.HttpProxyExamples#webSocketInterceptorPath}
 ----
-

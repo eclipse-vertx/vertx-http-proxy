@@ -48,3 +48,4 @@ public class WebSocketCacheTest extends ProxyTestBase {
     latch.awaitSuccess(20_000);
   }
 }
+
