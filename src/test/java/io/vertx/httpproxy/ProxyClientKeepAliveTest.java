@@ -66,7 +66,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   public void testGet(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals("localhost:8080", req.host());
+      ctx.assertEquals("localhost", req.authority().host());
+      ctx.assertEquals(8081, req.authority().port());
       req.response().end("Hello World");
     });
     startProxy(backend);
@@ -746,8 +747,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   private void testAuthority(TestContext ctx, HostAndPort requestAuthority) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals(requestAuthority.host(), req.authority().host());
-      ctx.assertEquals(requestAuthority.port(), req.authority().port());
+      ctx.assertEquals("localhost", req.authority().host());
+      ctx.assertEquals(8081, req.authority().port());
       ctx.assertEquals(null, req.getHeader("x-forwarded-host"));
       req.response().end("Hello World");
     });
@@ -786,7 +787,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   private void testAuthorityOverride(TestContext ctx, HostAndPort authority, String expectedAuthority, String expectedForwardedHost) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals(expectedAuthority, req.host());
+      ctx.assertEquals(expectedAuthority, req.authority().toString());
       ctx.assertEquals(expectedForwardedHost, req.getHeader("x-forwarded-host"));
       req.response().end("Hello World");
     });
@@ -796,8 +797,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         @Override
         public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
           ProxyRequest request = context.request();
-          ctx.assertEquals("localhost", request.getAuthority().host());
-          ctx.assertEquals(8080, request.getAuthority().port());
+          ctx.assertEquals("localhost", request.proxiedRequest().authority().host());
+          ctx.assertEquals(8080, request.proxiedRequest().authority().port());
           request.setAuthority(authority);
           return ProxyInterceptor.super.handleProxyRequest(context);
         }

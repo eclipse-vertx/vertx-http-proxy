@@ -72,7 +72,7 @@ public class ProxiedRequest implements ProxyRequest {
     this.absoluteURI = proxiedRequest.absoluteURI();
     this.proxiedRequest = proxiedRequest;
     this.context = (ContextInternal) ((HttpServerRequestInternal) proxiedRequest).context();
-    this.authority = proxiedRequest.authority();
+    this.authority = null; // null is used as a signal to indicate an unchanged authority
   }
 
   @Override
@@ -164,7 +164,7 @@ public class ProxiedRequest implements ProxyRequest {
     for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
-      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equalsIgnoreCase("host")) {
+      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equalsIgnoreCase(HttpHeaders.HOST.toString())) {
         request.headers().add(name, value);
       }
     }
