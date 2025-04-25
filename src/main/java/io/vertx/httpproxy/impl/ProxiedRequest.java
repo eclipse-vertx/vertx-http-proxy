@@ -105,7 +105,7 @@ public class ProxiedRequest implements ProxyRequest {
   @Override
   public ProxyRequest setAuthority(HostAndPort authority) {
     Objects.requireNonNull(authority);
-    this.authority= authority;
+    this.authority = authority;
     return this;
   }
 
@@ -155,7 +155,6 @@ public class ProxiedRequest implements ProxyRequest {
       r.pause(); // Pause it
       return new ProxiedResponse(this, proxiedRequest.response(), r);
     }).onComplete(responseHandler);
-
 
     request.setMethod(method);
     request.setURI(uri);
