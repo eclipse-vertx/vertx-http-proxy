@@ -116,7 +116,7 @@ public class ProxiedRequest implements ProxyRequest {
   @Override
   public ProxyRequest setAuthority(HostAndPort authority) {
     Objects.requireNonNull(authority);
-    this.authority= authority;
+    this.authority = authority;
     return this;
   }
 
@@ -161,7 +161,7 @@ public class ProxiedRequest implements ProxyRequest {
 
   Future<ProxyResponse> sendRequest() {
     proxiedRequest.response().exceptionHandler(throwable -> request.reset(0L, throwable));
-    
+
     request.setMethod(method);
     request.setURI(uri);
 

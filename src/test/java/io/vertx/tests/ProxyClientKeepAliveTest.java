@@ -390,7 +390,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     startProxy(backend);
     client = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
     StringBuilder sb = new StringBuilder();
-    for (int i = 0;i < num;i++) {
+    for (int i = 0; i < num; i++) {
       sb.append("chunk-").append(i);
     }
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
@@ -424,7 +424,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       StringBuilder sb = new StringBuilder();
-      for (int i = 0;i < num;i++) {
+      for (int i = 0; i < num; i++) {
         sb.append("chunk-").append(i);
       }
       ctx.assertEquals("chunked", req.getHeader("transfer-encoding"));
@@ -708,8 +708,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   private StringBuilder randomAlphaString(int len) {
     Random random = new Random();
     StringBuilder uri = new StringBuilder();
-    for (int i = 0;i < len;i++) {
-      uri.append((char)('A' + random.nextInt(26)));
+    for (int i = 0; i < len; i++) {
+      uri.append((char) ('A' + random.nextInt(26)));
     }
     return uri;
   }

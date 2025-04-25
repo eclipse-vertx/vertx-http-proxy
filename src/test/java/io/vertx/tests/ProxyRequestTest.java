@@ -649,8 +649,8 @@ public class ProxyRequestTest extends ProxyTestBase {
 
   static {
     byte[] bytes = new byte[1024];
-    for (int i = 0;i < 1024;i++) {
-      bytes[i] = (byte)('A' + (i % 26));
+    for (int i = 0; i < 1024; i++) {
+      bytes[i] = (byte) ('A' + (i % 26));
     }
     CHUNK = Buffer.buffer(bytes);
   }
@@ -669,8 +669,8 @@ public class ProxyRequestTest extends ProxyTestBase {
       stream.handler(buff -> {
         if (dataHandler != null) {
           byte[] bytes = new byte[buff.length()];
-          for (int i = 0;i < bytes.length;i++) {
-            bytes[i] = (byte)(('a' - 'A') + buff.getByte(i));
+          for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (('a' - 'A') + buff.getByte(i));
           }
           expected.appendBytes(bytes);
           dataHandler.handle(Buffer.buffer(bytes));
