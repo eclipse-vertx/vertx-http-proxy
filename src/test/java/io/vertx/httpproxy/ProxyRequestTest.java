@@ -448,7 +448,7 @@ public class ProxyRequestTest extends ProxyTestBase {
   @Test
   public void testUpdateRequestHeaders(TestContext ctx) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertNotEquals("example.org", req.getHeader("Host"));
+      ctx.assertNotEquals("example.org", req.getHeader(HttpHeaders.HOST));
       ctx.assertNull(req.getHeader("header"));
       ctx.assertEquals("proxy_header_value", req.getHeader("proxy_header"));
       req.response().putHeader("header", "header_value").end();
@@ -457,7 +457,6 @@ public class ProxyRequestTest extends ProxyTestBase {
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       MultiMap clientHeaders = proxyReq.headers();
-      clientHeaders.add("Host", "example.org");
       clientHeaders.add("proxy_header", "proxy_header_value");
       ctx.assertEquals("header_value", clientHeaders.get("header"));
       clientHeaders.remove("header");
@@ -476,6 +475,7 @@ public class ProxyRequestTest extends ProxyTestBase {
         .compose(req ->
       req
           .putHeader("header", "header_value")
+          .putHeader(HttpHeaders.HOST, "example.org")
           .send()
           .compose(resp -> {
             ctx.assertEquals("proxy_header_value", resp.getHeader("proxy_header"));
@@ -646,8 +646,8 @@ public class ProxyRequestTest extends ProxyTestBase {
 
   static {
     byte[] bytes = new byte[1024];
-    for (int i = 0;i < 1024;i++) {
-      bytes[i] = (byte)('A' + (i % 26));
+    for (int i = 0; i < 1024; i++) {
+      bytes[i] = (byte) ('A' + (i % 26));
     }
     CHUNK = Buffer.buffer(bytes);
   }
@@ -666,8 +666,8 @@ public class ProxyRequestTest extends ProxyTestBase {
       stream.handler(buff -> {
         if (dataHandler != null) {
           byte[] bytes = new byte[buff.length()];
-          for (int i = 0;i < bytes.length;i++) {
-            bytes[i] = (byte)(('a' - 'A') + buff.getByte(i));
+          for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (('a' - 'A') + buff.getByte(i));
           }
           expected.appendBytes(bytes);
           dataHandler.handle(Buffer.buffer(bytes));
