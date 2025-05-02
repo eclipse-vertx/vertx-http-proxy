@@ -74,7 +74,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   public void testGet(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals("localhost:8080", req.authority().toString());
+      ctx.assertEquals("localhost:8081", req.authority().toString());
       req.response().end("Hello World");
     });
     startProxy(backend);
@@ -390,7 +390,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     startProxy(backend);
     client = vertx.createHttpClient(new HttpClientOptions().setProtocolVersion(version));
     StringBuilder sb = new StringBuilder();
-    for (int i = 0;i < num;i++) {
+    for (int i = 0; i < num; i++) {
       sb.append("chunk-").append(i);
     }
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
@@ -424,7 +424,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       StringBuilder sb = new StringBuilder();
-      for (int i = 0;i < num;i++) {
+      for (int i = 0; i < num; i++) {
         sb.append("chunk-").append(i);
       }
       ctx.assertEquals("chunked", req.getHeader("transfer-encoding"));
@@ -708,8 +708,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   private StringBuilder randomAlphaString(int len) {
     Random random = new Random();
     StringBuilder uri = new StringBuilder();
-    for (int i = 0;i < len;i++) {
-      uri.append((char)('A' + random.nextInt(26)));
+    for (int i = 0; i < len; i++) {
+      uri.append((char) ('A' + random.nextInt(26)));
     }
     return uri;
   }
@@ -754,8 +754,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   private void testAuthority(TestContext ctx, HostAndPort requestAuthority) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals(requestAuthority.host(), req.authority().host());
-      ctx.assertEquals(requestAuthority.port(), req.authority().port());
+      ctx.assertEquals("localhost", req.authority().host());
+      ctx.assertEquals(8081, req.authority().port());
       ctx.assertEquals(null, req.getHeader("x-forwarded-host"));
       req.response().end("Hello World");
     });
@@ -804,8 +804,8 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
         @Override
         public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
           ProxyRequest request = context.request();
-          ctx.assertEquals("localhost", request.getAuthority().host());
-          ctx.assertEquals(8080, request.getAuthority().port());
+          ctx.assertEquals("localhost", request.proxiedRequest().authority().host());
+          ctx.assertEquals(8080, request.proxiedRequest().authority().port());
           request.setAuthority(authority);
           return ProxyInterceptor.super.handleProxyRequest(context);
         }
