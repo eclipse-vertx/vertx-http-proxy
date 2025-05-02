@@ -29,7 +29,6 @@
   <name>Vert.x Http Proxy</name>
 
   <properties>
-    <stack.version>4.5.15-SNAPSHOT</stack.version>
     <fatjar.dir>${project.build.directory}</fatjar.dir>
     <doc.skip>false</doc.skip>
     <jar.manifest>${project.basedir}/src/main/resources/META-INF/MANIFEST.MF</jar.manifest>
@@ -40,7 +39,7 @@
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-dependencies</artifactId>
-        <version>${stack.version}</version>
+        <version>${project.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
