@@ -39,6 +39,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
@@ -771,5 +774,39 @@ public class ProxyRequestTest extends ProxyTestBase {
         });
       }));
     });
+  }
+
+  @Test
+  public void testInvalidContentType(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req
+        .response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, "invalid response content type").end();
+    });
+    backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
+    startHttpServer(ctx, serverOptions, req -> {
+      ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
+      ctx.assertEquals("invalid request content type", proxyReq.headers().get(HttpHeaders.CONTENT_TYPE));
+      ctx.assertEquals("invalid request content type", proxyReq.getBody().mediaType());
+      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
+        proxyReq
+          .send(clientReq)
+          .onComplete(ctx.asyncAssertSuccess(proxyResp -> {
+            ctx.assertEquals("invalid response content type", proxyResp.headers().get(HttpHeaders.CONTENT_TYPE));
+            ctx.assertEquals("invalid response content type", proxyResp.getBody().mediaType());
+            proxyResp.send();
+        }));
+      }));
+    });
+    httpClient = vertx.createHttpClient();
+    String header = httpClient
+      .request(HttpMethod.GET, 8080, "localhost", "/somepath")
+      .compose(req -> req
+        .putHeader(HttpHeaders.CONTENT_TYPE, "invalid request content type")
+        .send()
+        .map(resp -> resp.getHeader(HttpHeaders.CONTENT_TYPE))
+      )
+      .await();
+    assertEquals("invalid response content type", header);
   }
 }

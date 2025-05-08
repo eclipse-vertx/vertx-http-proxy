@@ -122,6 +122,8 @@ public class HttpProxyExamples {
       ProxyInterceptor
         .builder()
         .transformingResponseBody(
+          MediaType.APPLICATION_JSON,
+          MediaType.APPLICATION_OCTET_STREAM,
           buffer -> {
             // Apply some transformation
             return buffer;

@@ -13,20 +13,26 @@ package io.vertx.tests.interceptors;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.*;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.BodyTransformer;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
@@ -105,6 +111,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals("application/json", response.getHeader(HttpHeaders.CONTENT_TYPE));
         response.body().compose((buffer -> {
           JsonObject jsonObject = buffer.toJsonObject();
           ctx.assertEquals(jsonObject.getInteger("k1"), 1);
@@ -149,7 +156,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
   public void testDiscard(TestContext ctx) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      req.response().end("hello");
+      req.response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")
+        .end("hello");
     });
 
     startProxy(proxy -> proxy.origin(backend)
@@ -158,6 +167,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertNull(response.getHeader(HttpHeaders.CONTENT_TYPE));
         response.body().compose((buffer -> {
           ctx.assertEquals(buffer.length(), 0);
           latch.complete();
@@ -172,13 +182,15 @@ public class BodyInterceptorTest extends ProxyTestBase {
     byte[] content = new byte[]{-78, -30, -54, -44}; // gbk encoding, represents 测试 in gbk
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")
         .end(Buffer.buffer(content));
     });
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
         BodyTransformer.transformText(text -> {
-          if ("测试".equals(text)) text = "success";
+          if ("测试".equals(text))
+            text = "success";
           return text;
         }, "gbk")).build()));
 
@@ -240,7 +252,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(buffer -> buffer, 512).build()));
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(null, MediaType.APPLICATION_JSON, buffer -> buffer, 512).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -261,7 +273,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(buffer -> {
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(null, MediaType.APPLICATION_JSON, buffer -> {
         ctx.fail();
         return buffer;
       }, 512).build()));
@@ -278,9 +290,41 @@ public class BodyInterceptorTest extends ProxyTestBase {
   }
 
   @Test
-  public void testResponseBodyTransformationError(TestContext ctx) {
-    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(buffer -> {
+  public void testResponseBodyTransformationError1(TestContext ctx) {
+    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(null, MediaType.APPLICATION_JSON, buffer -> {
       throw new RuntimeException();
+    }).build());
+  }
+
+  @Test
+  public void testResponseBodyTransformationError2(TestContext ctx) {
+    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        throw new RuntimeException();
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        return Function.identity();
+      }
+    }).build());
+  }
+
+  @Test
+  public void testResponseBodyTransformationError3(TestContext ctx) {
+    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        return true;
+      }
+      @Override
+      public MediaType produces(MediaType mediaType) {
+        throw new RuntimeException();
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        return Function.identity();
+      }
     }).build());
   }
 
@@ -315,7 +359,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
   @Test
   public void testRequestBodyTransformationError(TestContext ctx) {
-    testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestBody(buffer -> {
+    testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestBody(null, MediaType.APPLICATION_JSON, buffer -> {
       throw new RuntimeException();
     }).build());
   }
@@ -344,5 +388,256 @@ public class BodyInterceptorTest extends ProxyTestBase {
             latch.complete();
           }));
         })));
+  }
+
+  @Test
+  public void testRequestConsumes1(TestContext ctx) {
+    testRequestConsumes(ctx, "application/json", MediaType.APPLICATION_JSON, true);
+  }
+
+  @Test
+  public void testRequestConsumes4(TestContext ctx) {
+    testRequestConsumes(ctx, "text/plain", MediaType.APPLICATION_JSON, false);
+  }
+
+  private void testRequestConsumes(TestContext ctx,
+                                    String contentType,
+                                    MediaType interceptorConsumes,
+                                    boolean expectedInvoked) {
+
+    AtomicBoolean invoked = new AtomicBoolean();
+    BodyTransformer transformer = new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        return interceptorConsumes.accepts(mediaType);
+      }
+      @Override
+      public MediaType produces(MediaType mediaType) {
+        return interceptorConsumes;
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        invoked.set(true);
+        return Function.identity();
+      }
+    };
+
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response()
+        .end();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(transformer).build()));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(request -> request
+        .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
+        .send().map(response -> response.getHeader(HttpHeaders.CONTENT_TYPE)))
+      .await();
+
+    assertEquals(expectedInvoked, invoked.get());
+  }
+
+  @Test
+  public void testResponseConsumes1(TestContext ctx) {
+    testResponseConsumes(ctx, "application/json", MediaType.APPLICATION_JSON, true);
+  }
+
+  @Test
+  public void testResponseConsumes4(TestContext ctx) {
+    testResponseConsumes(ctx, "text/plain", MediaType.APPLICATION_JSON, false);
+  }
+
+  private void testResponseConsumes(TestContext ctx,
+                                   String contentType,
+                                   MediaType interceptorConsumes,
+                                   boolean expectedInvoked) {
+
+    AtomicBoolean invoked = new AtomicBoolean();
+    BodyTransformer transformer = new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        return interceptorConsumes.accepts(mediaType);
+      }
+      @Override
+      public MediaType produces(MediaType mediaType) {
+        return interceptorConsumes;
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        invoked.set(true);
+        return Function.identity();
+      }
+    };
+
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
+        .end();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(transformer).build()));
+
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(request -> request
+        .putHeader(HttpHeaders.CONTENT_TYPE, "*/*")
+        .send().compose(HttpClientResponse::end))
+      .await();
+
+    assertEquals(expectedInvoked, invoked.get());
+  }
+
+  @Test
+  public void testResponseProduces1(TestContext ctx) {
+    String contentType = testResponseProduces(ctx, "application/json", MediaType.APPLICATION_JSON, "application/json", true);
+    assertEquals("application/json", contentType);
+  }
+
+  @Test
+  public void testResponseProduces2(TestContext ctx) {
+    String contentType = testResponseProduces(ctx, "application/*", MediaType.APPLICATION_JSON, "application/json", true);
+    assertEquals("application/json", contentType);
+  }
+
+  @Test
+  public void testResponseProduces3(TestContext ctx) {
+    String contentType = testResponseProduces(ctx, "*/*", MediaType.APPLICATION_JSON, "application/json", true);
+    assertEquals("application/json", contentType);
+  }
+
+  @Test
+  public void testResponseProduces4(TestContext ctx) {
+    String contentType = testResponseProduces(ctx, "application/json,text/plain", MediaType.APPLICATION_JSON, "application/json", true);
+    assertEquals("application/json", contentType);
+  }
+
+  @Test
+  public void testResponseProduces5(TestContext ctx) {
+    String contentType = testResponseProduces(ctx, "application/json;q=0.1,text/plain", MediaType.APPLICATION_JSON, "application/json", true);
+    assertEquals("application/json", contentType);
+  }
+
+  @Test
+  public void testResponseProduces6(TestContext ctx) {
+    String contentType = testResponseProduces(ctx, "text/plain", MediaType.APPLICATION_JSON, "text/plain", false);
+    assertEquals("text/plain", contentType);
+  }
+
+  private String testResponseProduces(TestContext ctx,
+                                      String acceptHeader,
+                                      MediaType interceptorProduces,
+                                      String responseContentType,
+                                      boolean expectedInvoked) {
+
+    AtomicBoolean invoked = new AtomicBoolean();
+    BodyTransformer transformer = new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        return true;
+      }
+      @Override
+      public MediaType produces(MediaType mediaType) {
+        return interceptorProduces;
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        invoked.set(true);
+        return Function.identity();
+      }
+    };
+
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, responseContentType)
+        .end();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(transformer).build()));
+
+    String ret = client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(request -> request
+        .putHeader(HttpHeaders.ACCEPT, acceptHeader)
+        .send().map(response -> response.getHeader(HttpHeaders.CONTENT_TYPE)))
+      .await();
+
+    assertEquals(expectedInvoked, invoked.get());
+
+    return ret;
+  }
+
+  @Test
+  public void testInvalidContentType(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals("invalid request content type", req.getHeader(HttpHeaders.CONTENT_TYPE));
+      req.body().onSuccess(buffer -> {
+        req
+          .response()
+          .putHeader(HttpHeaders.CONTENT_TYPE, "invalid response content type")
+          .end();
+      });
+    });
+    BodyTransformer transformer = new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        return true;
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        ctx.fail();
+        return Function.identity();
+      }
+    };
+    startProxy(proxy -> {
+      proxy.origin(backend)
+        .addInterceptor(ProxyInterceptor.builder()
+          .transformingRequestBody(transformer)
+          .transformingResponseBody(transformer)
+          .build());
+    });
+    String contentType = client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(request -> request
+        .putHeader(HttpHeaders.CONTENT_TYPE, "invalid request content type")
+        .send()
+        .map(req -> req.getHeader(HttpHeaders.CONTENT_TYPE))
+      ).await();
+    assertEquals("invalid response content type", contentType);
+  }
+
+  @Test
+  public void testInvalidAcceptHeader(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.body().onSuccess(buffer -> {
+        req
+          .response()
+          .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+          .end();
+      });
+    });
+    BodyTransformer transformer = new BodyTransformer() {
+      @Override
+      public boolean consumes(MediaType mediaType) {
+        return true;
+      }
+      @Override
+      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+        ctx.fail();
+        return Function.identity();
+      }
+    };
+    startProxy(proxy -> {
+      proxy.origin(backend)
+        .addInterceptor(ProxyInterceptor.builder()
+          .transformingResponseBody(transformer)
+          .build());
+    });
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(request -> request
+        .putHeader(HttpHeaders.ACCEPT, "invalid accept header")
+        .send()
+        .map(HttpClientResponse::end)
+      ).await();
   }
 }

@@ -32,9 +32,9 @@ public class ProxyInterceptorBuilderImpl implements ProxyInterceptorBuilder {
   private final Stream.Builder<Function<String, String>> pathUpdaters = Stream.builder();
   private final Stream.Builder<Handler<MultiMap>> requestHeadersUpdaters = Stream.builder();
   private final Stream.Builder<Handler<MultiMap>> responseHeadersUpdaters = Stream.builder();
-  private Function<Buffer, Buffer> modifyRequestBody;
+  private BodyTransformer modifyRequestBody;
   private long requestMaxBufferedSize;
-  private Function<Buffer, Buffer> modifyResponseBody;
+  private BodyTransformer modifyResponseBody;
   private long responseMaxBufferedSize;
 
   @Override

@@ -11,30 +11,33 @@
 
 package io.vertx.httpproxy.impl.interceptor;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.*;
+import io.vertx.httpproxy.MediaType;
+import io.vertx.httpproxy.impl.ProxyFailure;
 
+import javax.print.attribute.standard.Media;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
 class ProxyInterceptorImpl implements ProxyInterceptor {
 
-  private static final Function<Buffer, Buffer> NO_OP = buffer -> buffer;
-
   private final List<Handler<MultiMap>> queryUpdaters;
   private final List<Function<String, String>> pathUpdaters;
   private final List<Handler<MultiMap>> requestHeadersUpdaters;
   private final List<Handler<MultiMap>> responseHeadersUpdaters;
   private final long requestMaxBufferedSize;
-  private final Function<Buffer, Buffer> modifyRequestBody;
+  private final BodyTransformer modifyRequestBody;
   private final long responseMaxBufferedSize;
-  private final Function<Buffer, Buffer> modifyResponseBody;
+  private final BodyTransformer modifyResponseBody;
 
   ProxyInterceptorImpl(
     List<Handler<MultiMap>> queryUpdaters,
@@ -42,9 +45,9 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
     List<Handler<MultiMap>> requestHeadersUpdaters,
     List<Handler<MultiMap>> responseHeadersUpdaters,
     long requestMaxBufferedSize,
-    Function<Buffer, Buffer> modifyRequestBody,
+    BodyTransformer modifyRequestBody,
     long responseMaxBufferedSize,
-    Function<Buffer, Buffer> modifyResponseBody) {
+    BodyTransformer modifyResponseBody) {
     this.queryUpdaters = Objects.requireNonNull(queryUpdaters);
     this.pathUpdaters = Objects.requireNonNull(pathUpdaters);
     this.requestHeadersUpdaters = Objects.requireNonNull(requestHeadersUpdaters);
@@ -55,6 +58,14 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
     this.modifyResponseBody = modifyResponseBody;
   }
 
+  private MediaType safeMT(String mt) {
+    try {
+      return mt == null ? null : MediaType.parse(mt);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   @Override
   public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
     try {
@@ -62,37 +73,39 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
       pathHandleProxyRequest(context);
       headersHandleProxyRequest(context);
     } catch (Exception e) {
-      failRequest(context);
-      return Future.failedFuture(e);
+      return Future.failedFuture(new ProxyFailure(500, e));
     }
-    if (modifyRequestBody != null) {
-      Promise<ProxyResponse> ret = Promise.promise();
-      BodyAccumulator bodyAccumulator = new BodyAccumulator(modifyResponseBody, requestMaxBufferedSize, (body, err) -> {
-        if (err == null) {
-          ProxyRequest request = context.request();
-          request.setBody(Body.body(body));
-          context.sendRequest().onComplete(ret);
-        } else {
-          failRequest(context);
-          ret.fail(err);
-        }
-      });
-      Body body = context.request().getBody();
-      ReadStream<Buffer> stream = body.stream();
-      stream.handler(bodyAccumulator::handleBuffer);
-      stream.endHandler(bodyAccumulator::handleEnd);
-      stream.resume();
-      return ret.future();
-    } else {
-      return context.sendRequest();
+    Body requestBody = context.request().getBody();
+    if (modifyRequestBody != null && requestBody != null) {
+      boolean transform;
+      MediaType bodyMediaType = safeMT(requestBody.mediaType());
+      try {
+        transform =
+            (bodyMediaType != null || !context.request().headers().contains(HttpHeaders.CONTENT_TYPE)) &&
+            modifyRequestBody.consumes(bodyMediaType);
+      } catch (Exception e) {
+        return Future.failedFuture(new ProxyFailure(500, e));
+      }
+      if (transform) {
+        Promise<ProxyResponse> ret = Promise.promise();
+        BodyAccumulator bodyAccumulator = new BodyAccumulator(modifyRequestBody.transformer(bodyMediaType), requestMaxBufferedSize, (body, err) -> {
+          if (err == null) {
+            ProxyRequest request = context.request();
+            request.setBody(Body.body(body));
+            context.sendRequest().onComplete(ret);
+          } else {
+            ret.fail(err);
+          }
+        });
+        Body body = context.request().getBody();
+        ReadStream<Buffer> stream = body.stream();
+        stream.handler(bodyAccumulator::handleBuffer);
+        stream.endHandler(bodyAccumulator::handleEnd);
+        stream.resume();
+        return ret.future();
+      }
     }
-  }
-
-  private void failRequest(ProxyContext context) {
-    // Currently there is no way to achieve this using the API (which is an issue)
-    // So we need to bypass the whole proxy mechanism until we get better
-    HttpServerRequest actualRequest = context.request().proxiedRequest();
-    actualRequest.response().setStatusCode(500).end();
+    return context.sendRequest();
   }
 
   private static class BodyAccumulator {
@@ -129,7 +142,7 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
       } else {
         // Overflow
       }
-      completion.fail(new VertxException("", true));
+      completion.fail(new ProxyFailure(500));
     }
 
     private Buffer transformBody(Buffer body) {
@@ -141,39 +154,76 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
     }
   }
 
+  private MediaType resolveMediaType(String acceptHeader, MediaType mt) throws IllegalArgumentException {
+    List<MediaType> acceptedMediaTypes = MediaType.parseAcceptHeader(acceptHeader);
+    MediaType produced = modifyResponseBody.produces(mt);
+    for (MediaType acceptedMediaType : acceptedMediaTypes) {
+      if (acceptedMediaType.accepts(produced)) {
+        return produced;
+      }
+    }
+    return null;
+  }
+
   @Override
   public Future<Void> handleProxyResponse(ProxyContext context) {
     try {
       headersHandleProxyResponse(context);
     } catch (Exception e) {
-      return failResponse(context);
+      return Future.failedFuture(new ProxyFailure(500, e));
     }
-    if (modifyResponseBody != null) {
-      Promise<Void> ret = Promise.promise();
-      BodyAccumulator bodyAccumulator = new BodyAccumulator(modifyResponseBody, responseMaxBufferedSize, (body, err) -> {
-        ProxyResponse response = context.response();
-        if (err == null) {
-          response.setBody(Body.body(body));
-          context.sendResponse();
+    Body responseBody = context.response().getBody();
+    if (modifyResponseBody != null && responseBody != null) {
+      MediaType bodyMediaType = safeMT(responseBody.mediaType());
+      boolean checkTransform;
+      try {
+        checkTransform =
+            (bodyMediaType != null || !context.response().headers().contains(HttpHeaders.CONTENT_TYPE)) &&
+            modifyResponseBody.consumes(bodyMediaType);
+      } catch (Exception e) {
+        return Future.failedFuture(new ProxyFailure(500, e));
+      }
+      if (checkTransform) {
+        String acceptHeader = context.request().headers().get(HttpHeaderNames.ACCEPT);
+        MediaType mediaType;
+        boolean transform;
+        if (acceptHeader != null) {
+          transform = false;
+          MediaType resolved = null;
+          try {
+            resolved = resolveMediaType(acceptHeader, bodyMediaType);
+            transform = resolved != null;
+          } catch (IllegalArgumentException e) {
+            // Invalid
+          }
+          mediaType = resolved;
         } else {
-          failResponse(context).onComplete(ret);
+          transform = true;
+          try {
+            mediaType = modifyResponseBody.produces(bodyMediaType);
+          } catch (Exception e) {
+            return Future.failedFuture(new ProxyFailure(500, e));
+          }
         }
-      });
-      ReadStream<Buffer> stream = context.response().getBody().stream();
-      stream.handler(bodyAccumulator::handleBuffer);
-      stream.endHandler(bodyAccumulator::handleEnd);
-      stream.resume();
-      return ret.future();
-    } else {
-      return context.sendResponse();
+        if (transform) {
+          Promise<Void> ret = Promise.promise();
+          BodyAccumulator bodyAccumulator = new BodyAccumulator(modifyResponseBody.transformer(mediaType), responseMaxBufferedSize, (body, err) -> {
+            ProxyResponse response = context.response();
+            if (err == null) {
+              response.setBody(Body.body(body, mediaType));
+              context.sendResponse();
+            } else {
+              ret.fail(err);
+            }
+          });
+          ReadStream<Buffer> stream = responseBody.stream();
+          stream.handler(bodyAccumulator::handleBuffer);
+          stream.endHandler(bodyAccumulator::handleEnd);
+          stream.resume();
+          return ret.future();
+        }
+      }
     }
-  }
-
-  private Future<Void> failResponse(ProxyContext context) {
-    ProxyResponse response = context.response();
-    response.setStatusCode(500);
-    response.setStatusMessage(null);
-    response.setBody(Body.body(Buffer.buffer())); // Empty
     return context.sendResponse();
   }
 
