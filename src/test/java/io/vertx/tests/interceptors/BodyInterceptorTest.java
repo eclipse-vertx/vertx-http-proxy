@@ -22,9 +22,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.interceptors.BodyInterceptor;
-import io.vertx.httpproxy.interceptors.BodyTransformer;
+import io.vertx.httpproxy.BodyTransformer;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
@@ -64,12 +64,12 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(BodyInterceptor.modifyRequestBody(
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(
         BodyTransformer.transformJsonObject(jsonObject -> {
         jsonObject.remove("k2");
         jsonObject.put("k1", 1);
         return jsonObject;
-      }))));
+      })).build()));
 
     String content = "{\"k2\": 2}";
     client.request(HttpMethod.POST, 8080, "localhost", "/")
@@ -95,12 +95,12 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(BodyInterceptor.modifyResponseBody(
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
         BodyTransformer.transformJsonObject(jsonObject -> {
           jsonObject.remove("k2");
           jsonObject.put("k1", 1);
           return jsonObject;
-        }))));
+        })).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -126,12 +126,12 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(BodyInterceptor.modifyResponseBody(
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
         BodyTransformer.transformJsonArray(array -> {
           array.remove(2);
           return array;
         }
-      ))));
+      )).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -153,7 +153,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(BodyInterceptor.modifyResponseBody(BodyTransformer.discard())));
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(BodyTransformer.discard()).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -176,11 +176,11 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(BodyInterceptor.modifyResponseBody(
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
         BodyTransformer.transformText(text -> {
           if ("测试".equals(text)) text = "success";
           return text;
-        }, "gbk"))));
+        }, "gbk")).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -207,13 +207,13 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(BodyInterceptor.modifyRequestBody(
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(
         BodyTransformer.transformJson(json -> {
           if (json instanceof JsonObject) ((JsonObject) json).put("k", 1);
           if (json instanceof Integer) json = 1;
           if (json instanceof JsonArray) ((JsonArray) json).set(0, 1);
           return json;
-        }))));
+        })).build()));
 
     String[] contents = new String[]{"{\"k\": 2}", "2", "[2, 1]"};
     for (String content : contents) {
@@ -228,7 +228,121 @@ public class BodyInterceptorTest extends ProxyTestBase {
           latch.countDown();
         }));
     }
-
   }
 
+  @Test
+  public void testResponseMaxBufferedBytes(TestContext ctx) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response()
+        .putHeader("Content-Type", "application/json")
+        .end(Buffer.buffer("A".repeat(1024)));
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(buffer -> buffer, 512).build()));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(HttpClientRequest::send)
+      .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
+          ctx.assertEquals(0, body.length());
+          latch.complete();
+        }));
+      }));
+  }
+
+  @Test
+  public void testRequestMaxBufferedBytes(TestContext ctx) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.fail();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(buffer -> {
+        ctx.fail();
+        return buffer;
+      }, 512).build()));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
+      .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
+          ctx.assertEquals(0, body.length());
+          latch.complete();
+        }));
+      })));
+  }
+
+  @Test
+  public void testResponseBodyTransformationError(TestContext ctx) {
+    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(buffer -> {
+      throw new RuntimeException();
+    }).build());
+  }
+
+  @Test
+  public void testResponseHeadTransformationError(TestContext ctx) {
+    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseHeaders(headers -> {
+      throw new RuntimeException();
+    }).build());
+  }
+
+  private void testResponseTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response()
+        .putHeader("Content-Type", "application/json")
+        .end();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(interceptor));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(HttpClientRequest::send)
+      .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
+          ctx.assertEquals(0, body.length());
+          latch.complete();
+        }));
+      }));
+  }
+
+  @Test
+  public void testRequestBodyTransformationError(TestContext ctx) {
+    testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestBody(buffer -> {
+      throw new RuntimeException();
+    }).build());
+  }
+
+  @Test
+  public void testRequestHeadTransformationError(TestContext ctx) {
+    testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestHeaders(headers -> {
+      throw new RuntimeException();
+    }).build());
+  }
+
+  private void testRequestTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.fail();
+    });
+
+    startProxy(proxy -> proxy.origin(backend).addInterceptor(interceptor));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
+        .onComplete(ctx.asyncAssertSuccess(response -> {
+          ctx.assertEquals(500, response.statusCode());
+          response.body().onComplete(ctx.asyncAssertSuccess(body -> {
+            ctx.assertEquals(0, body.length());
+            latch.complete();
+          }));
+        })));
+  }
 }

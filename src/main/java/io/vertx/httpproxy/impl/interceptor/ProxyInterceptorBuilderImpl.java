@@ -9,12 +9,14 @@
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
 
-package io.vertx.httpproxy.interceptors.impl;
+package io.vertx.httpproxy.impl.interceptor;
 
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.httpproxy.interceptors.HeadInterceptor;
-import io.vertx.httpproxy.interceptors.HeadInterceptorBuilder;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.BodyTransformer;
+import io.vertx.httpproxy.ProxyInterceptorBuilder;
 
 import java.util.Set;
 import java.util.function.Function;
@@ -22,26 +24,35 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toUnmodifiableList;
 
-public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
+public class ProxyInterceptorBuilderImpl implements ProxyInterceptorBuilder {
+
 
   // Fine to use stream builders here, since interceptors are typically configured on application startup and never modified
   private final Stream.Builder<Handler<MultiMap>> queryUpdaters = Stream.builder();
   private final Stream.Builder<Function<String, String>> pathUpdaters = Stream.builder();
   private final Stream.Builder<Handler<MultiMap>> requestHeadersUpdaters = Stream.builder();
   private final Stream.Builder<Handler<MultiMap>> responseHeadersUpdaters = Stream.builder();
+  private Function<Buffer, Buffer> modifyRequestBody;
+  private long requestMaxBufferedSize;
+  private Function<Buffer, Buffer> modifyResponseBody;
+  private long responseMaxBufferedSize;
 
   @Override
-  public HeadInterceptor build() {
-    return new HeadInterceptorImpl(
+  public ProxyInterceptor build() {
+    return new ProxyInterceptorImpl(
       queryUpdaters.build().collect(toUnmodifiableList()),
       pathUpdaters.build().collect(toUnmodifiableList()),
       requestHeadersUpdaters.build().collect(toUnmodifiableList()),
-      responseHeadersUpdaters.build().collect(toUnmodifiableList())
+      responseHeadersUpdaters.build().collect(toUnmodifiableList()),
+      requestMaxBufferedSize,
+      modifyRequestBody,
+      responseMaxBufferedSize,
+      modifyResponseBody
     );
   }
 
   @Override
-  public HeadInterceptorBuilder updatingQueryParams(Handler<MultiMap> updater) {
+  public ProxyInterceptorBuilder transformingQueryParams(Handler<MultiMap> updater) {
     if (updater != null) {
       queryUpdaters.add(updater);
     }
@@ -49,23 +60,23 @@ public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
   }
 
   @Override
-  public HeadInterceptorBuilder settingQueryParam(String name, String value) {
+  public ProxyInterceptorBuilder settingQueryParam(String name, String value) {
     if (name != null && value != null) {
-      return updatingQueryParams(map -> map.set(name, value));
+      return transformingQueryParams(map -> map.set(name, value));
     }
     return this;
   }
 
   @Override
-  public HeadInterceptorBuilder removingQueryParam(String name) {
+  public ProxyInterceptorBuilder removingQueryParam(String name) {
     if (name != null) {
-      return updatingQueryParams(map -> map.remove(name));
+      return transformingQueryParams(map -> map.remove(name));
     }
     return this;
   }
 
   @Override
-  public HeadInterceptorBuilder updatingPath(Function<String, String> mutator) {
+  public ProxyInterceptorBuilder transformingPath(Function<String, String> mutator) {
     if (mutator != null) {
       pathUpdaters.add(mutator);
     }
@@ -73,17 +84,17 @@ public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
   }
 
   @Override
-  public HeadInterceptorBuilder addingPathPrefix(String prefix) {
+  public ProxyInterceptorBuilder addingPathPrefix(String prefix) {
     if (prefix != null) {
-      return updatingPath(path -> prefix + path);
+      return transformingPath(path -> prefix + path);
     }
     return this;
   }
 
   @Override
-  public HeadInterceptorBuilder removingPathPrefix(String prefix) {
+  public ProxyInterceptorBuilder removingPathPrefix(String prefix) {
     if (prefix != null) {
-      return updatingPath(path -> {
+      return transformingPath(path -> {
         return path.startsWith(prefix) ? path.substring(prefix.length()) : path;
       });
     }
@@ -91,7 +102,7 @@ public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
   }
 
   @Override
-  public HeadInterceptorBuilder updatingRequestHeaders(Handler<MultiMap> requestHeadersUpdater) {
+  public ProxyInterceptorBuilder transformingRequestHeaders(Handler<MultiMap> requestHeadersUpdater) {
     if (requestHeadersUpdater != null) {
       requestHeadersUpdaters.add(requestHeadersUpdater);
     }
@@ -99,7 +110,7 @@ public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
   }
 
   @Override
-  public HeadInterceptorBuilder updatingResponseHeaders(Handler<MultiMap> responseHeadersUpdater) {
+  public ProxyInterceptorBuilder transformingResponseHeaders(Handler<MultiMap> responseHeadersUpdater) {
     if (responseHeadersUpdater != null) {
       responseHeadersUpdaters.add(responseHeadersUpdater);
     }
@@ -107,9 +118,9 @@ public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
   }
 
   @Override
-  public HeadInterceptorBuilder filteringRequestHeaders(Set<CharSequence> forbiddenRequestHeaders) {
+  public ProxyInterceptorBuilder filteringRequestHeaders(Set<CharSequence> forbiddenRequestHeaders) {
     if (forbiddenRequestHeaders != null) {
-      return updatingRequestHeaders(headers -> {
+      return transformingRequestHeaders(headers -> {
         for (CharSequence cs : forbiddenRequestHeaders) {
           headers.remove(cs);
         }
@@ -119,14 +130,28 @@ public class HeadInterceptorBuilderImpl implements HeadInterceptorBuilder {
   }
 
   @Override
-  public HeadInterceptorBuilder filteringResponseHeaders(Set<CharSequence> forbiddenResponseHeaders) {
+  public ProxyInterceptorBuilder filteringResponseHeaders(Set<CharSequence> forbiddenResponseHeaders) {
     if (forbiddenResponseHeaders != null) {
-      return updatingResponseHeaders(headers -> {
+      return transformingResponseHeaders(headers -> {
         for (CharSequence cs : forbiddenResponseHeaders) {
           headers.remove(cs);
         }
       });
     }
+    return this;
+  }
+
+  @Override
+  public ProxyInterceptorBuilder transformingRequestBody(BodyTransformer requestTransformer, long maxBufferedSize) {
+    this.requestMaxBufferedSize = maxBufferedSize;
+    this.modifyRequestBody = requestTransformer;
+    return this;
+  }
+
+  @Override
+  public ProxyInterceptorBuilder transformingResponseBody(BodyTransformer responseTransformer, long maxBufferedSize) {
+    this.responseMaxBufferedSize = maxBufferedSize;
+    this.modifyResponseBody = responseTransformer;
     return this;
   }
 }

@@ -9,7 +9,7 @@
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
 
-package io.vertx.httpproxy.interceptors;
+package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.GenIgnore;
@@ -24,20 +24,26 @@ import java.util.function.Function;
 import static io.vertx.codegen.annotations.GenIgnore.PERMITTED_TYPE;
 
 /**
- * Configuration for an interceptor updating HTTP request/response head attributes (headers, path, query params).
- * <p>
- * All configuration methods can be invoked several times.
- * Operations on the path will be invoked in the order of configuration.
- * That goes for operations on request headers, response headers and query parameters.
+ * <p>>Builder class for a customizable interceptor capable of transforming HTTP request/response head attributes
+ * (headers, path, query params) as well as transforming the HTTP body.</p
+ *
+ * <p>Head transformation methods can be invoked multiple times. Operations on the path will be invoked in the order
+ * of configuration, that goes for operations on request headers, response headers and query parameters.</p>
+ *
+ * <p>Body transformation can be achieved with {@link #transformingResponseBody(BodyTransformer)} and
+ * {@link #transformingRequestBody(BodyTransformer)}. Body transformation buffer the body content and then apply
+ * a transforming function before sending the response.</p>
  */
 @VertxGen
 @Unstable
-public interface HeadInterceptorBuilder {
+public interface ProxyInterceptorBuilder {
+
+  long DEFAULT_MAX_BUFFERED_SIZE = 256 * 1024;
 
   /**
-   * @return an interceptor build according to builder requirements
+   * @return the proxy interceptor build according to builder requirements
    */
-  HeadInterceptor build();
+  ProxyInterceptor build();
 
   /**
    * Apply modifications to the query parameters.
@@ -46,7 +52,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder updatingQueryParams(Handler<MultiMap> updater);
+  ProxyInterceptorBuilder transformingQueryParams(Handler<MultiMap> updater);
 
   /**
    * Add a query parameter to the request.
@@ -56,7 +62,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder settingQueryParam(String name, String value);
+  ProxyInterceptorBuilder settingQueryParam(String name, String value);
 
   /**
    * Remove a query parameter from the request.
@@ -65,7 +71,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder removingQueryParam(String name);
+  ProxyInterceptorBuilder removingQueryParam(String name);
 
   /**
    * Apply a callback to change the request URI when the proxy receives it.
@@ -74,7 +80,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder updatingPath(Function<String, String> mutator);
+  ProxyInterceptorBuilder transformingPath(Function<String, String> mutator);
 
   /**
    * Add a prefix to the URI.
@@ -83,7 +89,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder addingPathPrefix(String prefix);
+  ProxyInterceptorBuilder addingPathPrefix(String prefix);
 
   /**
    * Remove a prefix to the URI. Do nothing if it doesn't exist.
@@ -92,7 +98,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder removingPathPrefix(String prefix);
+  ProxyInterceptorBuilder removingPathPrefix(String prefix);
 
   /**
    * Apply callbacks to change the request headers when the proxy receives them.
@@ -101,7 +107,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder updatingRequestHeaders(Handler<MultiMap> requestHeadersUpdater);
+  ProxyInterceptorBuilder transformingRequestHeaders(Handler<MultiMap> requestHeadersUpdater);
 
   /**
    * Apply callbacks to change the response headers when the proxy receives them.
@@ -110,7 +116,7 @@ public interface HeadInterceptorBuilder {
    * @return a reference to this, so the API can be used fluently
    */
   @Fluent
-  HeadInterceptorBuilder updatingResponseHeaders(Handler<MultiMap> responseHeadersUpdater);
+  ProxyInterceptorBuilder transformingResponseHeaders(Handler<MultiMap> responseHeadersUpdater);
 
   /**
    * Filter the request headers in the given set.
@@ -120,7 +126,7 @@ public interface HeadInterceptorBuilder {
    */
   @GenIgnore(PERMITTED_TYPE)
   @Fluent
-  HeadInterceptorBuilder filteringRequestHeaders(Set<CharSequence> forbiddenRequestHeaders);
+  ProxyInterceptorBuilder filteringRequestHeaders(Set<CharSequence> forbiddenRequestHeaders);
 
   /**
    * Filter the response headers in the given set.
@@ -130,5 +136,46 @@ public interface HeadInterceptorBuilder {
    */
   @GenIgnore(PERMITTED_TYPE)
   @Fluent
-  HeadInterceptorBuilder filteringResponseHeaders(Set<CharSequence> forbiddenResponseHeaders);
+  ProxyInterceptorBuilder filteringResponseHeaders(Set<CharSequence> forbiddenResponseHeaders);
+
+  /**
+   * Like {@link #transformingRequestBody(BodyTransformer, long)} with {@code maxBufferedSize} = {@link #DEFAULT_MAX_BUFFERED_SIZE}
+   */
+  @Fluent
+  default ProxyInterceptorBuilder transformingRequestBody(BodyTransformer requestTransformer) {
+    return transformingRequestBody(requestTransformer, DEFAULT_MAX_BUFFERED_SIZE);
+  }
+
+  /**
+   * <p>Apply a transformation to change the request body when the proxy receives it.</p>
+   *
+   * <p>The interceptor fully buffers the request body and then apply the transformation.</p>
+   *
+   * @param requestTransformer the operation to apply to the request body
+   * @param maxBufferedSize the maximum number of buffered bytes, when the buffered amount exceeds an HTTP error is sent
+   * @return the created interceptor
+   */
+  @Fluent
+  ProxyInterceptorBuilder transformingRequestBody(BodyTransformer requestTransformer, long maxBufferedSize);
+
+  /**
+   * Like {@link #transformingResponseBody(BodyTransformer, long)} with {@code maxBufferedSize} = {@link #DEFAULT_MAX_BUFFERED_SIZE}
+   */
+  @Fluent
+  default ProxyInterceptorBuilder transformingResponseBody(BodyTransformer responseTransformer) {
+    return transformingResponseBody(responseTransformer, DEFAULT_MAX_BUFFERED_SIZE);
+  }
+
+  /**
+   * <p>Apply a transformation to change the response body when the proxy receives it.</p>
+   *
+   * <p>The interceptor fully buffers the response body and then apply the transformation.</p>
+   *
+   * @param responseTransformer the operation to apply to the response body
+   * @param maxBufferedSize the maximum number of buffered bytes, when the buffered amount exceeds an HTTP error is sent
+   * @return the created interceptor
+   */
+  @Fluent
+  ProxyInterceptorBuilder transformingResponseBody(BodyTransformer responseTransformer, long maxBufferedSize);
+
 }

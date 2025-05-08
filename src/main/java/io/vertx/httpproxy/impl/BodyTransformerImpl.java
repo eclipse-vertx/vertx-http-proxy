@@ -1,10 +1,10 @@
-package io.vertx.httpproxy.interceptors.impl;
+package io.vertx.httpproxy.impl;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.httpproxy.interceptors.BodyTransformer;
+import io.vertx.httpproxy.BodyTransformer;
 
 import java.util.Objects;
 import java.util.function.Function;

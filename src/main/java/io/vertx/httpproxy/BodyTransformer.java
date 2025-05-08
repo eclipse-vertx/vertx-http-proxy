@@ -1,16 +1,16 @@
-package io.vertx.httpproxy.interceptors;
+package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.Unstable;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.httpproxy.interceptors.impl.BodyTransformerImpl;
+import io.vertx.httpproxy.impl.BodyTransformerImpl;
 
 import java.util.function.Function;
 
 /**
- * The callback to transform the request or response body.
+ * A synchronous function that transforms an HTTP body entity.
  */
 @VertxGen
 @Unstable

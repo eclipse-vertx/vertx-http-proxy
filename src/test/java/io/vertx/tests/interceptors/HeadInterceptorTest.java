@@ -18,8 +18,8 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
@@ -49,11 +49,11 @@ public class HeadInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadInterceptor.builder()
+      .addInterceptor(ProxyInterceptor.builder()
         .settingQueryParam("k1", "v1")
         .addingPathPrefix("/prefix")
         .filteringRequestHeaders(Set.of("k2"))
-        .updatingRequestHeaders(headers -> {
+        .transformingRequestHeaders(headers -> {
           ctx.assertNull(headers.get("k2"));
           headers.set("k1", "v2");
         })

@@ -13,9 +13,7 @@ import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
-import io.vertx.httpproxy.interceptors.BodyInterceptor;
-import io.vertx.httpproxy.interceptors.BodyTransformer;
-import io.vertx.httpproxy.interceptors.HeadInterceptor;
+import io.vertx.httpproxy.BodyTransformer;
 
 import java.util.Set;
 
@@ -111,25 +109,39 @@ public class HttpProxyExamples {
   public void headerInterceptorFilter(HttpProxy proxy, Set<CharSequence> shouldRemove) {
     // remove a set of headers
     proxy.addInterceptor(
-      HeadInterceptor.builder().filteringResponseHeaders(shouldRemove).build());
+      ProxyInterceptor.builder().filteringResponseHeaders(shouldRemove).build());
   }
 
   public void queryInterceptorAdd(HttpProxy proxy, String key, String value) {
     proxy.addInterceptor(
-      HeadInterceptor.builder().settingQueryParam(key, value).build());
+      ProxyInterceptor.builder().settingQueryParam(key, value).build());
+  }
+
+  public void bodyInterceptorTransformer(HttpProxy proxy) {
+    proxy.addInterceptor(
+      ProxyInterceptor
+        .builder()
+        .transformingResponseBody(
+          buffer -> {
+            // Apply some transformation
+            return buffer;
+          }
+        ).build());
   }
 
   public void bodyInterceptorJson(HttpProxy proxy) {
     proxy.addInterceptor(
-      BodyInterceptor.modifyResponseBody(
-        BodyTransformer.transformJsonObject(
-          jsonObject -> removeSomeFields(jsonObject)
-        )
-      ));
+      ProxyInterceptor
+        .builder()
+        .transformingResponseBody(
+          BodyTransformer.transformJsonObject(
+            jsonObject -> removeSomeFields(jsonObject)
+          )
+        ).build());
   }
 
   public void webSocketInterceptorPath(HttpProxy proxy) {
-    HeadInterceptor interceptor = HeadInterceptor.builder()
+    ProxyInterceptor interceptor = ProxyInterceptor.builder()
       .addingPathPrefix("/api")
       .build();
     proxy.addInterceptor(interceptor, true);

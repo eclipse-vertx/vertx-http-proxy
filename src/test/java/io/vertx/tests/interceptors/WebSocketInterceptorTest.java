@@ -10,7 +10,6 @@ import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyResponse;
-import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
@@ -86,14 +85,14 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
   @Test
   public void testNotApplySocket(TestContext ctx) {
     // this interceptor only applies to regular HTTP traffic
-    ProxyInterceptor interceptor = HeadInterceptor.builder().updatingPath(x -> x + "/updated").build();
+    ProxyInterceptor interceptor = ProxyInterceptor.builder().transformingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, false);
   }
 
   @Test
   public void testWithSocketInterceptor(TestContext ctx) {
     // this interceptor applies to both regular HTTP traffic and WebSocket handshake
-    ProxyInterceptor interceptor = HeadInterceptor.builder().updatingPath(x -> x + "/updated").build();
+    ProxyInterceptor interceptor = ProxyInterceptor.builder().transformingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, true);
   }
 
