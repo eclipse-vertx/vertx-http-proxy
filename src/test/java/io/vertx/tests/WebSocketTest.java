@@ -17,7 +17,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.httpproxy.ProxyOptions;
+import io.vertx.httpproxy.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -152,6 +152,43 @@ public class WebSocketTest extends ProxyTestBase {
         ctx.assertEquals(101, response.statusCode());
         response.netSocket().close();
       }));
+    }));
+  }
+
+  @Test
+  public void testVariableFromInterceptor(TestContext ctx) {
+    Async async = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      Future<ServerWebSocket> fut = req.toWebSocket();
+      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        ws.handler(buff -> ws.write(buff));
+        ws.closeHandler(v -> {
+          async.complete();
+        });
+      }));
+    });
+    ProxyInterceptor interceptor = new ProxyInterceptor() {
+      @Override
+      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+        context.set("foo", "bar");
+        return context.sendRequest();
+      }
+    };
+    OriginRequestProvider provider = (proxyContext) -> {
+      ctx.assertEquals("bar", proxyContext.get("foo", String.class));
+      return proxyContext.client().request(new RequestOptions().setServer(backend));
+    };
+    startProxy(proxy -> proxy.origin(provider).addInterceptor(interceptor, true));
+    wsClient = vertx.createWebSocketClient();
+    WebSocketConnectOptions options = new WebSocketConnectOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws");
+    wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
+      ws.write(Buffer.buffer("ping"));
+      ws.handler(buff -> {
+        ws.close();
+      });
     }));
   }
 }

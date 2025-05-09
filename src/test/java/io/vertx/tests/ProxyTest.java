@@ -14,14 +14,12 @@ import io.vertx.core.Future;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
-import io.vertx.httpproxy.ProxyContext;
-import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -61,7 +59,7 @@ public class ProxyTest extends ProxyTestBase {
       backends[i] = startHttpBackend(ctx, 8081 + value, req -> req.response().end("" + value));
     }
     AtomicInteger count = new AtomicInteger();
-    startProxy(proxy -> proxy.originSelector(req -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length])));
+    startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length]))));
     client = vertx.createHttpClient();
     Map<String, AtomicInteger> result = Collections.synchronizedMap(new HashMap<>());
     Async latch = ctx.async();
@@ -207,5 +205,30 @@ public class ProxyTest extends ProxyTestBase {
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+  }
+
+  @Test
+  public void testVariableFromInterceptor(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    ProxyInterceptor interceptor = new ProxyInterceptor() {
+      @Override
+      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+        context.set("foo", "bar");
+        return context.sendRequest();
+      }
+    };
+    OriginRequestProvider provider = (proxyContext) -> {
+      ctx.assertEquals("bar", proxyContext.get("foo", String.class));
+      return client.request(new RequestOptions().setServer(backend));
+    };
+    startProxy(proxy -> proxy.origin(provider).addInterceptor(interceptor));
+    client = vertx.createHttpClient();
+    client
+      .request(HttpMethod.GET, 8080, "localhost", "/")
+      .compose(req -> req
+        .send()
+        .compose(HttpClientResponse::body)
+      )
+      .onComplete(ctx.asyncAssertSuccess(buffer -> ctx.assertEquals("HOLA", buffer.toString())));
   }
 }
