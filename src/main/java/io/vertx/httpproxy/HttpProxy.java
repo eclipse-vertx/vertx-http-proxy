@@ -11,19 +11,12 @@
 package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.Fluent;
-import io.vertx.codegen.annotations.GenIgnore;
 import io.vertx.codegen.annotations.VertxGen;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.impl.ReverseProxy;
-
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * Handles the HTTP reverse proxy logic between the <i><b>user agent</b></i> and the <i><b>origin</b></i>.
@@ -61,7 +54,7 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    */
   @Fluent
   default HttpProxy origin(SocketAddress address) {
-    return originSelector(req -> Future.succeededFuture(address));
+    return origin(OriginRequestProvider.fixedAddress(address));
   }
 
   /**
@@ -73,32 +66,17 @@ public interface HttpProxy extends Handler<HttpServerRequest> {
    */
   @Fluent
   default HttpProxy origin(int port, String host) {
-    return origin(SocketAddress.inetSocketAddress(port, host));
+    return origin(OriginRequestProvider.fixedAddress(port, host));
   }
 
   /**
-   * Set a selector that resolves the <i><b>origin</b></i> address based on the incoming HTTP request.
-   *
-   * @param selector the selector
-   * @return a reference to this, so the API can be used fluently
-   */
-  @Fluent
-  default HttpProxy originSelector(Function<HttpServerRequest, Future<SocketAddress>> selector) {
-    return originRequestProvider((req, client) -> selector
-      .apply(req)
-      .flatMap(server -> client.request(new RequestOptions().setServer(server))));
-  }
-
-  /**
-   * Set a provider that creates the request to the <i><b>origin</b></i> server based the incoming HTTP request.
-   * Setting a provider overrides any origin selector previously set.
+   * Set a provider that creates the request to the <i><b>origin</b></i> server based on {@link ProxyContext}.
    *
    * @param provider the provider
    * @return a reference to this, so the API can be used fluently
    */
-  @GenIgnore()
   @Fluent
-  HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider);
+  HttpProxy origin(OriginRequestProvider provider);
 
   /**
    * Add an interceptor to the interceptor chain.

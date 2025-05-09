@@ -13,12 +13,7 @@ package io.vertx.httpproxy.impl;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.*;
 import io.vertx.core.internal.CloseFuture;
 import io.vertx.core.internal.VertxInternal;
 import io.vertx.core.internal.http.HttpClientInternal;
@@ -26,22 +21,11 @@ import io.vertx.core.internal.logging.Logger;
 import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.streams.ReadStream;
-import io.vertx.httpproxy.HttpProxy;
-import io.vertx.httpproxy.ProxyContext;
-import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.ProxyRequest;
-import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.BiFunction;
+import java.util.*;
 
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.UPGRADE;
@@ -51,7 +35,7 @@ public class ReverseProxy implements HttpProxy {
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
   private final HttpClient client;
   private final boolean supportWebSocket;
-  private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
+  private OriginRequestProvider originRequestProvider = (pc) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
@@ -75,8 +59,8 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider) {
-    selector = provider;
+  public HttpProxy origin(OriginRequestProvider provider) {
+    originRequestProvider = Objects.requireNonNull(provider);
     return this;
   }
 
@@ -121,8 +105,8 @@ public class ReverseProxy implements HttpProxy {
       .send();
   }
 
-  private Future<HttpClientRequest> resolveOrigin(HttpServerRequest proxiedRequest) {
-    return selector.apply(proxiedRequest, client);
+  private Future<HttpClientRequest> resolveOrigin(ProxyContext proxyContext) {
+    return originRequestProvider.create(proxyContext);
   }
 
   private class Proxy implements ProxyContext {
@@ -156,6 +140,11 @@ public class ReverseProxy implements HttpProxy {
     }
 
     @Override
+    public HttpClient client() {
+      return client;
+    }
+
+    @Override
     public ProxyRequest request() {
       return request;
     }
@@ -171,7 +160,7 @@ public class ReverseProxy implements HttpProxy {
       } else {
         if (isWebSocket) {
           HttpServerRequest proxiedRequest = request().proxiedRequest();
-          return resolveOrigin(proxiedRequest).compose(request -> {
+          return resolveOrigin(this).compose(request -> {
             request.setMethod(request().getMethod());
             request.setURI(request().getURI());
             // Firefox is known to send an unexpected connection header value
@@ -237,7 +226,7 @@ public class ReverseProxy implements HttpProxy {
     }
 
     private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest) {
-      return resolveOrigin(proxyRequest.proxiedRequest()).compose(proxyRequest::send);
+      return resolveOrigin(this).compose(proxyRequest::send);
     }
 
     private Future<Void> sendProxyResponse(ProxyResponse response) {
