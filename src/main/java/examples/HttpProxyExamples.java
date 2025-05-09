@@ -6,23 +6,17 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.httpproxy.Body;
-import io.vertx.httpproxy.HttpProxy;
-import io.vertx.httpproxy.ProxyContext;
-import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.ProxyRequest;
-import io.vertx.httpproxy.ProxyResponse;
+import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
 
 /**
  * @author <a href="mailto:emad.albloushi@gmail.com">Emad Alblueshi</a>
  */
 
+@SuppressWarnings("unused")
 public class HttpProxyExamples {
 
   public void origin(Vertx vertx) {
@@ -46,20 +40,20 @@ public class HttpProxyExamples {
     proxyServer.requestHandler(proxy).listen(8080);
   }
 
-  private SocketAddress resolveOriginAddress(HttpServerRequest request) {
+  private Future<SocketAddress> resolveOriginAddress(ProxyContext proxyContext) {
     return null;
   }
 
   public void originSelector(HttpProxy proxy) {
-    proxy.originSelector(request -> Future.succeededFuture(resolveOriginAddress(request)));
+    proxy.origin(OriginRequestProvider.selector(proxyContext -> resolveOriginAddress(proxyContext)));
   }
 
-  private RequestOptions resolveOriginOptions(HttpServerRequest request) {
+  private RequestOptions resolveOriginOptions(ProxyContext request) {
     return null;
   }
 
   public void originRequestProvider(HttpProxy proxy) {
-    proxy.originRequestProvider((request, client) -> client.request(resolveOriginOptions(request)));
+    proxy.origin((proxyContext) -> proxyContext.client().request(resolveOriginOptions(proxyContext)));
   }
 
   public void inboundInterceptor(HttpProxy proxy) {
@@ -135,34 +129,6 @@ public class HttpProxyExamples {
 
   private Body filter(Body body) {
     return body;
-  }
-
-  public void more(Vertx vertx, HttpClient proxyClient) {
-    HttpProxy proxy = HttpProxy.reverseProxy(proxyClient).originSelector(
-      address -> Future.succeededFuture(SocketAddress.inetSocketAddress(7070, "origin"))
-    );
-  }
-
-  public void lowLevel(Vertx vertx, HttpServer proxyServer, HttpClient proxyClient) {
-
-    proxyServer.requestHandler(request -> {
-      ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request);
-
-      proxyClient.request(proxyRequest.getMethod(), 8080, "origin", proxyRequest.getURI())
-        .compose(proxyRequest::send)
-        .onSuccess(proxyResponse -> {
-          // Send the proxy response
-          proxyResponse.send();
-        })
-        .onFailure(err -> {
-        // Release the request
-        proxyRequest.release();
-
-        // Send error
-        request.response().setStatusCode(500)
-          .send();
-      });
-    });
   }
 
   public void overrideAuthority(HttpProxy proxy) {
