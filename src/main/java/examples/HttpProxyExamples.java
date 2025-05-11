@@ -13,7 +13,6 @@ import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
-import io.vertx.httpproxy.BodyTransformer;
 
 import java.util.Set;
 
@@ -136,7 +135,7 @@ public class HttpProxyExamples {
       ProxyInterceptor
         .builder()
         .transformingResponseBody(
-          BodyTransformer.transformJsonObject(
+          BodyTransformers.jsonObject(
             jsonObject -> removeSomeFields(jsonObject)
           )
         ).build());

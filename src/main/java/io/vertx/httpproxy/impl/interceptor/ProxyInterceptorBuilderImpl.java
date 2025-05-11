@@ -13,7 +13,6 @@ package io.vertx.httpproxy.impl.interceptor;
 
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.BodyTransformer;
 import io.vertx.httpproxy.ProxyInterceptorBuilder;
@@ -33,9 +32,7 @@ public class ProxyInterceptorBuilderImpl implements ProxyInterceptorBuilder {
   private final Stream.Builder<Handler<MultiMap>> requestHeadersUpdaters = Stream.builder();
   private final Stream.Builder<Handler<MultiMap>> responseHeadersUpdaters = Stream.builder();
   private BodyTransformer modifyRequestBody;
-  private long requestMaxBufferedSize;
   private BodyTransformer modifyResponseBody;
-  private long responseMaxBufferedSize;
 
   @Override
   public ProxyInterceptor build() {
@@ -44,9 +41,7 @@ public class ProxyInterceptorBuilderImpl implements ProxyInterceptorBuilder {
       pathUpdaters.build().collect(toUnmodifiableList()),
       requestHeadersUpdaters.build().collect(toUnmodifiableList()),
       responseHeadersUpdaters.build().collect(toUnmodifiableList()),
-      requestMaxBufferedSize,
       modifyRequestBody,
-      responseMaxBufferedSize,
       modifyResponseBody
     );
   }
@@ -142,15 +137,13 @@ public class ProxyInterceptorBuilderImpl implements ProxyInterceptorBuilder {
   }
 
   @Override
-  public ProxyInterceptorBuilder transformingRequestBody(BodyTransformer requestTransformer, long maxBufferedSize) {
-    this.requestMaxBufferedSize = maxBufferedSize;
+  public ProxyInterceptorBuilder transformingRequestBody(BodyTransformer requestTransformer) {
     this.modifyRequestBody = requestTransformer;
     return this;
   }
 
   @Override
-  public ProxyInterceptorBuilder transformingResponseBody(BodyTransformer responseTransformer, long maxBufferedSize) {
-    this.responseMaxBufferedSize = maxBufferedSize;
+  public ProxyInterceptorBuilder transformingResponseBody(BodyTransformer responseTransformer) {
     this.modifyResponseBody = responseTransformer;
     return this;
   }

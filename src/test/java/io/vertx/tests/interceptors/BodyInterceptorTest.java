@@ -20,17 +20,11 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.httpproxy.MediaType;
-import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.BodyTransformer;
+import io.vertx.httpproxy.*;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 
@@ -71,7 +65,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(
-        BodyTransformer.transformJsonObject(jsonObject -> {
+        BodyTransformers.jsonObject(jsonObject -> {
         jsonObject.remove("k2");
         jsonObject.put("k1", 1);
         return jsonObject;
@@ -102,7 +96,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
-        BodyTransformer.transformJsonObject(jsonObject -> {
+        BodyTransformers.jsonObject(jsonObject -> {
           jsonObject.remove("k2");
           jsonObject.put("k1", 1);
           return jsonObject;
@@ -134,7 +128,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
-        BodyTransformer.transformJsonArray(array -> {
+        BodyTransformers.jsonArray(array -> {
           array.remove(2);
           return array;
         }
@@ -162,7 +156,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(BodyTransformer.discard()).build()));
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(BodyTransformers.discard()).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -188,7 +182,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(
-        BodyTransformer.transformText(text -> {
+        BodyTransformers.text(text -> {
           if ("测试".equals(text))
             text = "success";
           return text;
@@ -220,7 +214,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(
-        BodyTransformer.transformJson(json -> {
+        BodyTransformers.jsonValue(json -> {
           if (json instanceof JsonObject) ((JsonObject) json).put("k", 1);
           if (json instanceof Integer) json = 1;
           if (json instanceof JsonArray) ((JsonArray) json).set(0, 1);
@@ -304,8 +298,8 @@ public class BodyInterceptorTest extends ProxyTestBase {
         throw new RuntimeException();
       }
       @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
-        return Function.identity();
+      public Future<Body> transform(Body body) {
+        return Future.succeededFuture();
       }
     }).build());
   }
@@ -320,10 +314,6 @@ public class BodyInterceptorTest extends ProxyTestBase {
       @Override
       public MediaType produces(MediaType mediaType) {
         throw new RuntimeException();
-      }
-      @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
-        return Function.identity();
       }
     }).build());
   }
@@ -416,9 +406,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
         return interceptorConsumes;
       }
       @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+      public Future<Body> transform(Body body) {
         invoked.set(true);
-        return Function.identity();
+        return BodyTransformer.super.transform(body);
       }
     };
 
@@ -465,9 +455,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
         return interceptorConsumes;
       }
       @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+      public Future<Body> transform(Body body) {
         invoked.set(true);
-        return Function.identity();
+        return BodyTransformer.super.transform(body);
       }
     };
 
@@ -542,9 +532,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
         return interceptorProduces;
       }
       @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+      public Future<Body> transform(Body body) {
         invoked.set(true);
-        return Function.identity();
+        return BodyTransformer.super.transform(body);
       }
     };
 
@@ -585,9 +575,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
         return true;
       }
       @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+      public Future<Body> transform(Body body) {
         ctx.fail();
-        return Function.identity();
+        return BodyTransformer.super.transform(body);
       }
     };
     startProxy(proxy -> {
@@ -622,9 +612,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
         return true;
       }
       @Override
-      public Function<Buffer, Buffer> transformer(MediaType mediaType) {
+      public Future<Body> transform(Body body) {
         ctx.fail();
-        return Function.identity();
+        return BodyTransformer.super.transform(body);
       }
     };
     startProxy(proxy -> {

@@ -15,15 +15,11 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.*;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.impl.ProxyFailure;
 
-import javax.print.attribute.standard.Media;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -34,9 +30,7 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
   private final List<Function<String, String>> pathUpdaters;
   private final List<Handler<MultiMap>> requestHeadersUpdaters;
   private final List<Handler<MultiMap>> responseHeadersUpdaters;
-  private final long requestMaxBufferedSize;
   private final BodyTransformer modifyRequestBody;
-  private final long responseMaxBufferedSize;
   private final BodyTransformer modifyResponseBody;
 
   ProxyInterceptorImpl(
@@ -44,17 +38,13 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
     List<Function<String, String>> pathUpdaters,
     List<Handler<MultiMap>> requestHeadersUpdaters,
     List<Handler<MultiMap>> responseHeadersUpdaters,
-    long requestMaxBufferedSize,
     BodyTransformer modifyRequestBody,
-    long responseMaxBufferedSize,
     BodyTransformer modifyResponseBody) {
     this.queryUpdaters = Objects.requireNonNull(queryUpdaters);
     this.pathUpdaters = Objects.requireNonNull(pathUpdaters);
     this.requestHeadersUpdaters = Objects.requireNonNull(requestHeadersUpdaters);
     this.responseHeadersUpdaters = Objects.requireNonNull(responseHeadersUpdaters);
-    this.requestMaxBufferedSize = requestMaxBufferedSize;
     this.modifyRequestBody = modifyRequestBody;
-    this.responseMaxBufferedSize = responseMaxBufferedSize;
     this.modifyResponseBody = modifyResponseBody;
   }
 
@@ -88,70 +78,20 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
       }
       if (transform) {
         Promise<ProxyResponse> ret = Promise.promise();
-        BodyAccumulator bodyAccumulator = new BodyAccumulator(modifyRequestBody.transformer(bodyMediaType), requestMaxBufferedSize, (body, err) -> {
-          if (err == null) {
+        Future<Body> fut = modifyRequestBody.transform(context.request().getBody());
+        fut.onComplete(ar -> {
+          if (ar.succeeded()) {
             ProxyRequest request = context.request();
-            request.setBody(Body.body(body));
+            request.setBody(ar.result());
             context.sendRequest().onComplete(ret);
           } else {
-            ret.fail(err);
+            ret.fail(ar.cause());
           }
         });
-        Body body = context.request().getBody();
-        ReadStream<Buffer> stream = body.stream();
-        stream.handler(bodyAccumulator::handleBuffer);
-        stream.endHandler(bodyAccumulator::handleEnd);
-        stream.resume();
         return ret.future();
       }
     }
     return context.sendRequest();
-  }
-
-  private static class BodyAccumulator {
-
-    private final long maxBufferedBytes;
-    private final Function<Buffer, Buffer> transformer;
-    private final Completable<Buffer> completion;
-
-    private Buffer accumulator = Buffer.buffer();
-
-    BodyAccumulator(Function<Buffer, Buffer> transformer, long maxBufferedBytes, Completable<Buffer> completion) {
-      this.transformer = transformer;
-      this.maxBufferedBytes = maxBufferedBytes;
-      this.completion = completion;
-    }
-
-    void handleBuffer(Buffer buffer) {
-      if (accumulator != null) {
-        accumulator.appendBuffer(buffer);
-        if (buffer.length() > maxBufferedBytes) {
-          accumulator = null;
-        }
-      }
-    }
-
-    void handleEnd(Void end) {
-      if (accumulator != null) {
-        Buffer body = transformBody(accumulator);
-        accumulator = null;
-        if (body != null) {
-          completion.succeed(body);
-          return;
-        }
-      } else {
-        // Overflow
-      }
-      completion.fail(new ProxyFailure(500));
-    }
-
-    private Buffer transformBody(Buffer body) {
-      try {
-        return transformer.apply(body);
-      } catch (Exception e) {
-        return null;
-      }
-    }
   }
 
   private MediaType resolveMediaType(String acceptHeader, MediaType mt) throws IllegalArgumentException {
@@ -207,19 +147,16 @@ class ProxyInterceptorImpl implements ProxyInterceptor {
         }
         if (transform) {
           Promise<Void> ret = Promise.promise();
-          BodyAccumulator bodyAccumulator = new BodyAccumulator(modifyResponseBody.transformer(mediaType), responseMaxBufferedSize, (body, err) -> {
+          Future<Body> fut = modifyResponseBody.transform(responseBody);
+          fut.onComplete(ar -> {
             ProxyResponse response = context.response();
-            if (err == null) {
-              response.setBody(Body.body(body, mediaType));
+            if (ar.succeeded()) {
+              response.setBody(ar.result());
               context.sendResponse();
             } else {
-              ret.fail(err);
+              ret.fail(ar.cause());
             }
           });
-          ReadStream<Buffer> stream = responseBody.stream();
-          stream.handler(bodyAccumulator::handleBuffer);
-          stream.endHandler(bodyAccumulator::handleEnd);
-          stream.resume();
           return ret.future();
         }
       }
