@@ -181,21 +181,40 @@ You can also refer to {@link io.vertx.httpproxy.ProxyInterceptorBuilder} for mor
 
 ==== Body interceptor
 
-You can use body interceptor to create body transformations.
+You can use a {@link io.vertx.httpproxy.BodyTransformer} to create body transformations.
+
+A set of predefined transformations facilitates the creation of a transformer.
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyTransformer}
+----
+
+A body transformer is then turned into a proxy interceptor with the builder:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyInterceptorTransformer}
+----
+
+{@link io.vertx.httpproxy.BodyTransformers} provides transformation for common data types, like {@link io.vertx.core.json.JsonObject}:
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#bodyInterceptorJson}
 ----
 
-{@link io.vertx.httpproxy.BodyTransformer} provides transformation for common data types, like {@link io.vertx.core.json.JsonObject}:
+Most transformations provided in {@link io.vertx.httpproxy.BodyTransformers} are synchronous and buffer bytes. The default
+maximum amount of bytes is 256K bytes, you can provide a different amount:
 
 [source,java]
 ----
-{@link examples.HttpProxyExamples#bodyInterceptorJson}
+{@link examples.HttpProxyExamples#bodyInterceptorJsonMaxBufferedSize}
 ----
 
-Please check the {@link io.vertx.httpproxy.BodyTransformer} for other supported transformations.
+Please check the {@link io.vertx.httpproxy.BodyTransformers} for other supported transformations.
+
+NOTE: you can also implement {@link io.vertx.httpproxy.BodyTransformer} contract to best adapt it to your needs.
 
 ==== Interception and WebSocket upgrades
 

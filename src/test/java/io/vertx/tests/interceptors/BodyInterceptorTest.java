@@ -246,7 +246,7 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(null, MediaType.APPLICATION_JSON, buffer -> buffer, 512).build()));
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, 512, buffer -> buffer)).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
@@ -267,10 +267,10 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(null, MediaType.APPLICATION_JSON, buffer -> {
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, 512, buffer -> {
         ctx.fail();
         return buffer;
-      }, 512).build()));
+      })).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
@@ -285,9 +285,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
   @Test
   public void testResponseBodyTransformationError1(TestContext ctx) {
-    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(null, MediaType.APPLICATION_JSON, buffer -> {
+    testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, buffer -> {
       throw new RuntimeException();
-    }).build());
+    })).build());
   }
 
   @Test
@@ -349,9 +349,9 @@ public class BodyInterceptorTest extends ProxyTestBase {
 
   @Test
   public void testRequestBodyTransformationError(TestContext ctx) {
-    testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestBody(null, MediaType.APPLICATION_JSON, buffer -> {
+    testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, buffer -> {
       throw new RuntimeException();
-    }).build());
+    })).build());
   }
 
   @Test

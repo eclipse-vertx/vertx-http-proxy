@@ -10,7 +10,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.Body;
 import io.vertx.httpproxy.BodyTransformer;
-import io.vertx.httpproxy.BodyTransformers;
 import io.vertx.httpproxy.MediaType;
 
 import java.util.function.Function;
@@ -105,32 +104,16 @@ public class BodyTransformerImpl implements BodyTransformer {
     return produces;
   }
 
-  public static BodyTransformerImpl transformJsonObject(Function<JsonObject, JsonObject> transformer) {
-    return transformJsonObject(BodyTransformers.DEFAULT_MAX_BUFFERED_SIZE, transformer);
-  }
-
   public static BodyTransformerImpl transformJsonObject(long maxBufferedBytes, Function<JsonObject, JsonObject> transformer) {
     return new BodyTransformerImpl(buffer -> transformer.apply(buffer.toJsonObject()).toBuffer(), maxBufferedBytes, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
-  }
-
-  public static BodyTransformerImpl transformJsonArray(Function<JsonArray, JsonArray> transformer) {
-    return transformJsonArray(BodyTransformers.DEFAULT_MAX_BUFFERED_SIZE, transformer);
   }
 
   public static BodyTransformerImpl transformJsonArray(long maxBufferedBytes, Function<JsonArray, JsonArray> transformer) {
     return new BodyTransformerImpl(buffer -> transformer.apply(buffer.toJsonArray()).toBuffer(), maxBufferedBytes, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
   }
 
-  public static BodyTransformerImpl transformJson(Function<Object, Object> transformer) {
-    return transformJson(BodyTransformers.DEFAULT_MAX_BUFFERED_SIZE, transformer);
-  }
-
-  public static BodyTransformerImpl transformJson(long maxBufferedBytes, Function<Object, Object> transformer) {
+  public static BodyTransformerImpl transformJsonValue(long maxBufferedBytes, Function<Object, Object> transformer) {
     return new BodyTransformerImpl(buffer -> Json.encodeToBuffer(transformer.apply(Json.decodeValue(buffer))), maxBufferedBytes, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
-  }
-
-  public static BodyTransformerImpl transformText(String encoding, Function<String, String> transformer) {
-    return transformText(BodyTransformers.DEFAULT_MAX_BUFFERED_SIZE, encoding, transformer);
   }
 
   public static BodyTransformerImpl transformText(long maxBufferedBytes, String encoding, Function<String, String> transformer) {

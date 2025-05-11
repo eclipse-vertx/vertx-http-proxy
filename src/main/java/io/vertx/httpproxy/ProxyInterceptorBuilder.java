@@ -17,8 +17,6 @@ import io.vertx.codegen.annotations.Unstable;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.httpproxy.impl.BodyTransformerImpl;
 
 import java.util.Set;
 import java.util.function.Function;
@@ -150,30 +148,6 @@ public interface ProxyInterceptorBuilder {
   ProxyInterceptorBuilder transformingRequestBody(BodyTransformer requestTransformer);
 
   /**
-   * Like {@link #transformingRequestBody(MediaType, MediaType, Function, long)} with {@code maxBufferedSize} = {@link BodyTransformers#DEFAULT_MAX_BUFFERED_SIZE}
-   */
-  @Fluent
-  default ProxyInterceptorBuilder transformingRequestBody(MediaType consumedMediaType, MediaType producedMediaType, Function<Buffer, Buffer> requestTransformer) {
-    return transformingRequestBody(consumedMediaType, producedMediaType, requestTransformer, BodyTransformers.DEFAULT_MAX_BUFFERED_SIZE);
-  }
-
-  /**
-   * <p>Apply a transformation to change the request body when the proxy receives it.</p>
-   *
-   * <p>The interceptor fully buffers the request body and then applies the transformation.</p>
-   *
-   * @param consumedMediaType the media type this transformer understand
-   * @param producedMediaType the media type this transformer produces
-   * @param requestTransformer the operation to apply to the request body
-   * @param maxBufferedSize the maximum number of buffered bytes, when the buffered amount exceeds an HTTP error is sent
-   * @return the created interceptor
-   */
-  @Fluent
-  default ProxyInterceptorBuilder transformingRequestBody(MediaType consumedMediaType, MediaType producedMediaType, Function<Buffer, Buffer> requestTransformer, long maxBufferedSize) {
-    return transformingRequestBody(new BodyTransformerImpl(requestTransformer, maxBufferedSize, consumedMediaType, producedMediaType));
-  }
-
-  /**
    * <p>Apply a transformation to change the response body when the proxy receives it.</p>
    *
    * <p>The interceptor fully buffers the response body and then applies the transformation.</p>
@@ -183,29 +157,5 @@ public interface ProxyInterceptorBuilder {
    */
   @Fluent
   ProxyInterceptorBuilder transformingResponseBody(BodyTransformer responseTransformer);
-
-  /**
-   * Like {@link #transformingResponseBody(MediaType, MediaType, Function, long)} with {@code maxBufferedSize} = {@link BodyTransformers#DEFAULT_MAX_BUFFERED_SIZE}
-   */
-  @Fluent
-  default ProxyInterceptorBuilder transformingResponseBody(MediaType consumedMediaType, MediaType producedMediaType, Function<Buffer, Buffer> responseTransformer) {
-    return transformingResponseBody(consumedMediaType, producedMediaType, responseTransformer, BodyTransformers.DEFAULT_MAX_BUFFERED_SIZE);
-  }
-
-  /**
-   * <p>Apply a transformation to change the response body when the proxy receives it.</p>
-   *
-   * <p>The interceptor fully buffers the response body and then applies the transformation.</p>
-   *
-   * @param consumedMediaType the media type this transformer understand
-   * @param producedMediaType the media type this transformer produces
-   * @param responseTransformer the operation to apply to the response body
-   * @param maxBufferedSize the maximum number of buffered bytes, when the buffered amount exceeds an HTTP error is sent
-   * @return the created interceptor
-   */
-  @Fluent
-  default ProxyInterceptorBuilder transformingResponseBody(MediaType consumedMediaType, MediaType producedMediaType, Function<Buffer, Buffer> responseTransformer, long maxBufferedSize) {
-    return transformingResponseBody(new BodyTransformerImpl(responseTransformer, maxBufferedSize, consumedMediaType, producedMediaType));
-  }
 
 }

@@ -116,18 +116,24 @@ public class HttpProxyExamples {
       ProxyInterceptor.builder().settingQueryParam(key, value).build());
   }
 
-  public void bodyInterceptorTransformer(HttpProxy proxy) {
+  public void bodyTransformer() {
+    BodyTransformer transformer = BodyTransformers.transform(
+      MediaType.APPLICATION_JSON,
+      MediaType.APPLICATION_OCTET_STREAM,
+      buffer -> {
+        // Apply some transformation
+        return buffer;
+      }
+    );
+  }
+
+  public void bodyInterceptorTransformer(HttpProxy proxy, BodyTransformer transformer) {
     proxy.addInterceptor(
       ProxyInterceptor
         .builder()
-        .transformingResponseBody(
-          MediaType.APPLICATION_JSON,
-          MediaType.APPLICATION_OCTET_STREAM,
-          buffer -> {
-            // Apply some transformation
-            return buffer;
-          }
-        ).build());
+        .transformingResponseBody(transformer)
+        .build()
+    );
   }
 
   public void bodyInterceptorJson(HttpProxy proxy) {
@@ -136,6 +142,19 @@ public class HttpProxyExamples {
         .builder()
         .transformingResponseBody(
           BodyTransformers.jsonObject(
+            jsonObject -> removeSomeFields(jsonObject)
+          )
+        ).build());
+  }
+
+  public void bodyInterceptorJsonMaxBufferedSize(HttpProxy proxy) {
+    proxy.addInterceptor(
+      ProxyInterceptor
+        .builder()
+        .transformingResponseBody(
+          BodyTransformers.jsonObject(
+            // Maximum amount of buffered bytes
+            128 * 1024,
             jsonObject -> removeSomeFields(jsonObject)
           )
         ).build());
