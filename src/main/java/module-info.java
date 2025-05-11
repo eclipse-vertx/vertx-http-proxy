@@ -5,7 +5,6 @@ module io.vertx.httpproxy {
   requires static io.vertx.codegen.json;
   requires io.netty.codec.http;
   requires static io.vertx.docgen;
-  requires java.desktop;
   exports io.vertx.httpproxy;
   exports io.vertx.httpproxy.cache;
   exports io.vertx.httpproxy.spi.cache;
