@@ -86,12 +86,24 @@ public class ReverseProxy implements HttpProxy {
     proxy.sendRequest()
       .recover(throwable -> {
         log.trace("Error in sending the request", throwable);
-        return Future.succeededFuture(proxyRequest.release().response().setStatusCode(502));
+        int statusCode = 502;
+        if (throwable instanceof ProxyFailure) {
+          statusCode = ((ProxyFailure)throwable).code();
+        }
+        return Future.succeededFuture(proxyRequest.release().response().setStatusCode(statusCode));
       })
       .compose(proxy::sendProxyResponse)
       .recover(throwable -> {
         log.trace("Error in sending the response", throwable);
-        return proxy.response().release().setStatusCode(502).send();
+        int statusCode = 502;
+        if (throwable instanceof ProxyFailure) {
+          statusCode = ((ProxyFailure)throwable).code();
+        }
+        return proxy
+          .response()
+          .release()
+          .setStatusCode(statusCode)
+          .send();
       });
   }
 

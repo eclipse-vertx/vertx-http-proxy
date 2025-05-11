@@ -31,7 +31,32 @@ public interface Body {
    * @return a reference to this, so the API can be used fluently
    */
   static Body body(ReadStream<Buffer> stream, long len) {
+    return body(stream, len, MediaType.APPLICATION_OCTET_STREAM);
+  }
+
+  static Body body(ReadStream<Buffer> stream, long len, MediaType mediatype) {
     return new Body() {
+      @Override
+      public String mediaType() {
+        return mediatype != null ? mediatype.toString() : null;
+      }
+      @Override
+      public long length() {
+        return len;
+      }
+      @Override
+      public ReadStream<Buffer> stream() {
+        return stream;
+      }
+    };
+  }
+
+  static Body body(ReadStream<Buffer> stream, long len, String mediatype) {
+    return new Body() {
+      @Override
+      public String mediaType() {
+        return mediatype;
+      }
       @Override
       public long length() {
         return len;
@@ -52,15 +77,24 @@ public interface Body {
   static Body body(ReadStream<Buffer> stream) {
     return body(stream, -1L);
   }
-  
+
+  static Body body(Buffer buffer) {
+    return body(buffer, MediaType.APPLICATION_OCTET_STREAM);
+  }
+
   /**
    * Create a new {@code Body} instance.
    *
    * @param buffer the {@link Buffer} of the body
+   * @param mediaType the body media type
    * @return a reference to this, so the API can be used fluently
    */
-  static Body body(Buffer buffer) {
+  static Body body(Buffer buffer, MediaType mediaType) {
     return new Body() {
+      @Override
+      public String mediaType() {
+        return mediaType == null ? null : mediaType.toString();
+      }
       @Override
       public long length() {
         return buffer.length();
@@ -71,6 +105,11 @@ public interface Body {
       }
     };
   }
+
+  /**
+   * @return the media type of this body
+   */
+  String mediaType();
 
   /**
    *

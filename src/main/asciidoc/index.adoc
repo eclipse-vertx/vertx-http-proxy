@@ -134,26 +134,24 @@ You can filter body by simply replacing the original {@link io.vertx.httpproxy.B
 {@link io.vertx.httpproxy.ProxyContext#sendRequest} and {@link io.vertx.httpproxy.ProxyContext#sendResponse} continue the
 current interception chain and then send the result to the origin server or the user-agent.
 
-You can change the control, e.g you can send a response immediately to the user-agent without even requesting the origin server
+You can change the control, e.g. you can send a response immediately to the user-agent without even requesting the origin server
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#immediateResponse}
 ----
 
-==== Head interceptor
+==== Customizable interceptor
 
-You can use the {@link io.vertx.httpproxy.interceptors.HeadInterceptor} to change HTTP request/response heads:
+You can use {@link io.vertx.httpproxy.ProxyInterceptor#builder()} that facilitates the implementation of an interceptor
+that modifies the request/response heads and bodies:
 
 - request path
 - query params
 - request and response headers
+- body transformation
 
-A {@link io.vertx.httpproxy.interceptors.HeadInterceptor} is created and configured with a {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder}.
-
-The builder methods can be invoked several times.
-Operations on the path will be invoked in the order of configuration.
-That goes for operations on query parameters, request headers and response headers.
+Such interceptor is created and configured with a {@link io.vertx.httpproxy.ProxyInterceptorBuilder}.
 
 ===== Headers interception
 
@@ -164,7 +162,9 @@ You can apply the interceptor to change headers from the request and response wi
 {@link examples.HttpProxyExamples#headerInterceptorFilter}
 ----
 
-Check out {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder} for details about the available methods.
+Headers modifying methods can be invoked several times, operations are applied in the order of configuration.
+
+Check out {@link io.vertx.httpproxy.ProxyInterceptorBuilder} for details about the available methods.
 
 ===== Query params interception
 
@@ -175,18 +175,46 @@ You can apply the interceptor to update or remove query parameters:
 {@link examples.HttpProxyExamples#queryInterceptorAdd}
 ----
 
-You can also refer to {@link io.vertx.httpproxy.interceptors.HeadInterceptorBuilder} for more information.
+Query params modifying methods can be invoked several times, operations are applied in the order of configuration.
+
+You can also refer to {@link io.vertx.httpproxy.ProxyInterceptorBuilder} for more information.
 
 ==== Body interceptor
 
-You can use body interceptor to create body transformations for common data types, like {@link io.vertx.core.json.JsonObject}:
+You can use a {@link io.vertx.httpproxy.BodyTransformer} to create body transformations.
+
+A set of predefined transformations facilitates the creation of a transformer.
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyTransformer}
+----
+
+A body transformer is then turned into a proxy interceptor with the builder:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyInterceptorTransformer}
+----
+
+{@link io.vertx.httpproxy.BodyTransformers} provides transformation for common data types, like {@link io.vertx.core.json.JsonObject}:
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#bodyInterceptorJson}
 ----
 
-Please check the {@link io.vertx.httpproxy.interceptors.BodyTransformer} for other supported transformations.
+Most transformations provided in {@link io.vertx.httpproxy.BodyTransformers} are synchronous and buffer bytes. The default
+maximum amount of bytes is 256K bytes, you can provide a different amount:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#bodyInterceptorJsonMaxBufferedSize}
+----
+
+Please check the {@link io.vertx.httpproxy.BodyTransformers} for other supported transformations.
+
+NOTE: you can also implement {@link io.vertx.httpproxy.BodyTransformer} contract to best adapt it to your needs.
 
 ==== Interception and WebSocket upgrades
 

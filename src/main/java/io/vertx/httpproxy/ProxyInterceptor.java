@@ -2,12 +2,23 @@ package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.Future;
+import io.vertx.httpproxy.impl.interceptor.ProxyInterceptorBuilderImpl;
 
 /**
  * A {@link HttpProxy} interceptor.
  */
-@VertxGen(concrete = false)
+@VertxGen
 public interface ProxyInterceptor {
+
+  /**
+   * Create a builder for implementing common HTTP interception hooks such as modifying headers or transforming
+   * the HTTP entity stream.
+   *
+   * @return a builder for common interception
+   */
+  static ProxyInterceptorBuilder builder() {
+    return new ProxyInterceptorBuilderImpl();
+  }
 
   /**
    * Handle the proxy request at the stage of this interceptor.

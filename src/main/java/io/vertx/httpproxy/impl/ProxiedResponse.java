@@ -10,6 +10,7 @@
  */
 package io.vertx.httpproxy.impl;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -20,6 +21,7 @@ import io.vertx.core.http.HttpVersion;
 import io.vertx.core.streams.Pipe;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.Body;
+import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
@@ -64,12 +66,15 @@ class ProxiedResponse implements ProxyResponse {
       }
     }
 
+    // Content type
+    String contentType = response.getHeader(HttpHeaders.CONTENT_TYPE);
+
     this.request = request;
     this.response = response;
     this.proxiedResponse = proxiedResponse;
     this.statusCode = response.statusCode();
     this.statusMessage = response.statusMessage();
-    this.body = Body.body(response, contentLength);
+    this.body = Body.body(response, contentLength, contentType);
 
     long maxAge = -1;
     boolean publicCacheControl = false;
@@ -206,7 +211,9 @@ class ProxiedResponse implements ProxyResponse {
     headers.forEach(header -> {
       String name = header.getKey();
       String value = header.getValue();
-      if (name.equalsIgnoreCase("date") || name.equalsIgnoreCase("warning") || name.equalsIgnoreCase("transfer-encoding")) {
+      if (name.equals("content-type") && body != null) {
+        // Skip
+      } else if (name.equalsIgnoreCase("date") || name.equalsIgnoreCase("warning") || name.equalsIgnoreCase("transfer-encoding")) {
         // Skip
       } else {
         proxiedResponse.headers().add(name, value);
@@ -219,6 +226,10 @@ class ProxiedResponse implements ProxyResponse {
       }
       return proxiedResponse.end();
     } else {
+      String mediaType = body.mediaType();
+      if (mediaType != null) {
+        proxiedResponse.putHeader(HttpHeaderNames.CONTENT_TYPE, mediaType);
+      }
       long len = body.length();
       if (len >= 0) {
         proxiedResponse.putHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(len));
@@ -238,8 +249,7 @@ class ProxiedResponse implements ProxyResponse {
         }
         proxiedResponse.setChunked(true);
       }
-      ReadStream<Buffer> bodyStream = body.stream();
-      return sendResponse(bodyStream);
+      return sendResponse(body.stream());
     }
   }
 

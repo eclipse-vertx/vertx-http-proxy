@@ -16,8 +16,8 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.httpproxy.interceptors.HeadInterceptor;
 import io.vertx.tests.ProxyTestBase;
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ public class PathInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadInterceptor.builder().addingPathPrefix("/prefix").build()));
+      .addInterceptor(ProxyInterceptor.builder().addingPathPrefix("/prefix").build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)
@@ -55,7 +55,7 @@ public class PathInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadInterceptor.builder().removingPathPrefix("/prefix").build()));
+      .addInterceptor(ProxyInterceptor.builder().removingPathPrefix("/prefix").build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/prefix/hello")
       .compose(HttpClientRequest::send)
@@ -71,7 +71,7 @@ public class PathInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(HeadInterceptor.builder().removingPathPrefix("/prefix").build()));
+      .addInterceptor(ProxyInterceptor.builder().removingPathPrefix("/prefix").build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)

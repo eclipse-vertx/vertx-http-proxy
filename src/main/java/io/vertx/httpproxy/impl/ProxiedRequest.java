@@ -23,6 +23,7 @@ import io.vertx.core.internal.http.HttpServerRequestInternal;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
+import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
@@ -75,9 +76,12 @@ public class ProxiedRequest implements ProxyRequest {
       }
     }
 
+    // Content type
+    String contentType = proxiedRequest.getHeader(HttpHeaders.CONTENT_TYPE);
+
     this.method = proxiedRequest.method();
     this.version = proxiedRequest.version();
-    this.body = Body.body(proxiedRequest, contentLength);
+    this.body = Body.body(proxiedRequest, contentLength, contentType);
     this.uri = proxiedRequest.uri();
     this.headers = MultiMap.caseInsensitiveMultiMap().addAll(proxiedRequest.headers());
     this.absoluteURI = proxiedRequest.absoluteURI();
