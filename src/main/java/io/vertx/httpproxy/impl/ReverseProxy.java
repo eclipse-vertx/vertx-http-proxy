@@ -20,7 +20,6 @@ import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 
 import java.util.*;
-import java.util.function.BiFunction;
 
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.UPGRADE;
@@ -30,7 +29,7 @@ public class ReverseProxy implements HttpProxy {
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
   private final HttpClient client;
   private final boolean supportWebSocket;
-  private BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> selector = (req, client) -> Future.failedFuture("No origin available");
+  private OriginRequestProvider originRequestProvider = (pc) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptor> interceptors = new ArrayList<>();
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
@@ -44,8 +43,8 @@ public class ReverseProxy implements HttpProxy {
   }
 
   @Override
-  public HttpProxy originRequestProvider(BiFunction<HttpServerRequest, HttpClient, Future<HttpClientRequest>> provider) {
-    selector = provider;
+  public HttpProxy origin(OriginRequestProvider provider) {
+    originRequestProvider = Objects.requireNonNull(provider);
     return this;
   }
 
@@ -67,13 +66,14 @@ public class ReverseProxy implements HttpProxy {
       return;
     }
 
+    Proxy proxy = new Proxy(proxyRequest);
+
     // WebSocket upgrade tunneling
     if (supportWebSocket && io.vertx.core.http.impl.HttpUtils.canUpgradeToWebSocket(request)) {
-      handleWebSocketUpgrade(proxyRequest);
+      handleWebSocketUpgrade(proxy);
       return;
     }
 
-    Proxy proxy = new Proxy(proxyRequest);
     proxy.filters = interceptors.listIterator();
     proxy.sendRequest()
       .recover(throwable -> {
@@ -87,9 +87,10 @@ public class ReverseProxy implements HttpProxy {
       });
   }
 
-  private void handleWebSocketUpgrade(ProxyRequest proxyRequest) {
+  private void handleWebSocketUpgrade(ProxyContext proxyContext) {
+    ProxyRequest proxyRequest = proxyContext.request();
     HttpServerRequest proxiedRequest = proxyRequest.proxiedRequest();
-    resolveOrigin(proxiedRequest).onComplete(ar -> {
+    resolveOrigin(proxyContext).onComplete(ar -> {
       if (ar.succeeded()) {
         HttpClientRequest request = ar.result();
         request.setMethod(HttpMethod.GET);
@@ -148,8 +149,8 @@ public class ReverseProxy implements HttpProxy {
       .send();
   }
 
-  private Future<HttpClientRequest> resolveOrigin(HttpServerRequest proxiedRequest) {
-    return selector.apply(proxiedRequest, client);
+  private Future<HttpClientRequest> resolveOrigin(ProxyContext proxyContext) {
+    return originRequestProvider.create(proxyContext);
   }
 
   private class Proxy implements ProxyContext {
@@ -172,6 +173,11 @@ public class ReverseProxy implements HttpProxy {
     public <T> T get(String name, Class<T> type) {
       Object o = attachments.get(name);
       return type.isInstance(o) ? type.cast(o) : null;
+    }
+
+    @Override
+    public HttpClient client() {
+      return client;
     }
 
     @Override
@@ -205,7 +211,7 @@ public class ReverseProxy implements HttpProxy {
     }
 
     private Future<ProxyResponse> sendProxyRequest(ProxyRequest proxyRequest) {
-      return resolveOrigin(proxyRequest.proxiedRequest()).compose(proxyRequest::send);
+      return resolveOrigin(this).compose(proxyRequest::send);
     }
 
     private Future<Void> sendProxyResponse(ProxyResponse response) {

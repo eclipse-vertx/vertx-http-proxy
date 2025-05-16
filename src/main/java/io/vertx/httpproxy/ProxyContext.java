@@ -2,6 +2,7 @@ package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.Future;
+import io.vertx.core.http.HttpClient;
 
 /**
  * A controller for proxy interception.
@@ -45,4 +46,9 @@ public interface ProxyContext {
    * @return the attached payload
    */
   <T> T get(String name, Class<T> type);
+
+  /**
+   * @return the {@link HttpClient} use to interact with the origin server
+   */
+  HttpClient client();
 }
