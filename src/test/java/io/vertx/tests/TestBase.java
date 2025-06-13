@@ -34,6 +34,7 @@ import org.junit.runner.RunWith;
 import java.io.Closeable;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -72,6 +73,10 @@ public abstract class TestBase {
   }
 
   protected Closeable startProxy(Consumer<HttpProxy> config) {
+    return startProxy(UnaryOperator.identity(), config);
+  }
+
+  protected Closeable startProxy(UnaryOperator<HttpServerOptions> proxyOptionsConfig, Consumer<HttpProxy> config) {
     CompletableFuture<Closeable> res = new CompletableFuture<>();
     vertx.deployVerticle(new AbstractVerticle() {
       HttpClient proxyClient;
@@ -80,7 +85,7 @@ public abstract class TestBase {
       @Override
       public void start(Promise<Void> startFuture) {
         proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-        proxyServer = vertx.createHttpServer(new HttpServerOptions(serverOptions));
+        proxyServer = vertx.createHttpServer(proxyOptionsConfig.apply(new HttpServerOptions(serverOptions)));
         proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
         config.accept(proxy);
         proxyServer.requestHandler(proxy);
