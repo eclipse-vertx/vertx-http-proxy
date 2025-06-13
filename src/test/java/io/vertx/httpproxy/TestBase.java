@@ -11,15 +11,10 @@
 package io.vertx.httpproxy;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.*;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
@@ -34,7 +29,7 @@ import org.junit.runner.RunWith;
 import java.io.Closeable;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -73,12 +68,16 @@ public abstract class TestBase {
   }
 
   protected Closeable startProxy(Consumer<HttpProxy> config) {
+    return startProxy(UnaryOperator.identity(), config);
+  }
+
+  protected Closeable startProxy(UnaryOperator<HttpServerOptions> proxyOptionsConfig, Consumer<HttpProxy> config) {
     CompletableFuture<Closeable> res = new CompletableFuture<>();
     vertx.deployVerticle(new AbstractVerticle() {
       @Override
       public void start(Promise<Void> startFuture) {
         HttpClient proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-        HttpServer proxyServer = vertx.createHttpServer(new HttpServerOptions(serverOptions));
+        HttpServer proxyServer = vertx.createHttpServer(new HttpServerOptions(proxyOptionsConfig.apply(new HttpServerOptions(serverOptions))));
         HttpProxy proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
         config.accept(proxy);
         proxyServer.requestHandler(proxy);

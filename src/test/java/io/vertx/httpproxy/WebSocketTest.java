@@ -143,4 +143,42 @@ public class WebSocketTest extends ProxyTestBase {
       }));
     }));
   }
+
+  @Test
+  public void testWebSocketExtensionsNegotiatedBetweenClientAndBackend(TestContext ctx) {
+    Async async = ctx.async();
+    HttpServerOptions backendOptions = new HttpServerOptions().setPort(8081).setHost("localhost")
+      .setPerFrameWebSocketCompressionSupported(false) // Disable extension in the backend
+      .setPerMessageWebSocketCompressionSupported(false); // Disable extension in the backend
+    SocketAddress backend = startHttpBackend(ctx, backendOptions, req -> {
+      ctx.assertTrue(req.headers().contains("sec-websocket-extensions"));
+      Future<ServerWebSocket> fut = req.toWebSocket();
+      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        ws.handler(buff -> ws.writeTextMessage(buff.toString()));
+        ws.closeHandler(v -> {
+          async.complete();
+        });
+      }));
+    });
+    startProxy(proxyServerOptions -> {
+      return proxyServerOptions
+        .setPerFrameWebSocketCompressionSupported(true) // Enable extension in the proxy
+        .setPerMessageWebSocketCompressionSupported(true); // Enable extension in the proxy
+    }, httpProxy -> httpProxy.origin(backend));
+    WebSocketClient wsClient = vertx.createWebSocketClient(new WebSocketClientOptions()
+      .setTryUsePerFrameCompression(true)  // Enable extension in the client
+      .setTryUsePerMessageCompression(true)); // Enable extension in the client
+    WebSocketConnectOptions options = new WebSocketConnectOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws");
+    wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
+      ctx.assertFalse(ws.headers().contains("sec-websocket-extensions"), "Expected extensions to be declined");
+      ws.textMessageHandler(msg -> {
+        ctx.assertEquals("hello", msg);
+        ws.close();
+      });
+      ws.writeTextMessage("hello");
+    }));
+  }
 }
