@@ -70,19 +70,19 @@ End-to-end headers are forwarded by the proxy, hop-by-hop headers are ignored.
 
 ==== Request authority
 
-As a transparent proxy, the request authority (`Host` header for HTTP/1.1, `:authority` pseudo header for HTTP/2) is preserved.
+By default, the proxy request authority (`Host` header for HTTP/1.1, `:authority` pseudo header for HTTP/2) is set by the HTTP client according to the origin server address.
 
-You can override the request authority
+CAUTION: The origin server may need you to set the https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Host[`x-forwarded-*`] or https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded[`forwarded`] headers on the proxied request.
+For example, it might use the values to compute a created HTTP resource https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location[location].
+
+Nevertheless, you can override the request authority:
 
 [source,java]
 ----
 {@link examples.HttpProxyExamples#overrideAuthority}
 ----
 
-When the request authority is overridden, the `x-forwarded-host` header is set on the request to the origin server with the original authority value.
-
-WARNING: changing the request authority can have undesirable side effects and can affect the proxied web server that might
-rely on the original request authority to handle cookies, URL redirects and such.
+When the request authority is overridden, the `x-forwarded-host` header is automatically set on the request to the origin server with the original authority value.
 
 === WebSockets
 
