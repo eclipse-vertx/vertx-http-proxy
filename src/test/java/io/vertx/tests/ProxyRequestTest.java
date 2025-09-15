@@ -122,6 +122,32 @@ public class ProxyRequestTest extends ProxyTestBase {
   }
 
   @Test
+  public void testResponseTrailer(TestContext ctx) {
+    runHttpTest(ctx, req -> {
+      String te = req.getHeader(HttpHeaders.TRANSFER_ENCODING);
+      if (te == null || !te.equalsIgnoreCase("chunked")) {
+        ctx.fail("got non chunked request");
+      }
+      HttpServerResponse response = req.response();
+      response.setChunked(true);
+      response.trailers().add("marked", "1");
+      response.end("Hello World");
+    }, ctx.asyncAssertSuccess());
+    httpClient = vertx.createHttpClient();
+    httpClient
+      .request(HttpMethod.POST, 8080, "localhost", "/somepath")
+      .compose(req -> req
+        .setChunked(true)
+        .send("chunk")
+        .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals(200, resp.statusCode())))
+        .compose(response -> response.end()
+          .map(response)
+          .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals("1", resp.getTrailer("marked"))))))
+      .onComplete(ctx.asyncAssertSuccess());
+  }
+
+
+  @Test
   public void testNonChunkedFrontendRequest(TestContext ctx) {
     runHttpTest(ctx, req -> {
       String te = req.getHeader(HttpHeaders.TRANSFER_ENCODING);
