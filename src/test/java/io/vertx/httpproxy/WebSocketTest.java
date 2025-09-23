@@ -145,6 +145,37 @@ public class WebSocketTest extends ProxyTestBase {
   }
 
   @Test
+  public void testWebSocketHostHeader(TestContext ctx) {
+    Async async = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.assertEquals("localhost:8081", req.headers().get("Host"));
+      Future<ServerWebSocket> fut = req.toWebSocket();
+      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        ws.closeHandler(v -> {
+          async.complete();
+        });
+      }));
+    });
+    startProxy(backend);
+    HttpClient httpClient = vertx.createHttpClient();
+    RequestOptions options = new RequestOptions()
+      .setPort(8080)
+      .setHost("localhost")
+      .setURI("/ws")
+      .putHeader("Origin", "http://localhost:8080")
+      .putHeader("Connection", "Upgrade")
+      .putHeader("Upgrade", "Websocket")
+      .putHeader("Sec-WebSocket-Version", "13")
+      .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
+    httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
+      clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(101, response.statusCode());
+        response.netSocket().close();
+      }));
+    }));
+  }
+
+  @Test
   public void testWebSocketExtensionsNegotiatedBetweenClientAndBackend(TestContext ctx) {
     Async async = ctx.async();
     HttpServerOptions backendOptions = new HttpServerOptions().setPort(8081).setHost("localhost")
