@@ -38,6 +38,7 @@ public class ReverseProxy implements HttpProxy {
   private final boolean supportWebSocket;
   private OriginRequestProvider originRequestProvider = (pc) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
+  private final List<String> hopByHopHeaders;
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
@@ -47,6 +48,7 @@ public class ReverseProxy implements HttpProxy {
     }
     this.client = client;
     this.supportWebSocket = options.getSupportWebSocket();
+    this.hopByHopHeaders = options.getCustomHopHeaders();
   }
 
   public Cache newCache(CacheOptions options, Vertx vertx) {
@@ -73,7 +75,7 @@ public class ReverseProxy implements HttpProxy {
 
   @Override
   public void handle(HttpServerRequest request) {
-    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request);
+    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request, hopByHopHeaders);
 
     // Encoding sanity check
     Boolean chunked = HttpUtils.isChunked(request.headers());

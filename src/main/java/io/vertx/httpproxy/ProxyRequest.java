@@ -21,6 +21,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpVersion;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.httpproxy.impl.ProxiedRequest;
+import java.util.List;
 
 /**
  *
@@ -40,6 +41,18 @@ public interface ProxyRequest {
   static ProxyRequest reverseProxy(HttpServerRequest proxiedRequest) {
     proxiedRequest.pause();
     return new ProxiedRequest(proxiedRequest);
+  }
+
+  /**
+   * Create a new {@code ProxyRequest} instance, the proxied request will be paused.
+   *
+   * @param proxiedRequest the {@code HttpServerRequest} that is proxied
+   * @param customHopHeaders list of Custom Hop-By-Hop Headers
+   * @return a reference to this, so the API can be used fluently
+   */
+  static ProxyRequest reverseProxy(HttpServerRequest proxiedRequest, List<String> customHopHeaders) {
+    proxiedRequest.pause();
+    return new ProxiedRequest(proxiedRequest, customHopHeaders);
   }
 
   /**
