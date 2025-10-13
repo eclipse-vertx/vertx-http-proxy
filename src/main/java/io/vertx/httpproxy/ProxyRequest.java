@@ -21,6 +21,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpVersion;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.httpproxy.impl.ProxiedRequest;
+import java.util.Set;
 
 /**
  *
@@ -177,5 +178,21 @@ public interface ProxyRequest {
    * @return the proxy response
    */
   ProxyResponse response();
+
+  /**
+   * Set Custom Hop-By-Hop Headers
+   *
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  ProxyRequest setCustomHopHeaders(Set<String> customHopHeaders);
+
+  /**
+   * Add Custom Hop-By-Hop Header
+   *
+   * @return a reference to this, so the API can be used fluently
+   */
+  @Fluent
+  ProxyRequest addCustomHopHeader(String customHopHeader);
 
 }

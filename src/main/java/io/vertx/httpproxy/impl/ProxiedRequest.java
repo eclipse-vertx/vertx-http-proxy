@@ -23,35 +23,22 @@ import io.vertx.core.internal.http.HttpServerRequestInternal;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
-import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
-
+import io.vertx.httpproxy.ProxyOptions;
 import java.util.Map;
 import java.util.Objects;
-
-import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import java.util.HashSet;
+import java.util.Set;
 import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
-import static io.vertx.core.http.HttpHeaders.KEEP_ALIVE;
-import static io.vertx.core.http.HttpHeaders.PROXY_AUTHENTICATE;
-import static io.vertx.core.http.HttpHeaders.PROXY_AUTHORIZATION;
-import static io.vertx.core.http.HttpHeaders.TRANSFER_ENCODING;
-import static io.vertx.core.http.HttpHeaders.UPGRADE;
 
 public class ProxiedRequest implements ProxyRequest {
 
   private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
-  private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
-    .add(CONNECTION, "whatever")
-    .add(KEEP_ALIVE, "whatever")
-    .add(PROXY_AUTHENTICATE, "whatever")
-    .add(PROXY_AUTHORIZATION, "whatever")
-    .add("te", "whatever")
-    .add("trailer", "whatever")
-    .add(TRANSFER_ENCODING, "whatever")
-    .add(UPGRADE, "whatever");
+  private static final Set<String> DEFAULT_HOP_BY_HOP_HEADERS = new HashSet<>(ProxyOptions.DEFAULT_HOP_BY_HOP_HEADERS);
 
+  private Set<String> HOP_BY_HOP_HEADERS;
   final ContextInternal context;
   private HttpMethod method;
   private final HttpVersion version;
@@ -88,6 +75,7 @@ public class ProxiedRequest implements ProxyRequest {
     this.proxiedRequest = proxiedRequest;
     this.context = ((HttpServerRequestInternal) proxiedRequest).context();
     this.authority = null; // null is used as a signal to indicate an unchanged authority
+    this.HOP_BY_HOP_HEADERS = DEFAULT_HOP_BY_HOP_HEADERS;
   }
 
   @Override
@@ -173,7 +161,7 @@ public class ProxiedRequest implements ProxyRequest {
     for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
-      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equalsIgnoreCase(HttpHeaders.HOST.toString())) {
+      if (!HOP_BY_HOP_HEADERS.contains(name)) {
         request.headers().add(name, value);
       }
     }
@@ -240,5 +228,17 @@ public class ProxiedRequest implements ProxyRequest {
   public Future<ProxyResponse> send(HttpClientRequest request) {
     this.request = request;
     return sendRequest();
+  }
+
+  @Override
+  public ProxyRequest setCustomHopHeaders(Set<String> customHopHeaders) {
+    this.HOP_BY_HOP_HEADERS = new HashSet<>(customHopHeaders);
+    return this;
+  }
+
+  @Override
+  public ProxyRequest addCustomHopHeader(String customHopHeader) {
+    this.HOP_BY_HOP_HEADERS.add(customHopHeader);
+    return this;
   }
 }
