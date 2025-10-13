@@ -29,17 +29,16 @@ import io.vertx.httpproxy.ProxyOptions;
 import java.util.Map;
 import java.util.Objects;
 import java.util.HashSet;
-import java.util.List;
-
+import java.util.Set;
 import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
 
 public class ProxiedRequest implements ProxyRequest {
 
   private static final CharSequence X_FORWARDED_HOST = HttpHeaders.createOptimized("x-forwarded-host");
 
-  private static final HashSet<String> DEFAULT_HOP_BY_HOP_HEADERS = new HashSet<>(ProxyOptions.DEFAULT_HOP_BY_HOP_HEADERS);
+  private static final Set<String> DEFAULT_HOP_BY_HOP_HEADERS = new HashSet<>(ProxyOptions.DEFAULT_HOP_BY_HOP_HEADERS);
 
-  private final HashSet<String> HOP_BY_HOP_HEADERS;
+  private Set<String> HOP_BY_HOP_HEADERS;
   final ContextInternal context;
   private HttpMethod method;
   private final HttpVersion version;
@@ -77,34 +76,6 @@ public class ProxiedRequest implements ProxyRequest {
     this.context = ((HttpServerRequestInternal) proxiedRequest).context();
     this.authority = null; // null is used as a signal to indicate an unchanged authority
     this.HOP_BY_HOP_HEADERS = DEFAULT_HOP_BY_HOP_HEADERS;
-  }
-
-  public ProxiedRequest(HttpServerRequest proxiedRequest, List<String> customHopHeaders) {
-
-    // Determine content length
-    long contentLength = -1L;
-    String contentLengthHeader = proxiedRequest.getHeader(CONTENT_LENGTH);
-    if (contentLengthHeader != null) {
-      try {
-        contentLength = Long.parseLong(contentLengthHeader);
-      } catch (NumberFormatException e) {
-        // Ignore ???
-      }
-    }
-
-    // Content type
-    String contentType = proxiedRequest.getHeader(HttpHeaders.CONTENT_TYPE);
-
-    this.method = proxiedRequest.method();
-    this.version = proxiedRequest.version();
-    this.body = Body.body(proxiedRequest, contentLength, contentType);
-    this.uri = proxiedRequest.uri();
-    this.headers = MultiMap.caseInsensitiveMultiMap().addAll(proxiedRequest.headers());
-    this.absoluteURI = proxiedRequest.absoluteURI();
-    this.proxiedRequest = proxiedRequest;
-    this.context = ((HttpServerRequestInternal) proxiedRequest).context();
-    this.authority = null; // null is used as a signal to indicate an unchanged authority
-    this.HOP_BY_HOP_HEADERS = new HashSet<>(customHopHeaders);
   }
 
   @Override
@@ -257,5 +228,17 @@ public class ProxiedRequest implements ProxyRequest {
   public Future<ProxyResponse> send(HttpClientRequest request) {
     this.request = request;
     return sendRequest();
+  }
+
+  @Override
+  public ProxyRequest setCustomHopHeaders(Set<String> customHopHeaders) {
+    this.HOP_BY_HOP_HEADERS = new HashSet<>(customHopHeaders);
+    return this;
+  }
+
+  @Override
+  public ProxyRequest addCustomHopHeader(String customHopHeader) {
+    this.HOP_BY_HOP_HEADERS.add(customHopHeader);
+    return this;
   }
 }

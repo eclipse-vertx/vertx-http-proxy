@@ -4,15 +4,20 @@ import io.vertx.codegen.annotations.DataObject;
 import io.vertx.codegen.json.annotations.JsonGen;
 import io.vertx.core.json.JsonObject;
 import io.vertx.httpproxy.cache.CacheOptions;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
-import static io.vertx.core.http.HttpHeaders.*;
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.KEEP_ALIVE;
+import static io.vertx.core.http.HttpHeaders.PROXY_AUTHENTICATE;
+import static io.vertx.core.http.HttpHeaders.PROXY_AUTHORIZATION;
+import static io.vertx.core.http.HttpHeaders.TRANSFER_ENCODING;
 import static io.vertx.core.http.HttpHeaders.UPGRADE;
 
 /**
  * Proxy options.
+ *
  */
 @DataObject
 @JsonGen(publicConverter = false)
@@ -23,7 +28,7 @@ public class ProxyOptions {
    */
   public static final boolean DEFAULT_SUPPORT_WEBSOCKET = true;
 
-  public static final List<String> DEFAULT_HOP_BY_HOP_HEADERS = new ArrayList<>(Arrays.asList(
+  public static final Set<String> DEFAULT_HOP_BY_HOP_HEADERS = new HashSet<>(Arrays.asList(
     CONNECTION.toString(),
     KEEP_ALIVE.toString(),
     PROXY_AUTHENTICATE.toString(),
@@ -36,7 +41,7 @@ public class ProxyOptions {
 
   private CacheOptions cacheOptions;
   private boolean supportWebSocket;
-  private List<String> customHopHeaders;
+  private Set<String> customHopHeaders;
 
   public ProxyOptions(JsonObject json) {
     ProxyOptionsConverter.fromJson(json, this);
@@ -88,7 +93,7 @@ public class ProxyOptions {
   /**
    * @return custom hop-by-hop headers
    */
-  public List<String> getCustomHopHeaders() {
+  public Set<String> getCustomHopHeaders() {
     return customHopHeaders;
   }
 
@@ -103,9 +108,21 @@ public class ProxyOptions {
    * </p>
    *
    * @param customHopHeaders the list of hop-by-hop headers to set
+   * @return a reference to this, so the API can be used fluently
    */
-  public ProxyOptions setCustomHopHeaders(List<String> customHopHeaders){
-    this.customHopHeaders = customHopHeaders;
+  public ProxyOptions setCustomHopHeaders(Set<String> customHopHeaders){
+    this.customHopHeaders = new HashSet<String>(customHopHeaders);
+    return this;
+  }
+
+  /**
+   * Add a custom hop-by-hop header
+   *
+   * @param customHopHeader a custom hop-by-hop header
+   * @return a reference to this, so the API can be used fluently
+   */
+  public ProxyOptions addCustomHopHeader(String customHopHeader) {
+    this.customHopHeaders.add(customHopHeader);
     return this;
   }
 

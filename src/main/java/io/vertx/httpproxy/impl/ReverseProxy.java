@@ -24,9 +24,7 @@ import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.*;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
-
 import java.util.*;
-
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.HOST;
 import static io.vertx.core.http.HttpHeaders.UPGRADE;
@@ -38,7 +36,7 @@ public class ReverseProxy implements HttpProxy {
   private final boolean supportWebSocket;
   private OriginRequestProvider originRequestProvider = (pc) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
-  private final List<String> hopByHopHeaders;
+  private final Set<String> hopByHopHeaders;
 
   public ReverseProxy(ProxyOptions options, HttpClient client) {
     CacheOptions cacheOptions = options.getCacheOptions();
@@ -75,7 +73,9 @@ public class ReverseProxy implements HttpProxy {
 
   @Override
   public void handle(HttpServerRequest request) {
-    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request, hopByHopHeaders);
+    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request);
+
+    proxyRequest.setCustomHopHeaders(hopByHopHeaders);
 
     // Encoding sanity check
     Boolean chunked = HttpUtils.isChunked(request.headers());
