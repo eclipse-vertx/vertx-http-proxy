@@ -10,22 +10,9 @@
  */
 package io.vertx.httpproxy;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Promise;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.http.HttpVersion;
-import io.vertx.core.http.RequestOptions;
+import io.vertx.core.http.*;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
@@ -575,6 +562,30 @@ public class ProxyRequestTest extends ProxyTestBase {
         resp.body(ctx.asyncAssertSuccess(body -> {
           ctx.assertEquals("another-request", body.toString());
         }));
+      }));
+    }));
+  }
+
+  @Test
+  public void testReleaseProxyRequestAndFail(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.fail("Shouldn't be called");
+    });
+    HttpClient backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
+    HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
+    proxy.origin(backend);
+    proxy.addInterceptor(new ProxyInterceptor() {
+      @Override
+      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
+        context.request().release();
+        return Future.failedFuture("boom");
+      }
+    });
+    startHttpServer(ctx, serverOptions, proxy);
+    HttpClient httpClient = vertx.createHttpClient();
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
+      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
+        ctx.assertEquals(502, resp.statusCode());
       }));
     }));
   }

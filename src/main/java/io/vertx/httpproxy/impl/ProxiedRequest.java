@@ -137,9 +137,11 @@ public class ProxiedRequest implements ProxyRequest {
 
   @Override
   public ProxyRequest release() {
-    body.stream().resume();
-    headers.clear();
-    body = null;
+    if (body != null) {
+      body.stream().resume();
+      headers.clear();
+      body = null;
+    }
     return this;
   }
 
