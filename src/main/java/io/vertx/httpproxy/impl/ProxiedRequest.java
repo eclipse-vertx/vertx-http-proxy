@@ -13,30 +13,19 @@ package io.vertx.httpproxy.impl;
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpVersion;
+import io.vertx.core.http.*;
 import io.vertx.core.internal.ContextInternal;
 import io.vertx.core.internal.http.HttpServerRequestInternal;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.streams.Pipe;
 import io.vertx.httpproxy.Body;
-import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
 import java.util.Map;
 import java.util.Objects;
 
-import static io.vertx.core.http.HttpHeaders.CONNECTION;
-import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
-import static io.vertx.core.http.HttpHeaders.KEEP_ALIVE;
-import static io.vertx.core.http.HttpHeaders.PROXY_AUTHENTICATE;
-import static io.vertx.core.http.HttpHeaders.PROXY_AUTHORIZATION;
-import static io.vertx.core.http.HttpHeaders.TRANSFER_ENCODING;
-import static io.vertx.core.http.HttpHeaders.UPGRADE;
+import static io.vertx.core.http.HttpHeaders.*;
 
 public class ProxiedRequest implements ProxyRequest {
 
@@ -152,9 +141,11 @@ public class ProxiedRequest implements ProxyRequest {
 
   @Override
   public ProxyRequest release() {
-    body.stream().resume();
-    headers.clear();
-    body = null;
+    if (body != null) {
+      body.stream().resume();
+      headers.clear();
+      body = null;
+    }
     return this;
   }
 
