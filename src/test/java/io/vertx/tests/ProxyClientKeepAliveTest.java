@@ -762,7 +762,7 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
     startProxy(proxy -> {
       proxy.origin(backend);
     });
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/somepath")
       .compose(req -> req
         .authority(requestAuthority)
