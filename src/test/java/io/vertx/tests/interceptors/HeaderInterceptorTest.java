@@ -11,6 +11,7 @@
 
 package io.vertx.tests.interceptors;
 
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
@@ -28,8 +29,22 @@ import java.util.Set;
  */
 public class HeaderInterceptorTest extends ProxyTestBase {
 
+  HttpClient client = null;
+
   public HeaderInterceptorTest(ProxyOptions options) {
     super(options);
+  }
+
+  @Override
+  public void setUp() {
+    super.setUp();
+    client = vertx.createHttpClient();
+  }
+
+  @Override
+  public void tearDown(TestContext context) {
+    if (client != null) client.close();
+    super.tearDown(context);
   }
 
   @Test
@@ -44,7 +59,7 @@ public class HeaderInterceptorTest extends ProxyTestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().filteringRequestHeaders(Set.of("k2")).build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/")
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(request -> request
         .putHeader("k1", "v1")
         .putHeader("k2", "v2")
@@ -67,7 +82,7 @@ public class HeaderInterceptorTest extends ProxyTestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().filteringResponseHeaders(Set.of("k2")).build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/")
+    client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(resp -> {
         ctx.assertEquals(resp.headers().get("k1"), "v1");
