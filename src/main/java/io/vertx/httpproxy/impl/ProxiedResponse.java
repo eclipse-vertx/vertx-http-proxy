@@ -74,7 +74,7 @@ class ProxiedResponse implements ProxyResponse {
     this.proxiedResponse = proxiedResponse;
     this.statusCode = response.statusCode();
     this.statusMessage = response.statusMessage();
-    this.body = Body.body(response, contentLength, contentType);
+    this.body = new HttpClientResponseBody(response, contentLength, contentType);
 
     long maxAge = -1;
     boolean publicCacheControl = false;
