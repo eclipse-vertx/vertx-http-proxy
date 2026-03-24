@@ -22,6 +22,11 @@ public class ProxyOptionsConverter {
             obj.setSupportWebSocket((Boolean)member.getValue());
           }
           break;
+        case "forwardedHeadersOptions":
+          if (member.getValue() instanceof JsonObject) {
+            obj.setForwardedHeadersOptions(new io.vertx.httpproxy.ForwardedHeadersOptions((io.vertx.core.json.JsonObject)member.getValue()));
+          }
+          break;
       }
     }
   }
@@ -35,5 +40,8 @@ public class ProxyOptionsConverter {
       json.put("cacheOptions", obj.getCacheOptions().toJson());
     }
     json.put("supportWebSocket", obj.getSupportWebSocket());
+    if (obj.getForwardedHeadersOptions() != null) {
+      json.put("forwardedHeadersOptions", obj.getForwardedHeadersOptions().toJson());
+    }
   }
 }

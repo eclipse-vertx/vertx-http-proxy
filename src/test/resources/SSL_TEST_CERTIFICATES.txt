@@ -1,0 +1,49 @@
+SSL Test Certificates for HTTPS Testing
+=========================================
+
+This directory contains self-signed SSL certificates used for testing HTTPS functionality
+in the vertx-http-proxy tests.
+
+Files:
+------
+- server.cert.pem: Self-signed X.509 certificate for localhost
+- server.key.pem: RSA private key for the certificate
+
+⚠️  WARNING: These certificates are for TESTING ONLY. Never use them in production!
+
+How to Regenerate:
+------------------
+
+If you need to regenerate these test certificates (e.g., if they expire), use the
+following OpenSSL command:
+
+  openssl req -x509 \
+    -newkey rsa:2048 \
+    -keyout server.key.pem \
+    -out server.cert.pem \
+    -days 3650 \
+    -nodes \
+    -subj "/CN=localhost"
+
+This will create:
+- A 2048-bit RSA private key (server.key.pem)
+- A self-signed certificate valid for 3650 days / 10 years (server.cert.pem)
+- Certificate issued for CN=localhost
+- No passphrase protection (-nodes flag)
+
+Certificate Details:
+--------------------
+- Common Name (CN): localhost
+- Key Size: 2048-bit RSA
+- Validity: 10 years (3650 days) from generation date
+- No passphrase protection
+
+Usage in Tests:
+---------------
+These certificates are loaded in ForwardedHeadersTest.java using PemKeyCertOptions:
+
+  PemKeyCertOptions pemOptions = new PemKeyCertOptions()
+    .setCertPath("server.cert.pem")
+    .setKeyPath("server.key.pem");
+
+The files are loaded from the classpath (src/test/resources).

@@ -84,6 +84,45 @@ Nevertheless, you can override the request authority:
 
 When the request authority is overridden, the `x-forwarded-host` header is automatically set on the request to the origin server with the original authority value.
 
+==== Forwarded headers
+
+As a reverse proxy, it's often required to send information about the client request to the origin server through headers.
+The proxy supports both the de-facto standard `X-Forwarded-*` headers and the RFC 7239 `Forwarded` header.
+
+By default, forwarded headers are disabled.
+You can enable them by configuring {@link io.vertx.httpproxy.ForwardedHeadersOptions}:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#forwardedHeaders}
+----
+
+You can control which headers are added:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#forwardedHeadersSelective}
+----
+
+Alternatively, you can use the RFC 7239 standardized `Forwarded` header instead of the de-facto `X-Forwarded-*` headers:
+
+[source,java]
+----
+{@link examples.HttpProxyExamples#forwardedHeadersRfc7239}
+----
+
+The following headers are supported:
+
+* `X-Forwarded-For` - contains the client IP address.
+When a proxy chain exists, the proxy appends the client IP to preserve the chain.
+* `X-Forwarded-Proto` - contains the original request scheme (http or https)
+* `X-Forwarded-Host` - contains the original request host
+* `X-Forwarded-Port` - contains the original request port
+* `Forwarded` - RFC 7239 standardized header that combines the above information in a structured format: `for=<client-ip>;proto=<scheme>;host=<host>`
+
+IMPORTANT: The `X-Forwarded-*` and `Forwarded` headers can be used by origin servers to determine the actual client IP, protocol, and host when behind a reverse proxy.
+This is useful for generating proper URLs, security decisions, and logging.
+
 === WebSockets
 
 The proxy supports WebSocket by default.

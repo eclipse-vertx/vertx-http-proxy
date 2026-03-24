@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) 2011-2026 Contributors to the Eclipse Foundation
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
+ * which is available at https://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+ */
+
 package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.DataObject;
@@ -19,6 +30,7 @@ public class ProxyOptions {
 
   private CacheOptions cacheOptions;
   private boolean supportWebSocket;
+  private ForwardedHeadersOptions forwardedHeadersOptions;
 
   public ProxyOptions(JsonObject json) {
     ProxyOptionsConverter.fromJson(json, this);
@@ -63,6 +75,28 @@ public class ProxyOptions {
    */
   public ProxyOptions setSupportWebSocket(boolean supportWebSocket) {
     this.supportWebSocket = supportWebSocket;
+    return this;
+  }
+
+  /**
+   * @return the forwarded headers options
+   */
+  public ForwardedHeadersOptions getForwardedHeadersOptions() {
+    return forwardedHeadersOptions;
+  }
+
+  /**
+   * Set the forwarded headers options that configures how the proxy handles
+   * X-Forwarded-* or RFC 7239 Forwarded headers.
+   * <p>
+   * {@code null} forwarded headers options disables forwarded headers support,
+   * by default forwarded headers support is disabled.
+   *
+   * @param forwardedHeadersOptions the forwarded headers options
+   * @return a reference to this, so the API can be used fluently
+   */
+  public ProxyOptions setForwardedHeadersOptions(ForwardedHeadersOptions forwardedHeadersOptions) {
+    this.forwardedHeadersOptions = forwardedHeadersOptions;
     return this;
   }
 
