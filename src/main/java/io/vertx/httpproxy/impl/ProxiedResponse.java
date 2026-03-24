@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2026 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -21,7 +21,6 @@ import io.vertx.core.http.HttpVersion;
 import io.vertx.core.streams.Pipe;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.Body;
-import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 
@@ -266,15 +265,25 @@ class ProxiedResponse implements ProxyResponse {
 
   private Future<Void> sendResponse(ReadStream<Buffer> body) {
     Pipe<Buffer> pipe = body.pipe();
-    pipe.endOnSuccess(true);
+    pipe.endOnSuccess(false);
     pipe.endOnFailure(false);
     return pipe
       .to(proxiedResponse)
+      .compose(v -> {
+        // Only forward trailers if using the original backend response stream
+        if (body.equals(response)) {
+          MultiMap trailers = response.trailers();
+          if (!trailers.isEmpty() && HttpUtils.trailersSupported(proxiedResponse)) {
+            proxiedResponse.trailers().addAll(trailers);
+          }
+        }
+        return proxiedResponse.end();
+      })
       .andThen(ar -> {
-      if (ar.failed()) {
-        request.request.reset();
-        proxiedResponse.reset();
-      }
-    });
+        if (ar.failed()) {
+          request.request.reset();
+          proxiedResponse.reset();
+        }
+      });
   }
 }
