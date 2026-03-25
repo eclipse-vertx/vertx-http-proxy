@@ -1,0 +1,14 @@
+{
+  "name": "grpc-test",
+  "version": "1.0.0",
+  "description": "gRPC test client and server for vertx-http-proxy",
+  "main": "server/server.js",
+  "scripts": {
+    "server": "node server/server.js",
+    "client": "node client/client.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.10"
+  }
+}

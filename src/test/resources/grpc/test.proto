@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package testservice;
+
+// Test service with three types of gRPC communication patterns
+service TestService {
+  // Unary RPC: Simple request/reply
+  rpc UnaryCall(UnaryRequest) returns (UnaryResponse);
+
+  // Server streaming RPC: Client sends one request, server sends stream of responses
+  rpc ServerStreamingCall(StreamRequest) returns (stream StreamResponse);
+
+  // Bidirectional streaming RPC: Both client and server send streams
+  rpc BidirectionalStreamingCall(stream BidiRequest) returns (stream BidiResponse);
+}
+
+// Messages for unary call
+message UnaryRequest {
+  string message = 1;
+}
+
+message UnaryResponse {
+  string reply = 1;
+}
+
+// Messages for server streaming
+message StreamRequest {
+  string message = 1;
+  int32 count = 2;
+}
+
+message StreamResponse {
+  string reply = 1;
+  int32 index = 2;
+}
+
+// Messages for bidirectional streaming
+message BidiRequest {
+  string message = 1;
+}
+
+message BidiResponse {
+  string reply = 1;
+}

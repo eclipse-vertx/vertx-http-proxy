@@ -4,4 +4,8 @@ open module io.vertx.tests {
   requires io.vertx.testing.unit;
   requires junit;
   requires wiremock.standalone;
+  requires testcontainers;
+  requires com.github.dockerjava.api;
+  requires org.apache.commons.lang3;
+  requires io.netty.common;
 }

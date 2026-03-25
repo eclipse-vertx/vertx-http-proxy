@@ -12,7 +12,8 @@ package io.vertx.httpproxy.impl;
 
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpVersion;
 
 import java.time.Instant;
 import java.util.List;
@@ -54,8 +55,8 @@ class HttpUtils {
     }
   }
 
-  public static boolean trailersSupported(HttpServerResponse proxiedResponse) {
-    return proxiedResponse.streamId() >= 0 // HTTP/2 and HTTP/3
-      || proxiedResponse.isChunked(); // Required for HTTP/1.1
+  static boolean isNotHttp1x(HttpServerRequest request) {
+    HttpVersion httpVersion = request.connection().protocolVersion();
+    return httpVersion != HttpVersion.HTTP_1_0 && httpVersion != HttpVersion.HTTP_1_1;
   }
 }
