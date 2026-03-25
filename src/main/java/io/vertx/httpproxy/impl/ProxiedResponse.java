@@ -273,7 +273,7 @@ class ProxiedResponse implements ProxyResponse {
         // Only forward trailers if using the original backend response stream
         if (body.equals(response)) {
           MultiMap trailers = response.trailers();
-          if (!trailers.isEmpty() && HttpUtils.trailersSupported(proxiedResponse)) {
+          if (!trailers.isEmpty() && (HttpUtils.isNotHttp1x(request.proxiedRequest()) || proxiedResponse.isChunked())) {
             proxiedResponse.trailers().addAll(trailers);
           }
         }

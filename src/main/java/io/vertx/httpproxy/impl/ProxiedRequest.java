@@ -233,7 +233,7 @@ public class ProxiedRequest implements ProxyRequest {
       if (len >= 0) {
         request.putHeader(CONTENT_LENGTH, Long.toString(len));
       } else {
-        boolean isChunked = proxiedRequest.streamId() >= 0 // HTTP/2 and HTTP/3
+        boolean isChunked = HttpUtils.isNotHttp1x(proxiedRequest)
           || Boolean.TRUE == HttpUtils.isChunked(proxiedRequest.headers());
         request.setChunked(isChunked);
       }
