@@ -13,6 +13,7 @@ package io.vertx.tests.grpc;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.WaitContainerCmd;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
+import io.netty.util.internal.PlatformDependent;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
@@ -23,6 +24,7 @@ import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.InternetProtocol;
@@ -33,6 +35,7 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 import java.time.Duration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeFalse;
 
 public class GrpcProxyIntegrationTest {
 
@@ -45,6 +48,11 @@ public class GrpcProxyIntegrationTest {
   private ServerContainer<?> grpcServerContainer;
   private GenericContainer<?> grpcClientContainer;
 
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    assumeFalse("Cannot run Linux containers on Windows", PlatformDependent.isWindows());
+  }
+
   @Before
   public void setUp() throws Exception {
     vertx = Vertx.vertx();
@@ -52,16 +60,21 @@ public class GrpcProxyIntegrationTest {
 
   @After
   public void tearDownContainers() {
-    // Stop containers
     if (grpcClientContainer != null) {
       grpcClientContainer.stop();
     }
     if (grpcServerContainer != null) {
       grpcServerContainer.stop();
     }
-    proxyServer.close().await();
-    httpClient.close().await();
-    vertx.close().await();
+    if (proxyServer != null) {
+      proxyServer.close().await();
+    }
+    if (httpClient != null) {
+      httpClient.close().await();
+    }
+    if (vertx != null) {
+      vertx.close().await();
+    }
   }
 
   @Test
