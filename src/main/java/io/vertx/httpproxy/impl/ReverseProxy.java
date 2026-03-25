@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2025 Contributors to the Eclipse Foundation
+ * Copyright (c) 2011-2026 Contributors to the Eclipse Foundation
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
@@ -27,15 +27,14 @@ import io.vertx.httpproxy.spi.cache.Cache;
 
 import java.util.*;
 
-import static io.vertx.core.http.HttpHeaders.CONNECTION;
-import static io.vertx.core.http.HttpHeaders.HOST;
-import static io.vertx.core.http.HttpHeaders.UPGRADE;
+import static io.vertx.core.http.HttpHeaders.*;
 
 public class ReverseProxy implements HttpProxy {
 
   private final static Logger log = LoggerFactory.getLogger(ReverseProxy.class);
   private final HttpClient client;
   private final boolean supportWebSocket;
+  private final ForwardedHeadersOptions forwardedHeadersOptions;
   private OriginRequestProvider originRequestProvider = (pc) -> Future.failedFuture("No origin available");
   private final List<ProxyInterceptorEntry> interceptors = new ArrayList<>();
 
@@ -47,6 +46,7 @@ public class ReverseProxy implements HttpProxy {
     }
     this.client = client;
     this.supportWebSocket = options.getSupportWebSocket();
+    this.forwardedHeadersOptions = options.getForwardedHeadersOptions();
   }
 
   public Cache newCache(CacheOptions options, Vertx vertx) {
@@ -73,7 +73,7 @@ public class ReverseProxy implements HttpProxy {
 
   @Override
   public void handle(HttpServerRequest request) {
-    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request);
+    ProxyRequest proxyRequest = ProxyRequest.reverseProxy(request, forwardedHeadersOptions);
 
     // Encoding sanity check
     Boolean chunked = HttpUtils.isChunked(request.headers());

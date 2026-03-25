@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) 2011-2026 Contributors to the Eclipse Foundation
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
+ * which is available at https://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+ */
+
 package examples;
 
 import io.vertx.core.Future;
@@ -213,5 +224,37 @@ public class HttpProxyExamples {
 
   public void cacheConfig(Vertx vertx, HttpClient proxyClient) {
     HttpProxy proxy = HttpProxy.reverseProxy(new ProxyOptions().setCacheOptions(new CacheOptions()), proxyClient);
+  }
+
+  public void forwardedHeaders(Vertx vertx, HttpClient proxyClient) {
+    ProxyOptions options = new ProxyOptions()
+      .setForwardedHeadersOptions(new ForwardedHeadersOptions()
+        .setEnabled(true));
+
+    HttpProxy proxy = HttpProxy.reverseProxy(options, proxyClient);
+    proxy.origin(7070, "origin");
+  }
+
+  public void forwardedHeadersSelective(Vertx vertx, HttpClient proxyClient) {
+    ProxyOptions options = new ProxyOptions()
+      .setForwardedHeadersOptions(new ForwardedHeadersOptions()
+        .setEnabled(true)
+        .setForwardFor(true)
+        .setForwardProto(true)
+        .setForwardHost(true)
+        .setForwardPort(false));  // Don't forward port
+
+    HttpProxy proxy = HttpProxy.reverseProxy(options, proxyClient);
+    proxy.origin(7070, "origin");
+  }
+
+  public void forwardedHeadersRfc7239(Vertx vertx, HttpClient proxyClient) {
+    ProxyOptions options = new ProxyOptions()
+      .setForwardedHeadersOptions(new ForwardedHeadersOptions()
+        .setEnabled(true)
+        .setUseRfc7239(true));  // Use RFC 7239 Forwarded header
+
+    HttpProxy proxy = HttpProxy.reverseProxy(options, proxyClient);
+    proxy.origin(7070, "origin");
   }
 }

@@ -38,8 +38,15 @@ public interface ProxyRequest {
    * @return a reference to this, so the API can be used fluently
    */
   static ProxyRequest reverseProxy(HttpServerRequest proxiedRequest) {
+    return reverseProxy(proxiedRequest, null);
+  }
+
+  /**
+   * Like {@link #reverseProxy(HttpServerRequest)} but using specific For
+   */
+  static ProxyRequest reverseProxy(HttpServerRequest proxiedRequest, ForwardedHeadersOptions forwardedHeadersOptions) {
     proxiedRequest.pause();
-    return new ProxiedRequest(proxiedRequest);
+    return new ProxiedRequest(proxiedRequest, forwardedHeadersOptions);
   }
 
   /**
