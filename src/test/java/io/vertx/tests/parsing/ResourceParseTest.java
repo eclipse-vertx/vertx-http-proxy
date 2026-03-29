@@ -45,6 +45,7 @@ public class ResourceParseTest {
   public void testRegular() {
     Resource resource = new Resource(
       "http://www.example.com",
+      MultiMap.caseInsensitiveMultiMap(),
       200,
       "OK",
       MultiMap.caseInsensitiveMultiMap()
@@ -67,6 +68,7 @@ public class ResourceParseTest {
   public void testEmpty() {
     Resource resource = new Resource(
       "http://www.example.com",
+      MultiMap.caseInsensitiveMultiMap(),
       200,
       "OK",
       MultiMap.caseInsensitiveMultiMap(),
