@@ -33,6 +33,48 @@ public class ParseTest {
     Assert.assertTrue(control.parse("public").isPublic());
   }
 
+
+  @Test
+  public void testCommaSplit(){
+    CacheControl control = new CacheControl();
+    Assert.assertTrue(control.parse("max-age=123,public,no-cache").isPublic());
+    Assert.assertEquals(control.parse("max-age=123,public,no-cache").maxAge(), 123);
+    Assert.assertEquals(control.parse("max-age=12121212").maxAge(), 12121212);
+  }
+
+  @Test
+  public void testSpaceSplit(){
+    CacheControl control = new CacheControl();
+    Assert.assertTrue(control.parse("max-age=123 public no-cache").isPublic());
+    Assert.assertEquals(control.parse("max-age=123 public no-cache").maxAge(), 123);
+    Assert.assertEquals(control.parse("max-age=12121212").maxAge(), 12121212);
+  }
+
+  @Test
+  public void testCommaAndSpaceSplit(){
+    CacheControl control = new CacheControl();
+    Assert.assertTrue(control.parse("max-age=123, public, no-cache").isPublic());
+    Assert.assertEquals(control.parse("max-age=123, public, no-cache").maxAge(), 123);
+    Assert.assertEquals(control.parse("max-age=12121212").maxAge(), 12121212);
+  }
+
+  @Test
+  public void testCaseInsensitiveParsing() {
+    CacheControl control = new CacheControl();
+    CacheControl parsed = control.parse("MaX-AgE=999, PuBLic");
+    Assert.assertTrue(parsed.isPublic());
+    Assert.assertEquals(999, parsed.maxAge());
+  }
+
+  @Test
+  public void testExtraSpacesAndCommas() {
+    CacheControl control = new CacheControl();
+    CacheControl parsed = control.parse("  ,  max-age=45  , ,   public  ");
+    Assert.assertTrue(parsed.isPublic());
+    Assert.assertEquals(45, parsed.maxAge());
+  }
+
+
   /*
   @Test
   public void testCommaSplit() {
