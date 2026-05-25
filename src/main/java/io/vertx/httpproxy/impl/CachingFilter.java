@@ -13,8 +13,6 @@ import io.vertx.httpproxy.spi.cache.Cache;
 import io.vertx.httpproxy.spi.cache.Resource;
 
 import java.time.Instant;
-import java.util.function.BiFunction;
-import java.util.function.Predicate;
 
 class CachingFilter implements ProxyInterceptor {
 

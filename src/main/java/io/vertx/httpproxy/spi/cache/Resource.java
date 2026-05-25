@@ -14,8 +14,6 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.shareddata.ClusterSerializable;
-import io.vertx.httpproxy.Body;
-import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.httpproxy.impl.ParseUtils;
 
 import java.nio.charset.Charset;

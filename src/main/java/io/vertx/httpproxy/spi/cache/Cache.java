@@ -2,7 +2,6 @@ package io.vertx.httpproxy.spi.cache;
 
 import io.vertx.codegen.annotations.Unstable;
 import io.vertx.core.Future;
-import io.vertx.core.dns.SrvRecord;
 
 
 /**

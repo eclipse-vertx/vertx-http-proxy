@@ -1,7 +1,6 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 import io.vertx.httpproxy.spi.cache.Resource;

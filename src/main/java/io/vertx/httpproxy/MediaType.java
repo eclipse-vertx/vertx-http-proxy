@@ -1,7 +1,6 @@
 package io.vertx.httpproxy;
 
 import io.vertx.codegen.annotations.DataObject;
-import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.httpproxy.impl.MediaTypeImpl;
 
 import java.util.List;
