@@ -14,7 +14,6 @@ package io.vertx.tests.interceptors;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyOptions;
