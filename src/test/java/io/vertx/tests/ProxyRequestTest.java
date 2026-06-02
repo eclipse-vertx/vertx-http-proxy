@@ -538,7 +538,8 @@ public class ProxyRequestTest extends ProxyTestBase {
       full.whenComplete((v, err) -> {
         proxyReq.release();
         proxyReq.setBody(Body.body(Buffer.buffer("another-request")));
-        backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
+        backendClient.request(new RequestOptions().setServer(backend))
+          .onComplete(ctx.asyncAssertSuccess(clientReq -> {
           proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
             proxyResp.send().onComplete(ctx.asyncAssertSuccess());
           }));
@@ -546,30 +547,26 @@ public class ProxyRequestTest extends ProxyTestBase {
       });
     });
     httpClient = vertx.createHttpClient();
-    Async drainedLatch = ctx.async();
     Buffer chunk = Buffer.buffer(new byte[1024]);
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.setChunked(true);
-      req.putHeader("header", "header-value");
-      vertx.setPeriodic(1, id -> {
-        if (req.writeQueueFull()) {
-          req.drainHandler(v1 -> {
-            req.end().onSuccess(v2 -> {
-              vertx.cancelTimer(id);
-              drainedLatch.complete();
-            });
-          });
-          full.complete(null);
-        } else {
-          req.write(chunk);
-        }
-      });
-      req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-        resp.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals("another-request", body.toString());
-        }));
-      }));
-    }));
+    Buffer body = httpClient
+      .request(HttpMethod.GET, 8080, "localhost", "/somepath")
+      .compose(req -> {
+        req.setChunked(true);
+        req.putHeader("header", "header-value");
+        vertx.setPeriodic(1, id -> {
+          if (req.writeQueueFull()) {
+            vertx.cancelTimer(id);
+            req.end().onComplete(ctx.asyncAssertSuccess());
+            full.complete(null);
+          } else {
+            req.write(chunk);
+          }
+        });
+        return req.response()
+          .expecting(HttpResponseExpectation.SC_OK)
+          .compose(HttpClientResponse::body);
+      }).await();
+    assertEquals("another-request", body.toString());
   }
 
   @Test
