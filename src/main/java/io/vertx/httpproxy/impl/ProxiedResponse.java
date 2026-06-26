@@ -212,7 +212,9 @@ class ProxiedResponse implements ProxyResponse {
       String value = header.getValue();
       if (name.equals("content-type") && body != null) {
         // Skip
-      } else if (name.equalsIgnoreCase("date") || name.equalsIgnoreCase("warning") || name.equalsIgnoreCase("transfer-encoding")) {
+      } else if (name.equalsIgnoreCase("date")
+        || name.equalsIgnoreCase("warning")
+        || HttpUtils.isHopByHopHeader(name)) {
         // Skip
       } else {
         proxiedResponse.headers().add(name, value);

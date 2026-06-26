@@ -737,6 +737,34 @@ public class ProxyClientKeepAliveTest extends ProxyTestBase {
   }
 
   @Test
+  public void testIgnoreHopByHopResponseHeaders(TestContext ctx) {
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      req.response()
+        .putHeader("Connection", "keep-alive")
+        .putHeader("Keep-Alive", "timeout=5")
+        .putHeader("X-End-To-End", "should-forward")
+        .end("ok");
+    });
+    startProxy(backend);
+    client = vertx.createHttpClient();
+    Async latch = ctx.async();
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
+      req.send()
+        .compose(resp -> {
+          ctx.assertEquals(200, resp.statusCode());
+          ctx.assertEquals("should-forward", resp.getHeader("x-end-to-end"));
+          ctx.assertNull(resp.getHeader("connection"));
+          ctx.assertNull(resp.getHeader("keep-alive"));
+          return resp.body();
+        })
+        .onComplete(ctx.asyncAssertSuccess(body -> {
+          ctx.assertEquals("ok", body.toString());
+          latch.complete();
+        }));
+    }));
+  }
+
+  @Test
   public void testIPV6Authority(TestContext ctx) {
     testAuthority(ctx, HostAndPort.authority("[7a03:908:671:b520:ba27:bbff:ffff:fed2]", 1234));
   }

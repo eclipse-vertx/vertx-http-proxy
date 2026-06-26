@@ -44,16 +44,6 @@ public class ProxiedRequest implements ProxyRequest {
   private static final int FLAG_FORWARD_PORT = 8;   // bit 3
   private static final int FLAG_USE_RFC7239 = 16;   // bit 4
 
-  private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
-    .add(CONNECTION, "whatever")
-    .add(KEEP_ALIVE, "whatever")
-    .add(PROXY_AUTHENTICATE, "whatever")
-    .add(PROXY_AUTHORIZATION, "whatever")
-    .add("te", "whatever")
-    .add("trailer", "whatever")
-    .add(TRANSFER_ENCODING, "whatever")
-    .add(UPGRADE, "whatever");
-
   final ContextInternal context;
   private HttpMethod method;
   private final HttpVersion version;
@@ -203,7 +193,7 @@ public class ProxiedRequest implements ProxyRequest {
     for (Map.Entry<String, String> header : headers) {
       String name = header.getKey();
       String value = header.getValue();
-      if (!HOP_BY_HOP_HEADERS.contains(name) && !name.equalsIgnoreCase(HttpHeaders.HOST.toString())) {
+      if (!HttpUtils.isHopByHopHeader(name) && !name.equalsIgnoreCase(HttpHeaders.HOST.toString())) {
         request.headers().add(name, value);
       }
     }
