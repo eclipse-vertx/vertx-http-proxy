@@ -18,7 +18,24 @@ import io.vertx.core.http.HttpVersion;
 import java.time.Instant;
 import java.util.List;
 
+import static io.vertx.core.http.HttpHeaders.*;
+
 class HttpUtils {
+
+  // https://datatracker.ietf.org/doc/html/rfc2616#section-13.5.1
+  private static final MultiMap HOP_BY_HOP_HEADERS = MultiMap.caseInsensitiveMultiMap()
+    .add(CONNECTION, "whatever")
+    .add(KEEP_ALIVE, "whatever")
+    .add(PROXY_AUTHENTICATE, "whatever")
+    .add(PROXY_AUTHORIZATION, "whatever")
+    .add("te", "whatever")
+    .add("trailer", "whatever")
+    .add(TRANSFER_ENCODING, "whatever")
+    .add(UPGRADE, "whatever");
+
+  static boolean isHopByHopHeader(String name) {
+    return HOP_BY_HOP_HEADERS.contains(name);
+  }
 
   static Boolean isChunked(MultiMap headers) {
     List<String> te = headers.getAll("transfer-encoding");
