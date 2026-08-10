@@ -1,16 +1,18 @@
 package io.vertx.httpproxy.impl;
 
 import io.vertx.core.Future;
+import io.vertx.core.internal.Closeable;
 import io.vertx.httpproxy.cache.CacheOptions;
 import io.vertx.httpproxy.spi.cache.Cache;
 import io.vertx.httpproxy.spi.cache.Resource;
 
+import java.time.Duration;
 import java.util.*;
 
 /**
  * Simplistic implementation.
  */
-public class CacheImpl implements Cache {
+public class CacheImpl implements Cache, Closeable {
 
   private final int maxSize;
   private final Map<String, Resource> data;
@@ -43,4 +45,8 @@ public class CacheImpl implements Cache {
     return Future.succeededFuture();
   }
 
+  @Override
+  public Future<Void> shutdown(Duration timeout) {
+    return Future.succeededFuture();
+  }
 }
