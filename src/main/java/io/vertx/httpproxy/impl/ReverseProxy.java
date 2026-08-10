@@ -14,7 +14,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
-import io.vertx.core.internal.CloseFuture;
+import io.vertx.core.internal.CloseableResource;
 import io.vertx.core.internal.VertxInternal;
 import io.vertx.core.internal.http.HttpClientInternal;
 import io.vertx.core.internal.logging.Logger;
@@ -51,12 +51,14 @@ public class ReverseProxy implements HttpProxy {
 
   public Cache newCache(CacheOptions options, Vertx vertx) {
     if (options.isShared()) {
-      CloseFuture closeFuture = new CloseFuture();
-      return ((VertxInternal) vertx).createSharedResource("__vertx.shared.proxyCache", options.getName(), closeFuture, (cf_) -> {
-        return new CacheImpl(options);
-      });
+      CloseableResource<CacheImpl> resource = ((VertxInternal) vertx).createSharedResource(
+        "__vertx.shared.proxyCache",
+        options.getName(),
+        () -> new CacheImpl(options));
+      return resource.get();
+    } else {
+      return new CacheImpl(options);
     }
-    return new CacheImpl(options);
   }
 
   @Override
