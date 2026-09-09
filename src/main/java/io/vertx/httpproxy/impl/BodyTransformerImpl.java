@@ -65,7 +65,7 @@ public class BodyTransformerImpl implements BodyTransformer {
     void handleBuffer(Buffer buffer) {
       if (accumulator != null) {
         accumulator.appendBuffer(buffer);
-        if (buffer.length() > maxBufferedBytes) {
+        if (accumulator.length() > maxBufferedBytes) {
           accumulator = null;
         }
       }

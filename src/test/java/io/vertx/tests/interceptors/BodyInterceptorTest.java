@@ -267,7 +267,8 @@ public class BodyInterceptorTest extends ProxyTestBase {
     });
 
     startProxy(proxy -> proxy.origin(backend)
-      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, 512, buffer -> {
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null,
+        MediaType.APPLICATION_JSON, 512, buffer -> {
         ctx.fail();
         return buffer;
       })).build()));
@@ -281,6 +282,64 @@ public class BodyInterceptorTest extends ProxyTestBase {
           latch.complete();
         }));
       })));
+  }
+
+  @Test
+  public void testResponseMaxBufferedBytesCumulation(TestContext ctx) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      HttpServerResponse response = req.response()
+        .putHeader("Content-Type", "application/json")
+        .setChunked(true);
+      for (int i = 0; i < 4; i++) {
+        response.write(Buffer.buffer("A".repeat(256)));
+      }
+      response.end();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingResponseBody(BodyTransformers.transform(null,
+        MediaType.APPLICATION_JSON, 512, buffer -> buffer)).build()));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(HttpClientRequest::send)
+      .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
+          ctx.assertEquals(0, body.length());
+          latch.complete();
+        }));
+      }));
+  }
+
+  @Test
+  public void testRequestMaxBufferedBytesCumulation(TestContext ctx) {
+    Async latch = ctx.async();
+    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+      ctx.fail();
+    });
+
+    startProxy(proxy -> proxy.origin(backend)
+      .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, 512, buffer -> {
+        ctx.fail();
+        return buffer;
+      })).build()));
+
+    client.request(HttpMethod.POST, 8080, "localhost", "/")
+      .compose(request -> {
+        request.setChunked(true);
+        for (int i = 0; i < 4; i++) {
+          request.write(Buffer.buffer("A".repeat(256)));
+        }
+        return request.send();
+      })
+      .onComplete(ctx.asyncAssertSuccess(response -> {
+        ctx.assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
+          ctx.assertEquals(0, body.length());
+          latch.complete();
+        }));
+      }));
   }
 
   @Test
