@@ -123,7 +123,7 @@ public class CacheExpiresTest extends CacheTestBase {
   public void testPublicInvalidClientMaxAge(TestContext ctx) throws Exception {
     Async latch = ctx.async();
     testPublic(ctx, responseHeaders -> {
-      vertx.setTimer(1000, id -> {
+      vertx.setTimer(1100, id -> {
         client.request(HttpMethod.GET, 8080, "localhost", "/").compose(req2 ->
           req2.putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
               .send()
