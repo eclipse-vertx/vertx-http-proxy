@@ -21,7 +21,7 @@ public class CacheControl {
   public CacheControl parse(String header) {
     maxAge = -1;
     _public = false;
-    String[] parts = header.split(","); // No regex
+    String[] parts = header.split(",\\s*|\\s+");
     for (String part : parts) {
       part = part.trim().toLowerCase();
       switch (part) {
@@ -31,7 +31,6 @@ public class CacheControl {
         default:
           if (part.startsWith("max-age=")) {
             maxAge = Integer.parseInt(part.substring(8));
-
           }
           break;
       }
