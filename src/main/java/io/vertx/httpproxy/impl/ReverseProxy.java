@@ -176,6 +176,15 @@ public class ReverseProxy implements HttpProxy {
         if (isWebSocket) {
           HttpServerRequest proxiedRequest = request().proxiedRequest();
           return resolveOrigin(this).compose(request -> {
+            // The client and backend sockets are only joined once the backend answers 101: a client that goes away
+            // before that would leave the request to the backend open. The handler is set before the check, so a client
+            // closing in between is caught by one or the other.
+            HttpServerResponse clientResponse = proxiedRequest.response();
+            clientResponse.exceptionHandler(throwable -> request.reset(0L, throwable));
+            if (clientResponse.closed()) {
+              request.reset();
+              return Future.failedFuture(new HttpClosedException("Client connection closed"));
+            }
             request.setMethod(request().getMethod());
             request.setURI(request().getURI());
             for (Map.Entry<String, String> header : request().headers()) {
@@ -232,9 +241,9 @@ public class ReverseProxy implements HttpProxy {
                 responseSocket.closeHandler(v -> proxyResponseSocket.close());
                 proxyResponseSocket.closeHandler(v -> responseSocket.close());
               } else {
-                // Find reproducer
-                System.err.println("Handle this case");
-                ar3.cause().printStackTrace();
+                // The client went away while the backend answered 101
+                log.trace("Could not upgrade the client connection", ar3.cause());
+                proxiedResponse.netSocket().close();
               }
             });
           } else {
