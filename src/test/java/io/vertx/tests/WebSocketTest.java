@@ -11,6 +11,7 @@
 package io.vertx.tests;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
@@ -258,6 +259,51 @@ public class WebSocketTest extends ProxyTestBase {
         ws.close();
       });
       ws.writeTextMessage("hello");
+    }));
+  }
+
+  private static final Buffer UPGRADE = Buffer.buffer("GET /ws HTTP/1.1\r\n" +
+    "Host: localhost:8080\r\n" +
+    "Connection: Upgrade\r\n" +
+    "Upgrade: websocket\r\n" +
+    "Sec-WebSocket-Version: 13\r\n" +
+    "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+    "\r\n");
+
+  @Test
+  public void testClientCloseDuringUpgradeClosesBackendConnection(TestContext ctx) {
+    Async backendClosed = ctx.async();
+    Promise<Void> upgradeReceived = Promise.promise();
+    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+      // Never answers the upgrade
+      so.handler(buff -> upgradeReceived.tryComplete());
+      so.closeHandler(v -> backendClosed.complete());
+    });
+    startProxy(backend);
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
+      upgradeReceived.future().onComplete(ctx.asyncAssertSuccess(v -> so.close()));
+      so.write(UPGRADE);
+    }));
+  }
+
+  @Test
+  public void testClientCloseBeforeOriginResolvedSendsNoUpgrade(TestContext ctx) {
+    Async backendClosed = ctx.async();
+    Promise<Void> resolving = Promise.promise();
+    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+      so.handler(buff -> ctx.fail("Upgrade sent for a client that has gone"));
+      so.closeHandler(v -> backendClosed.complete());
+    });
+    startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> {
+      Promise<SocketAddress> origin = Promise.promise();
+      // Resolved only once the client has gone
+      proxyContext.request().proxiedRequest().connection().closeHandler(v -> origin.complete(backend));
+      resolving.complete();
+      return origin.future();
+    })));
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
+      resolving.future().onComplete(ctx.asyncAssertSuccess(v -> so.close()));
+      so.write(UPGRADE);
     }));
   }
 }
