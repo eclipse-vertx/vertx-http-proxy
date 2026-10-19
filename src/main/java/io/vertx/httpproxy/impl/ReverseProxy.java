@@ -186,6 +186,9 @@ public class ReverseProxy implements HttpProxy {
                 // It leads to a failure in websocket proxying
                 // So we make sure the standard value is sent to the backend
                 request.headers().set(CONNECTION, UPGRADE);
+              } else if (name.equalsIgnoreCase(CONTENT_LENGTH.toString())) {
+                // A tunnel request cannot declare a content-length, the body (e.g. WebSocket V00 key3) is written
+                // to the tunnel instead and the backend infers its length from the WebSocket handshake headers
               } else if (!name.equalsIgnoreCase(HOST.toString())) {
                 request.headers().add(name, header.getValue());
               }
