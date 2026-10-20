@@ -174,41 +174,7 @@ public class ReverseProxy implements HttpProxy {
         return next.interceptor.handleProxyRequest(this);
       } else {
         if (isWebSocket) {
-          HttpServerRequest proxiedRequest = request().proxiedRequest();
-          return resolveOrigin(this).compose(request -> {
-            // The client and backend sockets are only joined once the backend answers 101: a client that goes away
-            // before that would leave the request to the backend open. The handler is set before the check, so a client
-            // closing in between is caught by one or the other.
-            HttpServerResponse clientResponse = proxiedRequest.response();
-            clientResponse.exceptionHandler(throwable -> request.reset(0L, throwable));
-            if (clientResponse.closed()) {
-              request.reset();
-              return Future.failedFuture(new HttpClosedException("Client connection closed"));
-            }
-            request.setMethod(request().getMethod());
-            request.setURI(request().getURI());
-            for (Map.Entry<String, String> header : request().headers()) {
-              String name = header.getKey();
-              if (name.equalsIgnoreCase(CONNECTION.toString())) {
-                // Firefox is known to send an unexpected connection header value
-                // Connection=keep-alive, Upgrade
-                // It leads to a failure in websocket proxying
-                // So we make sure the standard value is sent to the backend
-                request.headers().set(CONNECTION, UPGRADE);
-              } else if (name.equalsIgnoreCase(CONTENT_LENGTH.toString())) {
-                // A tunnel request cannot declare a content-length, the body (e.g. WebSocket V00 key3) is written
-                // to the tunnel instead and the backend infers its length from the WebSocket handshake headers
-              } else if (!name.equalsIgnoreCase(HOST.toString())) {
-                request.headers().add(name, header.getValue());
-              }
-            }
-            Future<HttpClientResponse> responseFuture = request.connect();
-            ReadStream<Buffer> readStream = request().getBody().stream();
-            readStream.handler(request::write);
-            readStream.resume();
-            proxiedRequest.resume();
-            return responseFuture;
-          }).map(response -> new ProxiedResponse((ProxiedRequest) request(), request().proxiedRequest().response(), response));
+          return sendWebSocketRequest();
         }
         return sendProxyRequest(request);
       }
@@ -229,31 +195,7 @@ public class ReverseProxy implements HttpProxy {
         return previous.interceptor.handleProxyResponse(this);
       } else {
         if (isWebSocket) {
-          HttpClientResponse proxiedResponse = response().proxiedResponse();
-          if (response.getStatusCode() == 101) {
-            HttpServerResponse clientResponse = request().proxiedRequest().response();
-            clientResponse.setStatusCode(101);
-            clientResponse.headers().addAll(response.headers());
-            Future<NetSocket> otherso = request.proxiedRequest().toNetSocket();
-            otherso.onComplete(ar3 -> {
-              if (ar3.succeeded()) {
-                NetSocket responseSocket = ar3.result();
-                NetSocket proxyResponseSocket = proxiedResponse.netSocket();
-                responseSocket.handler(proxyResponseSocket::write);
-                proxyResponseSocket.handler(responseSocket::write);
-                responseSocket.closeHandler(v -> proxyResponseSocket.close());
-                proxyResponseSocket.closeHandler(v -> responseSocket.close());
-              } else {
-                // The client went away while the backend answered 101
-                log.trace("Could not upgrade the client connection", ar3.cause());
-                proxiedResponse.netSocket().close();
-              }
-            });
-          } else {
-            request().proxiedRequest().resume();
-            end(request(), proxiedResponse.statusCode());
-          }
-          return Future.succeededFuture();
+          return sendWebSocketResponse();
         }
         return response.send();
       }
@@ -276,6 +218,75 @@ public class ReverseProxy implements HttpProxy {
       }
 
       return sendResponse();
+    }
+
+    private Future<ProxyResponse> sendWebSocketRequest() {
+      HttpServerRequest proxiedRequest = request().proxiedRequest();
+      return resolveOrigin(this).compose(request -> {
+        // The client and backend sockets are only joined once the backend answers 101: a client that goes away
+        // before that would leave the request to the backend open. The handler is set before the check, so a client
+        // closing in between is caught by one or the other.
+        HttpServerResponse clientResponse = proxiedRequest.response();
+        clientResponse.exceptionHandler(throwable -> request.reset(0L, throwable));
+        if (clientResponse.closed()) {
+          request.reset();
+          return Future.failedFuture(new HttpClosedException("Client connection closed"));
+        }
+        request.setMethod(request().getMethod());
+        request.setURI(request().getURI());
+        for (Map.Entry<String, String> header : request().headers()) {
+          String name = header.getKey();
+          if (name.equalsIgnoreCase(CONNECTION.toString())) {
+            request.headers().set(CONNECTION, UPGRADE);
+          } else if (name.equalsIgnoreCase(CONTENT_LENGTH.toString())) {
+            // A tunnel request cannot declare a content-length, the body (e.g. WebSocket V00 key3) is written
+            // to the tunnel instead and the backend infers its length from the WebSocket handshake headers
+          } else if (!name.equalsIgnoreCase(HOST.toString())) {
+            request.headers().add(name, header.getValue());
+          }
+        }
+        Future<HttpClientResponse> responseFuture = request.connect();
+        ReadStream<Buffer> readStream = request().getBody().stream();
+        readStream.handler(request::write);
+        readStream.resume();
+        proxiedRequest.resume();
+        return responseFuture;
+      }).map(response -> new ProxiedResponse((ProxiedRequest) request(), request().proxiedRequest().response(), response));
+    }
+
+    private Future<Void> sendWebSocketResponse() {
+      HttpClientResponse proxiedResponse = response().proxiedResponse();
+      if (response.getStatusCode() == 101) {
+        HttpServerResponse clientResponse = request().proxiedRequest().response();
+        clientResponse.setStatusCode(101);
+        clientResponse.headers().addAll(response.headers());
+        Future<NetSocket> otherso = request.proxiedRequest().toNetSocket();
+        otherso.onComplete(ar3 -> {
+          if (ar3.succeeded()) {
+            NetSocket responseSocket = ar3.result();
+            NetSocket proxyResponseSocket = proxiedResponse.netSocket();
+            responseSocket.handler(proxyResponseSocket::write);
+            proxyResponseSocket.handler(responseSocket::write);
+            responseSocket.closeHandler(v -> proxyResponseSocket.close());
+            proxyResponseSocket.closeHandler(v -> responseSocket.close());
+            responseSocket.exceptionHandler(t -> {
+              log.trace("Client WebSocket error", t);
+              proxyResponseSocket.close();
+            });
+            proxyResponseSocket.exceptionHandler(t -> {
+              log.trace("Backend WebSocket error", t);
+              responseSocket.close();
+            });
+          } else {
+            log.trace("Could not upgrade the client connection", ar3.cause());
+            proxiedResponse.netSocket().close();
+          }
+        });
+      } else {
+        request().proxiedRequest().resume();
+        end(request(), proxiedResponse.statusCode());
+      }
+      return Future.succeededFuture();
     }
   }
 
