@@ -46,6 +46,13 @@ You can create a *proxy server* that listens to port `8080` and implement revers
 
 All user-agent requests are forwarded to the *origin server* conveniently.
 
+[CAUTION]
+====
+The request must not have been read when it is handed over to the proxy, otherwise the proxy cannot forward it.
+If you need asynchronous operations to resolve the origin, use an <<_origin_server_routing,origin selector>> instead of delaying the call to the proxy.
+====
+
+[#_origin_server_routing]
 === Origin server routing
 
 You can create a proxy that forwards all the traffic to a single server like seen before.
