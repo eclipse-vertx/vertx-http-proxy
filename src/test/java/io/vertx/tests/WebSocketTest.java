@@ -262,6 +262,12 @@ public class WebSocketTest extends ProxyTestBase {
     }));
   }
 
+  private static final Buffer UPGRADE_RESPONSE = Buffer.buffer("HTTP/1.1 101 Switching Protocols\r\n" +
+    "Upgrade: websocket\r\n" +
+    "Connection: Upgrade\r\n" +
+    "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n" +
+    "\r\n");
+
   private static final Buffer UPGRADE = Buffer.buffer("GET /ws HTTP/1.1\r\n" +
     "Host: localhost:8080\r\n" +
     "Connection: Upgrade\r\n" +
@@ -282,6 +288,42 @@ public class WebSocketTest extends ProxyTestBase {
     startProxy(backend);
     vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
       upgradeReceived.future().onComplete(ctx.asyncAssertSuccess(v -> so.close()));
+      so.write(UPGRADE);
+    }));
+  }
+
+  @Test
+  public void testClientCloseAfterUpgradeClosesBackendConnection(TestContext ctx) {
+    Async backendClosed = ctx.async();
+    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+      so.handler(buff -> {
+        so.write(UPGRADE_RESPONSE);
+      });
+      so.closeHandler(v -> backendClosed.complete());
+    });
+    startProxy(backend);
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
+      so.handler(buff -> {
+        // Upgrade response received by the client side, now close abruptly
+        so.close();
+      });
+      so.write(UPGRADE);
+    }));
+  }
+
+  @Test
+  public void testBackendCloseAfterUpgradeClosesClientConnection(TestContext ctx) {
+    Async clientClosed = ctx.async();
+    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+      so.handler(buff -> {
+        so.write(UPGRADE_RESPONSE);
+        // Close the backend side after upgrade completes
+        vertx.setTimer(100, id -> so.close());
+      });
+    });
+    startProxy(backend);
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
+      so.closeHandler(v -> clientClosed.complete());
       so.write(UPGRADE);
     }));
   }
