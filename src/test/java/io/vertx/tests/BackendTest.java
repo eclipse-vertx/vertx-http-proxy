@@ -6,20 +6,15 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.httpproxy.ProxyOptions;
 import org.junit.Test;
 
 /**
  * @author <a href="mailto:emad.albloushi@gmail.com">Emad Alblueshi</a>
  */
 
-public class BackendTest extends ProxyTestBase {
+public class BackendTest extends TestBase {
 
   private HttpClient client;
-
-  public BackendTest(ProxyOptions options) {
-    super(options);
-  }
 
   @Override
   public void setUp() {

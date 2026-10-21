@@ -32,15 +32,11 @@ import static org.junit.Assert.assertEquals;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ProxyRequestTest extends ProxyTestBase {
+public class ProxyRequestTest extends TestBase {
 
   private HttpClient httpClient;
   private HttpClient backendClient;
   private NetClient client;
-
-  public ProxyRequestTest(ProxyOptions options) {
-    super(options);
-  }
 
   @Override
   public void tearDown(TestContext context) {

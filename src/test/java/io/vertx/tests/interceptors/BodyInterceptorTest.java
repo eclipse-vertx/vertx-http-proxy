@@ -21,7 +21,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
-import io.vertx.tests.ProxyTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,13 +31,9 @@ import static org.junit.Assert.assertEquals;
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class BodyInterceptorTest extends ProxyTestBase {
+public class BodyInterceptorTest extends TestBase {
 
   HttpClient client = null;
-
-  public BodyInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
 
   @Override
   public void setUp() {

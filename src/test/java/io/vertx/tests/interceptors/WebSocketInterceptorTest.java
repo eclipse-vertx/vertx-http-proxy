@@ -8,16 +8,11 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyResponse;
-import io.vertx.tests.ProxyTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.Test;
 
-public class WebSocketInterceptorTest extends ProxyTestBase {
-
-  public WebSocketInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
+public class WebSocketInterceptorTest extends TestBase {
 
   private SocketAddress backend(TestContext ctx, Async async) {
     return startHttpBackend(ctx, 8081, req -> {

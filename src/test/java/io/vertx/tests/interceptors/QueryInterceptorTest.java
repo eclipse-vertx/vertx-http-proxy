@@ -18,8 +18,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.ProxyTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 import java.util.List;
@@ -28,11 +27,7 @@ import java.util.Map;
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class QueryInterceptorTest extends ProxyTestBase {
-
-  public QueryInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
+public class QueryInterceptorTest extends TestBase {
 
   @Test
   public void addParamTest(TestContext ctx) {

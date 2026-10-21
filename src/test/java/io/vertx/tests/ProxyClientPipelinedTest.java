@@ -10,15 +10,12 @@
  */
 package io.vertx.tests;
 
-import io.vertx.httpproxy.ProxyOptions;
-
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class ProxyClientPipelinedTest extends ProxyClientKeepAliveTest {
 
-  public ProxyClientPipelinedTest(ProxyOptions options) {
-    super(options);
+  public ProxyClientPipelinedTest() {
     keepAlive = true;
     pipelining = true;
   }

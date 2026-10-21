@@ -35,15 +35,11 @@ import static io.vertx.core.http.HttpMethod.HEAD;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ProxyClientKeepAliveTest extends ProxyTestBase {
+public class ProxyClientKeepAliveTest extends TestBase {
 
   protected boolean keepAlive = true;
   protected boolean pipelining = false;
   protected HttpClient client;
-
-  public ProxyClientKeepAliveTest(ProxyOptions options) {
-    super(options);
-  }
 
   @Override
   public void setUp() {

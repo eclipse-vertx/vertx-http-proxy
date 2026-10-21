@@ -17,18 +17,13 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.ProxyTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class PathInterceptorTest extends ProxyTestBase {
-
-  public PathInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
+public class PathInterceptorTest extends TestBase {
 
   @Test
   public void addPrefixTest(TestContext ctx) {

@@ -11,15 +11,13 @@
 package io.vertx.tests;
 
 import io.vertx.ext.unit.TestContext;
-import io.vertx.httpproxy.ProxyOptions;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class ProxyClientNotPersistentTest extends ProxyClientKeepAliveTest {
 
-  public ProxyClientNotPersistentTest(ProxyOptions options) {
-    super(options);
+  public ProxyClientNotPersistentTest() {
     keepAlive = false;
     pipelining = false;
   }

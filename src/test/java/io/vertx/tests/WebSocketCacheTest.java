@@ -5,17 +5,13 @@ import io.vertx.core.http.WebSocketClient;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.cache.CacheOptions;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-@RunWith(VertxUnitRunner.class)
-public class WebSocketCacheTest extends ProxyTestBase {
+public class WebSocketCacheTest extends TestBase {
 
   public WebSocketCacheTest() {
-    super(new ProxyOptions().setCacheOptions(new CacheOptions()));
+    proxyOptions.setCacheOptions(new CacheOptions());
   }
 
   @Test

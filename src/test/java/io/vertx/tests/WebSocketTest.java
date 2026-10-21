@@ -17,16 +17,13 @@ import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.httpproxy.*;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-@RunWith(VertxUnitRunner.class)
-public class WebSocketTest extends ProxyTestBase {
+public class WebSocketTest extends TestBase {
 
   private WebSocketClient wsClient;
   private HttpClient httpClient;
@@ -36,10 +33,6 @@ public class WebSocketTest extends ProxyTestBase {
     super.tearDown(context);
     wsClient = null;
     httpClient = null;
-  }
-
-  public WebSocketTest() {
-    super(new ProxyOptions());
   }
 
   @Test

@@ -16,8 +16,7 @@ import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.ProxyTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 import java.util.Set;
@@ -25,13 +24,9 @@ import java.util.Set;
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class HeaderInterceptorTest extends ProxyTestBase {
+public class HeaderInterceptorTest extends TestBase {
 
   private HttpClientAgent client;
-
-  public HeaderInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
 
   @Test
   public void testFilterRequestHeader(TestContext ctx) {
