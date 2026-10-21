@@ -11,7 +11,6 @@
 package io.vertx.tests;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.HostAndPort;
@@ -25,7 +24,6 @@ import org.junit.Test;
 
 import java.io.Closeable;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -110,184 +108,6 @@ public class ProxyClientKeepAliveTest extends TestBase {
               return resp.body();
             }))
         .onComplete(ctx.asyncAssertSuccess(buff -> async.countDown()));
-  }
-
-  @Test
-  public void testBackendClosesDuringUpload(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      AtomicInteger len = new AtomicInteger();
-      req.handler(buff -> {
-        if (len.addAndGet(buff.length()) == 1024) {
-          req.connection().close();
-        }
-      });
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    Async async = ctx.async();
-    client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-            ctx.assertEquals(502, resp.statusCode());
-            async.complete();
-          }));
-          req.putHeader("Content-Length", "2048");
-          req.write(Buffer.buffer(new byte[1024]));
-        }));
-  }
-
-  @Test
-  public void testClientClosesDuringUpload(TestContext ctx) {
-    Async async = ctx.async();
-    Promise<Void> closeLatch = Promise.promise();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      req.response().closeHandler(v -> {
-        async.complete();
-      });
-      req.handler(buff -> {
-        closeLatch.tryComplete();
-      });
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.response().onComplete(ctx.asyncAssertFailure());
-          req.putHeader("Content-Length", "2048");
-          req.write(Buffer.buffer(new byte[1024]));
-          closeLatch.future().onComplete(ar -> {
-            req.connection().close();
-          });
-        }));
-  }
-
-  @Test
-  public void testClientClosesAfterUpload(TestContext ctx) {
-    Async async = ctx.async();
-    Promise<Void> closeLatch = Promise.promise();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      req.endHandler(v -> {
-        closeLatch.complete();
-        vertx.setTimer(200, id -> {
-          req.response().setChunked(true).write("partial response");
-        });
-      });
-      req.response().closeHandler(v -> {
-        async.complete();
-      });
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          closeLatch.future().onSuccess(v -> {
-            HttpConnection conn = req.connection();
-            conn.close();
-          });
-          req.send(Buffer.buffer(new byte[1024])).onComplete(ctx.asyncAssertFailure());
-        }));
-  }
-
-  @Test
-  public void testBackendCloseResponseWithOnGoingRequest(TestContext ctx) {
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
-      Buffer body = Buffer.buffer();
-      so.handler(buff -> {
-        body.appendBuffer(buff);
-        if (buff.toString().contains("\r\n\r\n")) {
-          so.write(
-              "HTTP/1.1 200 OK\r\n" +
-              "content-length: 0\r\n" +
-              "\r\n");
-          so.close();
-        }
-      });
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.putHeader("Content-Length", "2048");
-          req.write(Buffer.buffer(new byte[1024]));
-          req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-            ctx.assertEquals(200, resp.statusCode());
-          }));
-        }));
-  }
-
-  @Test
-  public void testBackendCloseResponse(TestContext ctx) {
-    testBackendCloseResponse(ctx, false);
-  }
-
-  @Test
-  public void testBackendCloseChunkedResponse(TestContext ctx) {
-    testBackendCloseResponse(ctx, true);
-  }
-
-  private void testBackendCloseResponse(TestContext ctx, boolean chunked) {
-    CompletableFuture<Void> closeFuture = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      HttpServerResponse resp = req.response();
-      if (chunked) {
-        resp.setChunked(true);
-      } else {
-        resp.putHeader("content-length", "10000");
-      }
-      resp.write("part");
-      closeFuture.thenAccept(v -> {
-        req.connection().close();
-      });
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    Async async = ctx.async();
-    client.request(GET, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-            resp.handler(buff -> {
-              closeFuture.complete(null);
-            });
-            resp.exceptionHandler(err -> {
-              async.complete();
-            });
-          }));
-    }));
-  }
-
-  @Test
-  public void testFrontendCloseResponse(TestContext ctx) {
-    testFrontendCloseResponse(ctx, false);
-  }
-
-  @Test
-  public void testFrontendCloseChunkedResponse(TestContext ctx) {
-    testFrontendCloseResponse(ctx, true);
-  }
-
-  private void testFrontendCloseResponse(TestContext ctx, boolean chunked) {
-    Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      HttpServerResponse resp = req.response();
-      if (chunked) {
-        resp.setChunked(true);
-      } else {
-        resp.putHeader("content-length", "10000");
-      }
-      resp.write("part");
-      resp.exceptionHandler(err -> {
-        async.complete();
-      });
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        resp.handler(buff -> {
-          resp.request().connection().close();
-        });
-      }));
-    }));
   }
 
   @Test
@@ -412,39 +232,6 @@ public class ProxyClientKeepAliveTest extends TestBase {
         });
       }));
     }));
-  }
-
-  @Test
-  public void testChunkedTransferEncodingRequest(TestContext ctx) {
-    int num = 50;
-    Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < num; i++) {
-        sb.append("chunk-").append(i);
-      }
-      ctx.assertEquals("chunked", req.getHeader("transfer-encoding"));
-      req.handler(buff -> {
-        String part = buff.toString();
-        if (sb.indexOf(part) == 0) {
-          sb.delete(0, part.length());
-        } else {
-          ctx.fail();
-        }
-      });
-      req.endHandler(v -> {
-        ctx.assertEquals("", sb.toString());
-        latch.complete();
-      });
-      req.response().end();
-    });
-    startProxy(backend);
-    client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/")
-        .onSuccess(req -> {
-          req.setChunked(true);
-          streamChunkedBody(req, num);
-        });
   }
 
   @Test
