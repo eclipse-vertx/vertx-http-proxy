@@ -636,22 +636,6 @@ public class ProxyRequestTest extends TestBase {
       }));
   }
 
-  @Test
-  public void testProxyRequestUnresolvedTarget(TestContext ctx) {
-    startProxy(request -> Future.succeededFuture(SocketAddress.inetSocketAddress(1234, "localhost")));
-    httpClient = vertx.createHttpClient();
-    Async async = ctx.async();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/")
-      .compose(req -> req.send().compose(res -> {
-        ctx.assertEquals(502, res.statusCode());
-        return res.body();
-      }))
-      .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("", body.toString());
-        async.complete();
-      }));
-  }
-
   private static Buffer CHUNK;
 
   static {

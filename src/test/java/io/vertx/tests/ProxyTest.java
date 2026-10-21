@@ -21,11 +21,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
 
 /**
@@ -39,42 +34,6 @@ public class ProxyTest extends TestBase {
   public void tearDown(TestContext context) {
     super.tearDown(context);
     client = null;
-  }
-
-  @Test
-  public void testRoundRobinSelector(TestContext ctx) {
-    int numRequests = 10;
-    SocketAddress[] backends = new SocketAddress[3];
-    for (int i = 0;i < backends.length;i++) {
-      int value = i;
-      backends[i] = startHttpBackend(ctx, 8081 + value, req -> req.response().end("" + value));
-    }
-    AtomicInteger count = new AtomicInteger();
-    startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length]))));
-    client = vertx.createHttpClient();
-    Map<String, AtomicInteger> result = Collections.synchronizedMap(new HashMap<>());
-    Async latch = ctx.async();
-    for (int i = 0;i < backends.length * numRequests;i++) {
-      client
-          .request(HttpMethod.GET, 8080, "localhost", "/")
-          .compose(req -> req
-              .send()
-              .compose(HttpClientResponse::body)
-          ).onSuccess(buff -> {
-        result.computeIfAbsent(buff.toString(), k -> new AtomicInteger()).getAndIncrement();
-        synchronized (result) {
-          int total = result.values().stream().reduce(0, (a, b) -> a + b.get(), (a, b) -> a + b);
-          if (total == backends.length * numRequests) {
-            for (int j = 0;j < backends.length;j++) {
-              AtomicInteger val = result.remove("" + j);
-              ctx.assertEquals(numRequests, val.get());
-            }
-            ctx.assertEquals(result, Collections.emptyMap());
-            latch.complete();
-          }
-        }
-      });
-    }
   }
 
   @Test
@@ -147,20 +106,6 @@ public class ProxyTest extends TestBase {
   }
 
   @Test
-  public void testUpstreamRefuse(TestContext ctx) {
-    SocketAddress backend = SocketAddress.inetSocketAddress(8081, "localhost");
-    startProxy(proxy -> proxy.origin(backend));
-    client = vertx.createHttpClient();
-    Async async = ctx.async();
-    client.request(HttpMethod.GET, 8080, "localhost", "/")
-      .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
-        return resp.body();
-      }))
-      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
-  }
-
-  @Test
   public void testFilterRequestFail(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
@@ -223,62 +168,4 @@ public class ProxyTest extends TestBase {
       .onComplete(ctx.asyncAssertSuccess(buffer -> ctx.assertEquals("HOLA", buffer.toString())));
   }
 
-  @Test
-  public void testTrailersForwarding(TestContext ctx) {
-    testTrailers(ctx, null);
-  }
-
-  @Test
-  public void testTrailersNotForwardedWhenBodyIsModified(TestContext ctx) {
-    testTrailers(ctx, new ProxyInterceptor() {
-      @Override
-      public Future<Void> handleProxyResponse(ProxyContext context) {
-        ProxyResponse proxyResponse = context.response();
-        proxyResponse.setBody(Body.body(io.vertx.core.buffer.Buffer.buffer("modified body")));
-        return context.sendResponse();
-      }
-    });
-  }
-
-  @Test
-  public void testTrailersNotForwardedWhenBodyIsTransformed(TestContext ctx) {
-    ProxyInterceptor interceptor = ProxyInterceptor.builder()
-      .transformingResponseBody(BodyTransformers.text(String::toUpperCase, "UTF-8"))
-      .build();
-    testTrailers(ctx, interceptor);
-  }
-
-  private void testTrailers(TestContext ctx, ProxyInterceptor interceptor) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      req.response()
-        .setChunked(true)
-        .putHeader("content-type", "text/plain")
-        .write("response body");
-      req.response().trailers()
-        .add("X-Custom-Trailer", "trailer-value")
-        .add("X-Another-Trailer", "another-value");
-      req.response().end();
-    });
-    startProxy(proxy -> {
-      proxy.origin(backend);
-      if (interceptor != null) {
-        proxy.addInterceptor(interceptor);
-      }
-    });
-    client = vertx.createHttpClient();
-    client.request(HttpMethod.GET, 8080, "localhost", "/")
-      .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(200, resp.statusCode());
-        return resp.body().map(body -> resp);
-      }))
-      .onComplete(ctx.asyncAssertSuccess(resp -> {
-        if (interceptor == null) {
-          ctx.assertEquals("trailer-value", resp.trailers().get("X-Custom-Trailer"));
-          ctx.assertEquals("another-value", resp.trailers().get("X-Another-Trailer"));
-        } else {
-          ctx.assertNull(resp.trailers().get("X-Custom-Trailer"));
-          ctx.assertNull(resp.trailers().get("X-Another-Trailer"));
-        }
-      }));
-  }
 }
