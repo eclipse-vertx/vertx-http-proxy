@@ -1,4 +1,4 @@
-package io.vertx.tests.parsing;
+package io.vertx.tests.cache.spi;
 
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 
-public class ResourceParseTest {
+public class ResourceSerializationTest {
 
   public static boolean resourceEquals(Resource r1, Resource r2) {
     boolean same = r1.getStatusCode() == r2.getStatusCode()

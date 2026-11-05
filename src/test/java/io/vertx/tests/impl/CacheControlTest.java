@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.tests.parsing;
+package io.vertx.tests.impl;
 
 import io.vertx.httpproxy.impl.CacheControl;
 import org.junit.Assert;
@@ -17,7 +17,7 @@ import org.junit.Test;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ParseTest {
+public class CacheControlTest {
 
   @Test
   public void testParseCacheControlMaxAge() {
@@ -33,6 +33,12 @@ public class ParseTest {
     Assert.assertTrue(control.parse("public").isPublic());
   }
 
+  /*
+   * Disabled since the initial import (2020-11-30). It calls ParseUtils.commaSplit, which no longer
+   * exists in ParseUtils (checked with grep), so it cannot compile as is. It is kept as a reference for
+   * the expected comma-splitting rules; it is not a CacheControl test and would belong in ParseUtilsTest
+   * if the method came back.
+   */
   /*
   @Test
   public void testCommaSplit() {
