@@ -1,4 +1,4 @@
-package io.vertx.tests.interceptors;
+package io.vertx.tests.websocket;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
