@@ -27,6 +27,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -50,21 +51,29 @@ public class CacheRevalidationTest extends CacheWireMockTestBase {
     Async latch = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg").compose(req1 ->
       req1.send().compose(resp1 -> {
-        ctx.assertEquals(200, resp1.statusCode());
+        ctx.verify(v -> {
+          assertEquals(200, resp1.statusCode());
+        });
         return resp1.body();
       })
     ).onComplete(ctx.asyncAssertSuccess(body1 -> {
-      ctx.assertEquals("content", body1.toString());
+      ctx.verify(v -> {
+        assertEquals("content", body1.toString());
+      });
       vertx.setTimer(3000, id -> {
         client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
             .compose(req2 -> req2
                 .putHeader(HttpHeaders.IF_MODIFIED_SINCE, ParseUtils.formatHttpDate(Instant.ofEpochMilli(now).minus(5000, ChronoUnit.MILLIS)))
                 .send()
                 .compose(resp2 -> {
-              ctx.assertEquals(304, resp2.statusCode());
+              ctx.verify(v -> {
+                assertEquals(304, resp2.statusCode());
+              });
               return resp2.body();
             })).onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.assertEquals("", body2.toString());
+          ctx.verify(v -> {
+            assertEquals("", body2.toString());
+          });
           latch.complete();
         }));
       });
@@ -110,22 +119,30 @@ public class CacheRevalidationTest extends CacheWireMockTestBase {
         .compose(req -> req
             .send()
             .compose(resp1 -> {
-              ctx.assertEquals(200, resp1.statusCode());
+              ctx.verify(v -> {
+                assertEquals(200, resp1.statusCode());
+              });
               return resp1.body();
             }))
         .onComplete(ctx.asyncAssertSuccess(body1 -> {
-          ctx.assertEquals("content", body1.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body1.toString());
+          });
           vertx.setTimer(3000, id -> {
             client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
                 .compose(req -> req
                     .putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
                     .putHeader(HttpHeaders.CONTENT_ENCODING, "identity")
                     .send().compose(resp2 -> {
-                      ctx.assertEquals(200, resp2.statusCode());
+                      ctx.verify(v -> {
+                        assertEquals(200, resp2.statusCode());
+                      });
                       return resp2.body();
                     })).onComplete(ctx.asyncAssertSuccess(body2 -> {
-              ctx.assertEquals("content2", body2.toString());
-//              ctx.assertNotEquals(resp1.getHeader(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+              ctx.verify(v -> {
+                assertEquals("content2", body2.toString());
+              });
+//              assertNotEquals(resp1.getHeader(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
               latch.complete();
             }));
           });

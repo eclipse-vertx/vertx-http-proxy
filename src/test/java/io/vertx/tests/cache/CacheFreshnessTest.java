@@ -29,6 +29,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Freshness tests, run with both ways of declaring the lifetime of a response: the {@code Expires} header
@@ -88,15 +91,21 @@ public class CacheFreshnessTest extends CacheTestBase {
       vertx.setTimer(2000, id -> {
         client.request(method, 8080, "localhost", "/")
             .compose(req2 -> req2.send().compose(resp2 -> {
-              ctx.assertEquals(200, resp2.statusCode());
-              ctx.assertEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
-              ctx.assertEquals(1, hits.get());
+              ctx.verify(v -> {
+                assertEquals(200, resp2.statusCode());
+                assertEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+                assertEquals(1, hits.get());
+              });
               return resp2.body();
             })).onComplete(ctx.asyncAssertSuccess(body2 -> {
           if (method == HttpMethod.HEAD) {
-            ctx.assertEquals("", body2.toString());
+            ctx.verify(v -> {
+              assertEquals("", body2.toString());
+            });
           } else {
-            ctx.assertEquals("content", body2.toString());
+            ctx.verify(v -> {
+              assertEquals("content", body2.toString());
+            });
           }
           latch.complete();
         }));
@@ -112,13 +121,17 @@ public class CacheFreshnessTest extends CacheTestBase {
         client.request(HttpMethod.GET, 8080, "localhost", "/")
             .compose(req2 ->
                 req2.send().compose(resp2 -> {
-                  ctx.assertEquals(200, resp2.statusCode());
-                  ctx.assertEquals(2, hits.get());
-                  ctx.assertNotEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+                  ctx.verify(v -> {
+                    assertEquals(200, resp2.statusCode());
+                    assertEquals(2, hits.get());
+                    assertNotEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+                  });
                   return resp2.body();
                 })
             ).onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.assertEquals("content", body2.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body2.toString());
+          });
           latch.complete();
         }));
       });
@@ -133,13 +146,17 @@ public class CacheFreshnessTest extends CacheTestBase {
         client.request(HttpMethod.GET, 8080, "localhost", "/").compose(req2 ->
             req2.putHeader(HttpHeaders.CACHE_CONTROL, "max-age=2")
                 .send().compose(resp2 -> {
-              ctx.assertEquals(200, resp2.statusCode());
-              ctx.assertEquals(1, hits.get());
-              ctx.assertEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+              ctx.verify(v -> {
+                assertEquals(200, resp2.statusCode());
+                assertEquals(1, hits.get());
+                assertEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+              });
               return resp2.body();
             })
         ).onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.assertEquals("content", body2.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body2.toString());
+          });
           latch.complete();
         }));
       });
@@ -155,13 +172,17 @@ public class CacheFreshnessTest extends CacheTestBase {
           req2.putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
               .send()
               .compose(resp2 -> {
-                ctx.assertEquals(200, resp2.statusCode());
-                ctx.assertEquals(2, hits.get());
-                ctx.assertNotEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+                ctx.verify(v -> {
+                  assertEquals(200, resp2.statusCode());
+                  assertEquals(2, hits.get());
+                  assertNotEquals(responseHeaders.get(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+                });
                 return resp2.body();
               })
         ).onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.assertEquals("content", body2.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body2.toString());
+          });
           latch.complete();
         }));
       });
@@ -171,7 +192,9 @@ public class CacheFreshnessTest extends CacheTestBase {
   private void testPublic(TestContext ctx, Handler<MultiMap> respHandler) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       hits.incrementAndGet();
-      ctx.assertEquals(HttpMethod.GET, req.method());
+      ctx.verify(v -> {
+        assertEquals(HttpMethod.GET, req.method());
+      });
       Instant now = Instant.now();
       setCacheControl(req.response().headers(), now.toEpochMilli(), 5);
       req.response()
@@ -182,10 +205,14 @@ public class CacheFreshnessTest extends CacheTestBase {
     startProxy(backend);
     client.request(HttpMethod.GET, 8080, "localhost", "/").compose(req ->
         req.send().compose(resp -> {
-          ctx.assertEquals(200, resp.statusCode());
+          ctx.verify(v -> {
+            assertEquals(200, resp.statusCode());
+          });
           return resp.body().onSuccess(body -> respHandler.handle(resp.headers()));
         })).onComplete(ctx.asyncAssertSuccess(body -> {
-      ctx.assertEquals("content", body.toString());
+      ctx.verify(v -> {
+        assertEquals("content", body.toString());
+      });
     }));
   }
 
@@ -208,11 +235,15 @@ public class CacheFreshnessTest extends CacheTestBase {
     Async latch = ctx.async();
     long now = System.currentTimeMillis();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(HttpMethod.GET, req.method());
+      ctx.verify(v -> {
+        assertEquals(HttpMethod.GET, req.method());
+      });
       setCacheControl(req.response().headers(), now, 5);
       switch (hits.getAndIncrement()) {
         case 0:
-          ctx.assertEquals(null, req.getHeader(HttpHeaders.ETAG));
+          ctx.verify(v -> {
+            assertEquals(null, req.getHeader(HttpHeaders.ETAG));
+          });
           req.response()
               .putHeader(HttpHeaders.LAST_MODIFIED, ParseUtils.formatHttpDate(Instant.ofEpochMilli(now)))
               .putHeader(HttpHeaders.DATE, ParseUtils.formatHttpDate(Instant.ofEpochMilli(now)))
@@ -220,7 +251,9 @@ public class CacheFreshnessTest extends CacheTestBase {
               .end("content");
           break;
         case 1:
-          ctx.assertEquals("" + now, req.getHeader(HttpHeaders.IF_NONE_MATCH));
+          ctx.verify(v -> {
+            assertEquals("" + now, req.getHeader(HttpHeaders.IF_NONE_MATCH));
+          });
           if (System.currentTimeMillis() < now + maxAge * 1000) {
             req.response()
                 .setStatusCode(304)
@@ -235,27 +268,37 @@ public class CacheFreshnessTest extends CacheTestBase {
           }
           break;
         default:
-          ctx.fail();
+          ctx.verify(v -> {
+            fail();
+          });
       }
     });
     startProxy(backend);
     client.request(HttpMethod.GET, 8080, "localhost", "/").compose(req1 ->
         req1.send().compose(resp1 -> {
-          ctx.assertEquals(200, resp1.statusCode());
+          ctx.verify(v -> {
+            assertEquals(200, resp1.statusCode());
+          });
           return resp1.body();
         })).onComplete(ctx.asyncAssertSuccess(body1 -> {
-      ctx.assertEquals("content", body1.toString());
+      ctx.verify(v -> {
+        assertEquals("content", body1.toString());
+      });
       vertx.setTimer(3000, id -> {
         client.request(HttpMethod.GET, 8080, "localhost", "/").compose(req2 ->
             req2.putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
                 .send()
                 .compose(resp2 -> {
-                  ctx.assertEquals(200, resp2.statusCode());
+                  ctx.verify(v -> {
+                    assertEquals(200, resp2.statusCode());
+                  });
                 return resp2.body();
             })).onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.assertEquals("content", body2.toString());
-          ctx.assertEquals(2, hits.get());
-//              ctx.assertNotEquals(resp1.getHeader(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
+          ctx.verify(v -> {
+            assertEquals("content", body2.toString());
+            assertEquals(2, hits.get());
+          });
+//              assertNotEquals(resp1.getHeader(HttpHeaders.DATE), resp2.getHeader(HttpHeaders.DATE));
           latch.complete();
         }));
       });

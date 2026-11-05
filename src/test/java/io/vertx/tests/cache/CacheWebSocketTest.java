@@ -6,6 +6,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 public class CacheWebSocketTest extends CacheTestBase {
 
@@ -21,11 +22,15 @@ public class CacheWebSocketTest extends CacheTestBase {
     WebSocketClient client = vertx.createWebSocketClient();
     client.connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws1 -> {
       ws1.handler(buffer -> {
-        ctx.assertEquals(buffer.toString(), "v1");
-        ws1.close().onComplete(ctx.asyncAssertSuccess(v -> {
+        ctx.verify(v -> {
+          assertEquals(buffer.toString(), "v1");
+        });
+        ws1.close().onComplete(ctx.asyncAssertSuccess(closed -> {
           client.connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws2 -> {
             ws2.handler(buffer2 -> {
-              ctx.assertEquals(buffer2.toString(), "v2");
+              ctx.verify(v -> {
+                assertEquals(buffer2.toString(), "v2");
+              });
               ws2.close().onComplete(ctx.asyncAssertSuccess(v2 -> {
                 latch.complete();
               }));

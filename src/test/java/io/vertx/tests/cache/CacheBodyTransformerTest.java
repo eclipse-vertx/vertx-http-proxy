@@ -20,6 +20,7 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import static org.junit.Assert.assertEquals;
 
 /**
  * The cache interceptor is registered before user interceptors: on the response path user interceptors run first, so
@@ -47,23 +48,31 @@ public class CacheBodyTransformerTest extends CacheTestBase {
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req1 -> req1.send().compose(resp1 -> {
-        ctx.assertEquals(200, resp1.statusCode());
+        ctx.verify(v -> {
+          assertEquals(200, resp1.statusCode());
+        });
         return resp1.body();
       }))
       .compose(body1 -> {
-        ctx.assertEquals("CONTENT", body1.toString());
-        ctx.assertEquals(1, backendHits.get());
-        ctx.assertEquals(1, transformations.get());
+        ctx.verify(v -> {
+          assertEquals("CONTENT", body1.toString());
+          assertEquals(1, backendHits.get());
+          assertEquals(1, transformations.get());
+        });
         return client.request(HttpMethod.GET, 8080, "localhost", "/");
       })
       .compose(req2 -> req2.send().compose(resp2 -> {
-        ctx.assertEquals(200, resp2.statusCode());
+        ctx.verify(v -> {
+          assertEquals(200, resp2.statusCode());
+        });
         return resp2.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body2 -> {
-        ctx.assertEquals("CONTENT", body2.toString());
-        ctx.assertEquals(1, backendHits.get());
-        ctx.assertEquals(1, transformations.get());
+        ctx.verify(v -> {
+          assertEquals("CONTENT", body2.toString());
+          assertEquals(1, backendHits.get());
+          assertEquals(1, transformations.get());
+        });
       }));
   }
 }

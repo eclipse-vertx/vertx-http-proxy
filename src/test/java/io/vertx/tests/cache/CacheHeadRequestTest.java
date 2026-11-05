@@ -24,8 +24,8 @@ import java.time.temporal.ChronoUnit;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -76,30 +76,42 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
         .compose(req1 -> req1
             .send()
             .compose(resp1 -> {
-              ctx.assertEquals(200, resp1.statusCode());
+              ctx.verify(v -> {
+                assertEquals(200, resp1.statusCode());
+              });
               return resp1.body();
             }))
         .onComplete(ctx.asyncAssertSuccess(body1 -> {
-          ctx.assertEquals("content", body1.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body1.toString());
+          });
           vertx.setTimer(3000, id -> {
             client.request(method, 8080, "localhost", "/img.jpg")
                 .compose(req2 ->
                     req2.putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
                         .send().compose(resp2 -> {
-                      ctx.assertEquals(200, resp2.statusCode());
+                      ctx.verify(v -> {
+                        assertEquals(200, resp2.statusCode());
+                      });
                       return resp2.body();
                     }))
                 .compose(body2 -> {
-                  ctx.assertEquals(method == HttpMethod.GET ? "content2" : "", body2.toString());
+                  ctx.verify(v -> {
+                    assertEquals(method == HttpMethod.GET ? "content2" : "", body2.toString());
+                  });
                   return client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg");
                 })
                 .compose(req3 -> req3
                     .send()
                     .compose(resp3 -> {
-                      ctx.assertEquals(200, resp3.statusCode());
+                      ctx.verify(v -> {
+                        assertEquals(200, resp3.statusCode());
+                      });
                       return resp3.body();
                     })).onComplete(ctx.asyncAssertSuccess(body3 -> {
-              ctx.assertEquals("content2", body3.toString());
+              ctx.verify(v -> {
+                assertEquals("content2", body3.toString());
+              });
               latch.complete();
             }));
           });
@@ -151,20 +163,28 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1.send()
             .compose(resp1 -> {
-              ctx.assertEquals(200, resp1.statusCode());
+              ctx.verify(v -> {
+                assertEquals(200, resp1.statusCode());
+              });
               return resp1.body();
             }))
         .onComplete(ctx.asyncAssertSuccess(body1 -> {
-          ctx.assertEquals("content", body1.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body1.toString());
+          });
           vertx.setTimer(3000, id -> {
             client.request(HttpMethod.HEAD, 8080, "localhost", "/img.jpg")
                 .compose(req2 -> req2
                     .putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
                     .send().compose(resp2 -> {
-                      ctx.assertEquals(200, resp2.statusCode());
+                      ctx.verify(v -> {
+                        assertEquals(200, resp2.statusCode());
+                      });
                       return resp2.body();
                     })).onComplete(ctx.asyncAssertSuccess(body2 -> {
-              ctx.assertEquals("", body2.toString());
+              ctx.verify(v -> {
+                assertEquals("", body2.toString());
+              });
               latch.complete();
             }));
           });
@@ -201,19 +221,27 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
     Async latch = ctx.async();
     client.request(HttpMethod.HEAD, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1.send().compose(resp1 -> {
-          ctx.assertEquals(200, resp1.statusCode());
+          ctx.verify(v -> {
+            assertEquals(200, resp1.statusCode());
+          });
           return resp1.body();
         }))
         .compose(body1 -> {
-          ctx.assertEquals("", body1.toString());
+          ctx.verify(v -> {
+            assertEquals("", body1.toString());
+          });
           return client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg");
         })
         .compose(req2 -> req2.send().compose(resp2 -> {
-          ctx.assertEquals(200, resp2.statusCode());
+          ctx.verify(v -> {
+            assertEquals(200, resp2.statusCode());
+          });
           return resp2.body();
         }))
         .onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.assertEquals("content", body2.toString());
+          ctx.verify(v -> {
+            assertEquals("content", body2.toString());
+          });
           latch.complete();
         }));
     latch.awaitSuccess(10000);

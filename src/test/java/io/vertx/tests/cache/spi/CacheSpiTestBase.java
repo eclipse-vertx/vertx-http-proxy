@@ -14,6 +14,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.time.Instant;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @RunWith(VertxUnitRunner.class)
 public abstract class CacheSpiTestBase {
@@ -56,15 +59,21 @@ public abstract class CacheSpiTestBase {
     cache.put(URL1, generateResource(URL1, 100L)).compose(v -> {
       return cache.get(URL1);
     }).onComplete(ctx.asyncAssertSuccess(res1 -> {
-      ctx.assertNotNull(res1);
-      ctx.assertEquals(res1.getMaxAge(), 100L);
+      ctx.verify(v -> {
+        assertNotNull(res1);
+        assertEquals(res1.getMaxAge(), 100L);
+      });
     })).compose(v -> cache.get(URL2))
       .onComplete(ctx.asyncAssertSuccess(res2 -> {
-        ctx.assertNull(res2);
+        ctx.verify(v -> {
+          assertNull(res2);
+        });
       })).compose(v -> cache.put(URL1, generateResource(URL1, 200L)))
       .compose(v -> cache.get(URL1)).onComplete(ctx.asyncAssertSuccess(res1 -> {
-        ctx.assertNotNull(res1);
-        ctx.assertEquals(res1.getMaxAge(), 200L);
+        ctx.verify(v -> {
+          assertNotNull(res1);
+          assertEquals(res1.getMaxAge(), 200L);
+        });
         latch.complete();
       }));
   }
@@ -75,11 +84,13 @@ public abstract class CacheSpiTestBase {
     cache.put(URL1, generateResource(URL1, 100L))
       .compose(v -> cache.put(URL2, generateResource(URL2, 200L)))
       .compose(v -> cache.remove(URL1))
-      .onSuccess(v -> {
+      .onSuccess(removed -> {
         cache.get(URL1).onSuccess(resp1 -> {
           cache.get(URL2).onComplete(ctx.asyncAssertSuccess(resp2 -> {
-            ctx.assertNull(resp1);
-            ctx.assertEquals(resp2.getMaxAge(), 200L);
+            ctx.verify(v -> {
+              assertNull(resp1);
+              assertEquals(resp2.getMaxAge(), 200L);
+            });
           })).compose(x -> cache.remove(URL1)).onComplete(ctx.asyncAssertSuccess(r -> latch.complete()));
         });
       });
@@ -91,7 +102,7 @@ public abstract class CacheSpiTestBase {
     cache.put(URL1, generateResource(URL1, 100L))
       .compose(v -> cache.put(URL2, generateResource(URL2, 200L)))
       .compose(v -> cache.put(URL3, generateResource(URL3, 300L)))
-      .onSuccess(v -> {
+      .onSuccess(stored -> {
         cache.get(URL1).onSuccess(resp1 -> {
           cache.get(URL2).onSuccess(resp2 -> {
             cache.get(URL3).onSuccess(resp3 -> {
@@ -99,7 +110,10 @@ public abstract class CacheSpiTestBase {
               if (resp1 != null) cnt++;
               if (resp2 != null) cnt++;
               if (resp3 != null) cnt++;
-              ctx.assertEquals(cnt, 2);
+              int found = cnt;
+              ctx.verify(v -> {
+                assertEquals(found, 2);
+              });
               latch.complete();
             });
           });
