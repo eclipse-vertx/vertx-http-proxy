@@ -8,24 +8,19 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.tests;
+package io.vertx.tests.proxy.request;
 
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
-import io.vertx.core.net.NetClient;
-import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
-import org.junit.Ignore;
+import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 
@@ -36,24 +31,12 @@ public class ProxyRequestTest extends TestBase {
 
   private HttpClient httpClient;
   private HttpClient backendClient;
-  private NetClient client;
 
   @Override
   public void tearDown(TestContext context) {
     super.tearDown(context);
     httpClient = null;
     backendClient = null;
-    client = null;
-  }
-
-  @Ignore
-  @Test
-  public void testProxyRequestIllegalHttpVersion(TestContext ctx) {
-    runHttpTest(ctx, req -> req.response().end("Hello World"), ctx.asyncAssertFailure());
-    client = vertx.createNetClient();
-    client.connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
-      so.write("GET /somepath http/1.1\r\n\r\n");
-    }));
   }
 
   @Test
@@ -121,22 +104,6 @@ public class ProxyRequestTest extends TestBase {
           .send("chunk")
           .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals(200, resp.statusCode())))
           .compose(HttpClientResponse::end))
-        .onComplete(ctx.asyncAssertSuccess());
-  }
-
-  @Ignore
-  @Test
-  public void testIllegalTransferEncodingBackendResponse(TestContext ctx) {
-    runNetTest(ctx, req -> req.write("" +
-        "HTTP/1.1 200 OK\r\n" +
-        "transfer-encoding: identity\r\n" +
-        "connection: close\r\n" +
-        "\r\n"), ctx.asyncAssertSuccess());
-    httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
-        .compose(req -> req
-          .send()
-          .compose(HttpClientResponse::body))
         .onComplete(ctx.asyncAssertSuccess());
   }
 
@@ -336,102 +303,6 @@ public class ProxyRequestTest extends TestBase {
         .onComplete(ctx.asyncAssertSuccess(received -> {
           ctx.assertEquals(sent, received);
         }));
-  }
-
-  @Test
-  public void testRequestFilter(TestContext ctx) {
-    Filter filter = new Filter();
-    CompletableFuture<Integer> onResume = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      req.pause();
-      onResume.thenAccept(num -> {
-        req.bodyHandler(body -> {
-          ctx.assertEquals(filter.expected, body);
-          req.response().end();
-        });
-        req.resume();
-      });
-    });
-    Async async = ctx.async();
-    backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    httpClient = vertx.createHttpClient();
-    HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
-    proxy.origin(backend);
-    proxy.addInterceptor(new ProxyInterceptor() {
-      @Override
-      public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
-        ProxyRequest proxyRequest = context.request();
-        Body body = proxyRequest.getBody();
-        proxyRequest.setBody(Body.body(filter.init(body.stream()), body.length()));
-        return context.sendRequest();
-      }
-    });
-    startHttpServer(ctx, serverOptions, proxy);
-    httpClient.request(HttpMethod.POST, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.setChunked(true);
-      AtomicInteger num = new AtomicInteger();
-      vertx.setPeriodic(1, id -> {
-        if (filter.paused.get()) {
-          vertx.cancelTimer(id);
-          req.end();
-          onResume.complete(num.get());
-        } else {
-          num.incrementAndGet();
-          req.write(CHUNK);
-        }
-      });
-      req.response()
-        .flatMap(HttpClientResponse::body)
-        .onComplete(ctx.asyncAssertSuccess(v -> {
-          async.complete();
-        }));
-    }));
-  }
-
-  @Test
-  public void testResponseFilter(TestContext ctx) {
-    Filter filter = new Filter();
-    CompletableFuture<Integer> onResume = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      HttpServerResponse resp = req.response().setChunked(true);
-      AtomicInteger num = new AtomicInteger();
-      vertx.setPeriodic(1, id -> {
-        if (!filter.paused.get()) {
-          resp.write(CHUNK);
-          num.getAndIncrement();
-        } else {
-          vertx.cancelTimer(id);
-          resp.end();
-          onResume.complete(num.get());
-        }
-      });
-    });
-    backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
-    proxy.origin(backend);
-    proxy.addInterceptor(new ProxyInterceptor() {
-      @Override
-      public Future<Void> handleProxyResponse(ProxyContext context) {
-        ProxyResponse proxyResponse = context.response();
-        Body body = proxyResponse.getBody();
-        proxyResponse.setBody(Body.body(filter.init(body.stream()), body.length()));
-        return context.sendResponse();
-      }
-    });
-    startHttpServer(ctx, serverOptions, proxy);
-    Async async = ctx.async();
-    httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        resp.pause();
-        onResume.thenAccept(num -> {
-          resp.resume();
-        });
-        resp.endHandler(v -> {
-          async.complete();
-        });
-      }));
-    }));
   }
 
   @Test
@@ -636,88 +507,6 @@ public class ProxyRequestTest extends TestBase {
       }));
   }
 
-  private static Buffer CHUNK;
-
-  static {
-    byte[] bytes = new byte[1024];
-    for (int i = 0; i < 1024; i++) {
-      bytes[i] = (byte) ('A' + (i % 26));
-    }
-    CHUNK = Buffer.buffer(bytes);
-  }
-
-  static class Filter implements ReadStream<Buffer> {
-
-    private final AtomicBoolean paused = new AtomicBoolean();
-    private ReadStream<Buffer> stream;
-    private Buffer expected = Buffer.buffer();
-    private Handler<Buffer> dataHandler;
-    private Handler<Throwable> exceptionHandler;
-    private Handler<Void> endHandler;
-
-    ReadStream<Buffer> init(ReadStream<Buffer> s) {
-      stream = s;
-      stream.handler(buff -> {
-        if (dataHandler != null) {
-          byte[] bytes = new byte[buff.length()];
-          for (int i = 0; i < bytes.length; i++) {
-            bytes[i] = (byte) (('a' - 'A') + buff.getByte(i));
-          }
-          expected.appendBytes(bytes);
-          dataHandler.handle(Buffer.buffer(bytes));
-        }
-      });
-      stream.exceptionHandler(err -> {
-        if (exceptionHandler != null) {
-          exceptionHandler.handle(err);
-        }
-      });
-      stream.endHandler(v -> {
-        if (endHandler != null) {
-          endHandler.handle(v);
-        }
-      });
-      return this;
-    }
-
-    @Override
-    public ReadStream<Buffer> pause() {
-      paused.set(true);
-      stream.pause();
-      return this;
-    }
-
-    @Override
-    public ReadStream<Buffer> resume() {
-      stream.resume();
-      return this;
-    }
-
-    @Override
-    public ReadStream<Buffer> fetch(long amount) {
-      stream.fetch(amount);
-      return this;
-    }
-
-    @Override
-    public ReadStream<Buffer> exceptionHandler(Handler<Throwable> handler) {
-      exceptionHandler = handler;
-      return this;
-    }
-
-    @Override
-    public ReadStream<Buffer> handler(Handler<Buffer> handler) {
-      dataHandler = handler;
-      return this;
-    }
-
-    @Override
-    public ReadStream<Buffer> endHandler(Handler<Void> handler) {
-      endHandler = handler;
-      return this;
-    }
-  }
-
   private void runHttpTest(TestContext ctx,
                            Handler<HttpServerRequest> backendHandler,
                            Handler<AsyncResult<Void>> expect) {
@@ -744,23 +533,6 @@ public class ProxyRequestTest extends TestBase {
           req.resume().response().setStatusCode(404).end();
         }
       });
-    });
-  }
-
-  private void runNetTest(TestContext ctx,
-                       Handler<NetSocket> backendHandler,
-                       Handler<AsyncResult<Void>> expect) {
-    Async async = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, backendHandler);
-    backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
-      ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
-        proxyReq.proxy(clientReq).onComplete(ar -> {
-          expect.handle(ar);
-          async.complete();
-        });
-      }));
     });
   }
 
