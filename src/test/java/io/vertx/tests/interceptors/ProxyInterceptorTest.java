@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -84,8 +85,10 @@ public class ProxyInterceptorTest extends TestBase {
     Async latch = ctx.async(3);
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.body().onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals(0, body.length());
-        ctx.assertEquals("0", req.getHeader(CONTENT_LENGTH));
+        ctx.verify(v -> {
+          assertEquals(0, body.length());
+          assertEquals("0", req.getHeader(CONTENT_LENGTH));
+        });
         req.response().end("IGNORED_BACKEND_RESPONSE_BODY");
       }));
     });
@@ -113,8 +116,10 @@ public class ProxyInterceptorTest extends TestBase {
         .send("IGNORED_CLIENT_REQUEST_BODY")
         .compose(resp -> resp.body().map(resp))
       ).onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertEquals(0, resp.body().result().length());
-        ctx.assertEquals("0", resp.getHeader(CONTENT_LENGTH));
+        ctx.verify(v -> {
+          assertEquals(0, resp.body().result().length());
+          assertEquals("0", resp.getHeader(CONTENT_LENGTH));
+        });
         latch.countDown();
       }));
   }
@@ -132,7 +137,9 @@ public class ProxyInterceptorTest extends TestBase {
     Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, resp.statusCode());
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
@@ -151,7 +158,9 @@ public class ProxyInterceptorTest extends TestBase {
     Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, resp.statusCode());
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
@@ -168,7 +177,9 @@ public class ProxyInterceptorTest extends TestBase {
       }
     };
     OriginRequestProvider provider = (proxyContext) -> {
-      ctx.assertEquals("bar", proxyContext.get("foo", String.class));
+      ctx.verify(v -> {
+        assertEquals("bar", proxyContext.get("foo", String.class));
+      });
       return client.request(new RequestOptions().setServer(backend));
     };
     startProxy(proxy -> proxy.origin(provider).addInterceptor(interceptor));
@@ -179,7 +190,7 @@ public class ProxyInterceptorTest extends TestBase {
         .send()
         .compose(HttpClientResponse::body)
       )
-      .onComplete(ctx.asyncAssertSuccess(buffer -> ctx.assertEquals("HOLA", buffer.toString())));
+      .onComplete(ctx.asyncAssertSuccess(buffer -> ctx.verify(v -> assertEquals("HOLA", buffer.toString()))));
   }
 
   @Test
@@ -190,7 +201,9 @@ public class ProxyInterceptorTest extends TestBase {
       req.pause();
       onResume.thenAccept(num -> {
         req.bodyHandler(body -> {
-          ctx.assertEquals(filter.expected, body);
+          ctx.verify(v -> {
+            assertEquals(filter.expected, body);
+          });
           req.response().end();
         });
         req.resume();

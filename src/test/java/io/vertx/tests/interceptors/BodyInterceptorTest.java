@@ -27,6 +27,8 @@ import org.junit.Test;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
@@ -53,8 +55,10 @@ public class BodyInterceptorTest extends TestBase {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.body().onSuccess(buffer -> {
         JsonObject jsonObject = buffer.toJsonObject();
-        ctx.assertEquals(jsonObject.getInteger("k1"), 1);
-        ctx.assertEquals(jsonObject.getInteger("k2"), null);
+        ctx.verify(v -> {
+          assertEquals(jsonObject.getInteger("k1"), Integer.valueOf(1));
+          assertEquals(jsonObject.getInteger("k2"), null);
+        });
         req.response().end("Hello");
       });
     });
@@ -101,11 +105,15 @@ public class BodyInterceptorTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals("application/json", response.getHeader(HttpHeaders.CONTENT_TYPE));
+        ctx.verify(v -> {
+          assertEquals("application/json", response.getHeader(HttpHeaders.CONTENT_TYPE));
+        });
         response.body().compose((buffer -> {
           JsonObject jsonObject = buffer.toJsonObject();
-          ctx.assertEquals(jsonObject.getInteger("k1"), 1);
-          ctx.assertEquals(jsonObject.getInteger("k2"), null);
+          ctx.verify(v -> {
+            assertEquals(jsonObject.getInteger("k1"), Integer.valueOf(1));
+            assertEquals(jsonObject.getInteger("k2"), null);
+          });
           latch.complete();
           return Future.succeededFuture();
         }));
@@ -135,7 +143,9 @@ public class BodyInterceptorTest extends TestBase {
       .onComplete(ctx.asyncAssertSuccess(response -> {
         response.body().compose((buffer -> {
           JsonArray jsonArray = buffer.toJsonArray();
-          ctx.assertEquals(jsonArray.size(), 2);
+          ctx.verify(v -> {
+            assertEquals(jsonArray.size(), 2);
+          });
           latch.complete();
           return Future.succeededFuture();
         }));
@@ -157,9 +167,13 @@ public class BodyInterceptorTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertNull(response.getHeader(HttpHeaders.CONTENT_TYPE));
+        ctx.verify(v -> {
+          assertNull(response.getHeader(HttpHeaders.CONTENT_TYPE));
+        });
         response.body().compose((buffer -> {
-          ctx.assertEquals(buffer.length(), 0);
+          ctx.verify(v -> {
+            assertEquals(buffer.length(), 0);
+          });
           latch.complete();
           return Future.succeededFuture();
         }));
@@ -188,7 +202,9 @@ public class BodyInterceptorTest extends TestBase {
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
         response.body().compose((buffer -> {
-          ctx.assertEquals(buffer.toString(), "success");
+          ctx.verify(v -> {
+            assertEquals(buffer.toString(), "success");
+          });
           latch.complete();
           return Future.succeededFuture();
         }));
@@ -201,9 +217,11 @@ public class BodyInterceptorTest extends TestBase {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.body().onSuccess(buffer -> {
         Object json = Json.decodeValue(buffer);
-        if (json instanceof JsonObject) ctx.assertEquals(((JsonObject) json).getInteger("k"), 1);
-        if (json instanceof Integer) ctx.assertEquals(json, 1);
-        if (json instanceof JsonArray) ctx.assertEquals(((JsonArray) json).getInteger(0), 1);
+        ctx.verify(v -> {
+          if (json instanceof JsonObject) assertEquals(((JsonObject) json).getInteger("k"), Integer.valueOf(1));
+          if (json instanceof Integer) assertEquals(json, Integer.valueOf(1));
+          if (json instanceof JsonArray) assertEquals(((JsonArray) json).getInteger(0), Integer.valueOf(1));
+        });
         req.response().end("Hello");
       });
     });
@@ -247,9 +265,13 @@ public class BodyInterceptorTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(500, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(500, response.statusCode());
+        });
         response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals(0, body.length());
+          ctx.verify(v -> {
+            assertEquals(0, body.length());
+          });
           latch.complete();
         }));
       }));
@@ -259,22 +281,30 @@ public class BodyInterceptorTest extends TestBase {
   public void testRequestMaxBufferedBytes(TestContext ctx) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.fail();
+      ctx.verify(v -> {
+        fail();
+      });
     });
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null,
         MediaType.APPLICATION_JSON, 512, buffer -> {
-        ctx.fail();
+        ctx.verify(v -> {
+          fail();
+        });
         return buffer;
       })).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(500, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(500, response.statusCode());
+        });
         response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals(0, body.length());
+          ctx.verify(v -> {
+            assertEquals(0, body.length());
+          });
           latch.complete();
         }));
       })));
@@ -300,9 +330,13 @@ public class BodyInterceptorTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(500, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(500, response.statusCode());
+        });
         response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals(0, body.length());
+          ctx.verify(v -> {
+            assertEquals(0, body.length());
+          });
           latch.complete();
         }));
       }));
@@ -312,12 +346,16 @@ public class BodyInterceptorTest extends TestBase {
   public void testRequestMaxBufferedBytesCumulation(TestContext ctx) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.fail();
+      ctx.verify(v -> {
+        fail();
+      });
     });
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, 512, buffer -> {
-        ctx.fail();
+        ctx.verify(v -> {
+          fail();
+        });
         return buffer;
       })).build()));
 
@@ -330,9 +368,13 @@ public class BodyInterceptorTest extends TestBase {
         return request.send();
       })
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(500, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(500, response.statusCode());
+        });
         response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals(0, body.length());
+          ctx.verify(v -> {
+            assertEquals(0, body.length());
+          });
           latch.complete();
         }));
       }));
@@ -394,9 +436,13 @@ public class BodyInterceptorTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(500, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(500, response.statusCode());
+        });
         response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals(0, body.length());
+          ctx.verify(v -> {
+            assertEquals(0, body.length());
+          });
           latch.complete();
         }));
       }));
@@ -419,7 +465,9 @@ public class BodyInterceptorTest extends TestBase {
   private void testRequestTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.fail();
+      ctx.verify(v -> {
+        fail();
+      });
     });
 
     startProxy(proxy -> proxy.origin(backend).addInterceptor(interceptor));
@@ -427,9 +475,13 @@ public class BodyInterceptorTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
         .onComplete(ctx.asyncAssertSuccess(response -> {
-          ctx.assertEquals(500, response.statusCode());
+          ctx.verify(v -> {
+            assertEquals(500, response.statusCode());
+          });
           response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-            ctx.assertEquals(0, body.length());
+            ctx.verify(v -> {
+              assertEquals(0, body.length());
+            });
             latch.complete();
           }));
         })));
@@ -616,7 +668,9 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testInvalidContentType(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("invalid request content type", req.getHeader(HttpHeaders.CONTENT_TYPE));
+      ctx.verify(v -> {
+        assertEquals("invalid request content type", req.getHeader(HttpHeaders.CONTENT_TYPE));
+      });
       req.body().onSuccess(buffer -> {
         req
           .response()
@@ -631,7 +685,9 @@ public class BodyInterceptorTest extends TestBase {
       }
       @Override
       public Future<Body> transform(Body body) {
-        ctx.fail();
+        ctx.verify(v -> {
+          fail();
+        });
         return BodyTransformer.super.transform(body);
       }
     };
@@ -668,7 +724,9 @@ public class BodyInterceptorTest extends TestBase {
       }
       @Override
       public Future<Body> transform(Body body) {
-        ctx.fail();
+        ctx.verify(v -> {
+          fail();
+        });
         return BodyTransformer.super.transform(body);
       }
     };

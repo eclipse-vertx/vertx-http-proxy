@@ -20,6 +20,7 @@ import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 import java.util.Set;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
@@ -31,8 +32,10 @@ public class HeaderInterceptorTest extends TestBase {
   @Test
   public void testFilterRequestHeader(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.headers().get("k1"), "v1");
-      ctx.assertEquals(req.headers().get("k2"), null);
+      ctx.verify(v -> {
+        assertEquals(req.headers().get("k1"), "v1");
+        assertEquals(req.headers().get("k2"), null);
+      });
       req.response().end("Hello");
     });
 
@@ -71,8 +74,8 @@ public class HeaderInterceptorTest extends TestBase {
           .end()
           .map(response.headers()))
       ).await();
-    ctx.assertEquals(headers.get("k1"), "v1");
-    ctx.assertEquals(headers.get("k2"), null);
+    assertEquals(headers.get("k1"), "v1");
+    assertEquals(headers.get("k2"), null);
   }
 
 

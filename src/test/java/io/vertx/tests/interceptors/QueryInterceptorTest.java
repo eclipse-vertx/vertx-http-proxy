@@ -23,6 +23,8 @@ import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
@@ -35,8 +37,10 @@ public class QueryInterceptorTest extends TestBase {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
-      ctx.assertEquals(parameters.get("k1").get(0), "v1");
-      ctx.assertEquals(parameters.get("k2").get(0), "v2");
+      ctx.verify(v -> {
+        assertEquals(parameters.get("k1").get(0), "v1");
+        assertEquals(parameters.get("k2").get(0), "v2");
+      });
       req.response().end("Hello");
     });
 
@@ -54,8 +58,10 @@ public class QueryInterceptorTest extends TestBase {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
-      ctx.assertEquals(parameters.get("k1").get(0), "v1");
-      ctx.assertTrue(parameters.get("k2") == null);
+      ctx.verify(v -> {
+        assertEquals(parameters.get("k1").get(0), "v1");
+        assertTrue(parameters.get("k2") == null);
+      });
       req.response().end("Hello");
     });
 

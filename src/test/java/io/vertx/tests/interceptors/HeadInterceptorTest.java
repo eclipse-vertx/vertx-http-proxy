@@ -25,6 +25,8 @@ import org.junit.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class HeadInterceptorTest extends TestBase {
 
@@ -32,14 +34,20 @@ public class HeadInterceptorTest extends TestBase {
   public void testCombined(TestContext ctx) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.path(), "/prefix/hello");
+      ctx.verify(v -> {
+        assertEquals(req.path(), "/prefix/hello");
+      });
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
-      ctx.assertEquals(parameters.get("k1").get(0), "v1");
-      ctx.assertEquals(parameters.get("k2").get(0), "v2");
+      ctx.verify(v -> {
+        assertEquals(parameters.get("k1").get(0), "v1");
+        assertEquals(parameters.get("k2").get(0), "v2");
+      });
       MultiMap headers = req.headers();
-      ctx.assertEquals(headers.get("k1"), "v2");
-      ctx.assertEquals(headers.get("k2"), null);
+      ctx.verify(v -> {
+        assertEquals(headers.get("k1"), "v2");
+        assertEquals(headers.get("k2"), null);
+      });
       req.response().end("Hello");
     });
 
@@ -49,7 +57,9 @@ public class HeadInterceptorTest extends TestBase {
         .addingPathPrefix("/prefix")
         .filteringRequestHeaders(Set.of("k2"))
         .transformingRequestHeaders(headers -> {
-          ctx.assertNull(headers.get("k2"));
+          ctx.verify(v -> {
+            assertNull(headers.get("k2"));
+          });
           headers.set("k1", "v2");
         })
         .build()));
