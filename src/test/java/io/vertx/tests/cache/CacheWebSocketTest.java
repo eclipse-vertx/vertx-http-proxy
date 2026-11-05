@@ -1,18 +1,13 @@
-package io.vertx.tests;
+package io.vertx.tests.cache;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.WebSocketClient;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.httpproxy.cache.CacheOptions;
 import org.junit.Test;
 
-public class WebSocketCacheTest extends TestBase {
-
-  public WebSocketCacheTest() {
-    proxyOptions.setCacheOptions(new CacheOptions());
-  }
+public class CacheWebSocketTest extends CacheTestBase {
 
   @Test
   public void testWsWithCache(TestContext ctx) {

@@ -18,20 +18,43 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 import io.vertx.httpproxy.impl.ParseUtils;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * Freshness tests, run with both ways of declaring the lifetime of a response: the {@code Expires} header
+ * and the {@code Cache-Control: max-age} directive.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class CacheExpiresTest extends CacheTestBase {
+@RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(VertxUnitRunnerWithParametersFactory.class)
+public class CacheFreshnessTest extends CacheTestBase {
 
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> data() {
+    return Arrays.asList(new Object[][]{
+      {"Expires"},
+      {"max-age"},
+    });
+  }
+
+  private final boolean useMaxAge;
   private AtomicInteger hits = new AtomicInteger();
   private HttpClient client;
+
+  public CacheFreshnessTest(String freshnessHeader) {
+    this.useMaxAge = freshnessHeader.equals("max-age");
+  }
 
   @Override
   public void setUp() {
@@ -40,9 +63,13 @@ public class CacheExpiresTest extends CacheTestBase {
     client = vertx.createHttpClient();
   }
 
-  protected void setCacheControl(MultiMap headers, long now, long delaySeconds) {
-    headers.set(HttpHeaders.CACHE_CONTROL, "public");
-    headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(Instant.now().plus(delaySeconds, ChronoUnit.SECONDS)));
+  private void setCacheControl(MultiMap headers, long now, long delaySeconds) {
+    if (useMaxAge) {
+      headers.set(HttpHeaders.CACHE_CONTROL, "public, max-age=" + delaySeconds);
+    } else {
+      headers.set(HttpHeaders.CACHE_CONTROL, "public");
+      headers.set(HttpHeaders.EXPIRES, ParseUtils.formatHttpDate(Instant.now().plus(delaySeconds, ChronoUnit.SECONDS)));
+    }
   }
 
   @Test
@@ -163,10 +190,13 @@ public class CacheExpiresTest extends CacheTestBase {
   }
 
   @Test
-  public void testPublicInvalidClientMaxAgeRevalidation(TestContext ctx) throws Exception {
+  public void testPublicInvalidClientMaxAgeRevalidationNotModified(TestContext ctx) throws Exception {
     testPublicInvalidClientMaxAge(ctx, 5);
   }
 
+  // Commented out since the initial import of the project (2020-11-30), never revisited. Probable reason (from reading
+  // the code, not verified by running it): with maxAge = 3 the backend answers 200 "content2" instead of 304 to the
+  // revalidation sent after 3 s, while the test expects the body "content" and 2 hits.
 /*
   @Test
   public void testPublicInvalidClientMaxAgeOverwrite(TestContext ctx) throws Exception {
