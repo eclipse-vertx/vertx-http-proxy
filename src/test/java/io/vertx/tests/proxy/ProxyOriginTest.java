@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import static org.junit.Assert.assertEquals;
 
 public class ProxyOriginTest extends TestBase {
 
@@ -60,9 +61,13 @@ public class ProxyOriginTest extends TestBase {
           if (total == backends.length * numRequests) {
             for (int j = 0;j < backends.length;j++) {
               AtomicInteger val = result.remove("" + j);
-              ctx.assertEquals(numRequests, val.get());
+              ctx.verify(v -> {
+                assertEquals(numRequests, val.get());
+              });
             }
-            ctx.assertEquals(result, Collections.emptyMap());
+            ctx.verify(v -> {
+              assertEquals(result, Collections.emptyMap());
+            });
             latch.complete();
           }
         }
@@ -78,7 +83,9 @@ public class ProxyOriginTest extends TestBase {
     Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, resp.statusCode());
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
@@ -91,11 +98,15 @@ public class ProxyOriginTest extends TestBase {
     Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(res -> {
-        ctx.assertEquals(502, res.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, res.statusCode());
+        });
         return res.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("", body.toString());
+        ctx.verify(v -> {
+          assertEquals("", body.toString());
+        });
         async.complete();
       }));
   }

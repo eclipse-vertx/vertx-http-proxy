@@ -23,6 +23,9 @@ import org.junit.Test;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -75,7 +78,9 @@ public class ProxyRequestTest extends TestBase {
     runHttpTest(ctx, req -> {
       String te = req.getHeader(HttpHeaders.TRANSFER_ENCODING);
       if (te != null && te.equalsIgnoreCase("chunked")) {
-        ctx.fail("got chunked request");
+        ctx.verify(v -> {
+          fail("got chunked request");
+        });
       }
       req.response().end("Hello World");
     }, ctx.asyncAssertSuccess());
@@ -92,7 +97,9 @@ public class ProxyRequestTest extends TestBase {
     runHttpTest(ctx, req -> {
       String te = req.getHeader(HttpHeaders.TRANSFER_ENCODING);
       if (te == null || !te.equalsIgnoreCase("chunked")) {
-        ctx.fail("got non chunked request");
+        ctx.verify(v -> {
+          fail("got non chunked request");
+        });
       }
       req.response().end("Hello World");
     }, ctx.asyncAssertSuccess());
@@ -102,7 +109,7 @@ public class ProxyRequestTest extends TestBase {
         .compose(req -> req
           .setChunked(true)
           .send("chunk")
-          .andThen(ctx.asyncAssertSuccess(resp -> ctx.assertEquals(200, resp.statusCode())))
+          .andThen(ctx.asyncAssertSuccess(resp -> ctx.verify(v -> assertEquals(200, resp.statusCode()))))
           .compose(HttpClientResponse::end))
         .onComplete(ctx.asyncAssertSuccess());
   }
@@ -206,7 +213,9 @@ public class ProxyRequestTest extends TestBase {
     Promise<Void> latch = Promise.promise();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.handler(buff -> {
-        ctx.assertEquals("part", buff.toString());
+        ctx.verify(v -> {
+          assertEquals("part", buff.toString());
+        });
         latch.tryComplete();
       });
     });
@@ -245,7 +254,9 @@ public class ProxyRequestTest extends TestBase {
   private void testCloseBackendRequest(TestContext ctx, boolean chunked) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.handler(buff -> {
-        ctx.assertEquals("part", buff.toString());
+        ctx.verify(v -> {
+          assertEquals("part", buff.toString());
+        });
         req.connection().close();
       });
     });
@@ -264,7 +275,9 @@ public class ProxyRequestTest extends TestBase {
     httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, resp.statusCode());
+        });
       }));
       if (chunked) {
         req.setChunked(true);
@@ -301,16 +314,20 @@ public class ProxyRequestTest extends TestBase {
     httpClient.request(HttpMethod.POST, 8080, "localhost", "/somepath")
         .compose(req -> req.send(sent).compose(HttpClientResponse::body))
         .onComplete(ctx.asyncAssertSuccess(received -> {
-          ctx.assertEquals(sent, received);
+          ctx.verify(v -> {
+            assertEquals(sent, received);
+          });
         }));
   }
 
   @Test
   public void testUpdateRequestHeaders(TestContext ctx) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertNotEquals("example.org", req.getHeader(HttpHeaders.HOST));
-      ctx.assertNull(req.getHeader("header"));
-      ctx.assertEquals("proxy_header_value", req.getHeader("proxy_header"));
+      ctx.verify(v -> {
+        assertNotEquals("example.org", req.getHeader(HttpHeaders.HOST));
+        assertNull(req.getHeader("header"));
+        assertEquals("proxy_header_value", req.getHeader("proxy_header"));
+      });
       req.response().putHeader("header", "header_value").end();
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
@@ -318,13 +335,17 @@ public class ProxyRequestTest extends TestBase {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       MultiMap clientHeaders = proxyReq.headers();
       clientHeaders.add("proxy_header", "proxy_header_value");
-      ctx.assertEquals("header_value", clientHeaders.get("header"));
+      ctx.verify(v -> {
+        assertEquals("header_value", clientHeaders.get("header"));
+      });
       clientHeaders.remove("header");
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
           MultiMap targetHeaders = proxyResp.headers();
           targetHeaders.add("proxy_header", "proxy_header_value");
-          ctx.assertEquals("header_value", targetHeaders.get("header"));
+          ctx.verify(v -> {
+            assertEquals("header_value", targetHeaders.get("header"));
+          });
           targetHeaders.remove("header");
           proxyResp.send().onComplete(ctx.asyncAssertSuccess());
         }));
@@ -338,8 +359,10 @@ public class ProxyRequestTest extends TestBase {
           .putHeader(HttpHeaders.HOST, "example.org")
           .send()
           .compose(resp -> {
-            ctx.assertEquals("proxy_header_value", resp.getHeader("proxy_header"));
-            ctx.assertNull(resp.getHeader("header"));
+            ctx.verify(v -> {
+              assertEquals("proxy_header_value", resp.getHeader("proxy_header"));
+              assertNull(resp.getHeader("header"));
+            });
             return resp.body();
           })
     ).onComplete(ctx.asyncAssertSuccess());
@@ -382,11 +405,15 @@ public class ProxyRequestTest extends TestBase {
     httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertNull(resp.getHeader("header"));
+        ctx.verify(v -> {
+          assertNull(resp.getHeader("header"));
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("another-response", body.toString());
+        ctx.verify(v -> {
+          assertEquals("another-response", body.toString());
+        });
       }));
   }
 
@@ -394,7 +421,9 @@ public class ProxyRequestTest extends TestBase {
   public void testReleaseProxyRequest(TestContext ctx) {
     CompletableFuture<Void> full = new CompletableFuture<>();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(null, req.getHeader("header"));
+      ctx.verify(v -> {
+        assertEquals(null, req.getHeader("header"));
+      });
       req.body().onComplete(ctx.asyncAssertSuccess(body -> {
         req.response().end(body);
       }));
@@ -439,7 +468,9 @@ public class ProxyRequestTest extends TestBase {
   @Test
   public void testReleaseProxyRequestAndFail(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.fail("Shouldn't be called");
+      ctx.verify(v -> {
+        fail("Shouldn't be called");
+      });
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
@@ -455,7 +486,9 @@ public class ProxyRequestTest extends TestBase {
     httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, resp.statusCode());
+        });
       }));
     }));
   }
@@ -470,12 +503,16 @@ public class ProxyRequestTest extends TestBase {
     Async async = ctx.async();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(200, resp.statusCode());
-        ctx.assertNull(resp.getHeader(HttpHeaders.TRANSFER_ENCODING));
+        ctx.verify(v -> {
+          assertEquals(200, resp.statusCode());
+          assertNull(resp.getHeader(HttpHeaders.TRANSFER_ENCODING));
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("", body.toString());
+        ctx.verify(v -> {
+          assertEquals("", body.toString());
+        });
         async.complete();
       }));
   }
@@ -495,14 +532,18 @@ public class ProxyRequestTest extends TestBase {
     Async async = ctx.async();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(302, resp.statusCode());
-        ctx.assertEquals("some-status-message", resp.statusMessage());
-        ctx.assertEquals("some-header-value", resp.getHeader("some-header"));
-        ctx.assertNull(resp.getHeader(HttpHeaders.TRANSFER_ENCODING));
+        ctx.verify(v -> {
+          assertEquals(302, resp.statusCode());
+          assertEquals("some-status-message", resp.statusMessage());
+          assertEquals("some-header-value", resp.getHeader("some-header"));
+          assertNull(resp.getHeader(HttpHeaders.TRANSFER_ENCODING));
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("hello world", body.toString());
+        ctx.verify(v -> {
+          assertEquals("hello world", body.toString());
+        });
         async.complete();
       }));
   }
@@ -546,14 +587,18 @@ public class ProxyRequestTest extends TestBase {
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     startHttpServer(ctx, serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      ctx.assertEquals("invalid request content type", proxyReq.headers().get(HttpHeaders.CONTENT_TYPE));
-      ctx.assertEquals("invalid request content type", proxyReq.getBody().mediaType());
+      ctx.verify(v -> {
+        assertEquals("invalid request content type", proxyReq.headers().get(HttpHeaders.CONTENT_TYPE));
+        assertEquals("invalid request content type", proxyReq.getBody().mediaType());
+      });
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq
           .send(clientReq)
           .onComplete(ctx.asyncAssertSuccess(proxyResp -> {
-            ctx.assertEquals("invalid response content type", proxyResp.headers().get(HttpHeaders.CONTENT_TYPE));
-            ctx.assertEquals("invalid response content type", proxyResp.getBody().mediaType());
+            ctx.verify(v -> {
+              assertEquals("invalid response content type", proxyResp.headers().get(HttpHeaders.CONTENT_TYPE));
+              assertEquals("invalid response content type", proxyResp.getBody().mediaType());
+            });
             proxyResp.send();
         }));
       }));

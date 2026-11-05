@@ -20,6 +20,10 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
 import io.vertx.tests.TestBase;
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -95,7 +99,9 @@ public class WebSocketTest extends TestBase {
       .setHost("localhost")
       .setURI("/ws");
     wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
-      ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
+      ctx.verify(v -> {
+        assertTrue(err.getClass() == UpgradeRejectedException.class);
+      });
       async.complete();
     }));
   }
@@ -115,7 +121,9 @@ public class WebSocketTest extends TestBase {
       .setHost("localhost")
       .setURI("/ws");
     wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
-      ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
+      ctx.verify(v -> {
+        assertTrue(err.getClass() == UpgradeRejectedException.class);
+      });
       async.complete();
     }));
   }
@@ -144,7 +152,9 @@ public class WebSocketTest extends TestBase {
       .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
     httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
       clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(101, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(101, response.statusCode());
+        });
         response.netSocket().close();
       }));
     }));
@@ -154,7 +164,9 @@ public class WebSocketTest extends TestBase {
   public void testWebSocketHostHeader(TestContext ctx) {
     Async async = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("localhost:8081", req.headers().get("Host"));
+      ctx.verify(v -> {
+        assertEquals("localhost:8081", req.headers().get("Host"));
+      });
       Future<ServerWebSocket> fut = req.toWebSocket();
       fut.onComplete(ctx.asyncAssertSuccess(ws -> {
         ws.closeHandler(v -> {
@@ -175,7 +187,9 @@ public class WebSocketTest extends TestBase {
       .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
     httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
       clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(101, response.statusCode());
+        ctx.verify(v -> {
+          assertEquals(101, response.statusCode());
+        });
         response.netSocket().close();
       }));
     }));
@@ -201,7 +215,9 @@ public class WebSocketTest extends TestBase {
       }
     };
     OriginRequestProvider provider = (proxyContext) -> {
-      ctx.assertEquals("bar", proxyContext.get("foo", String.class));
+      ctx.verify(v -> {
+        assertEquals("bar", proxyContext.get("foo", String.class));
+      });
       return proxyContext.client().request(new RequestOptions().setServer(backend));
     };
     startProxy(proxy -> proxy.origin(provider).addInterceptor(interceptor, true));
@@ -225,7 +241,9 @@ public class WebSocketTest extends TestBase {
       .setPerFrameWebSocketCompressionSupported(false) // Disable extension in the backend
       .setPerMessageWebSocketCompressionSupported(false); // Disable extension in the backend
     SocketAddress backend = startHttpBackend(ctx, backendOptions, req -> {
-      ctx.assertTrue(req.headers().contains("sec-websocket-extensions"));
+      ctx.verify(v -> {
+        assertTrue(req.headers().contains("sec-websocket-extensions"));
+      });
       Future<ServerWebSocket> fut = req.toWebSocket();
       fut.onComplete(ctx.asyncAssertSuccess(ws -> {
         ws.handler(buff -> ws.writeTextMessage(buff.toString()));
@@ -247,9 +265,13 @@ public class WebSocketTest extends TestBase {
       .setHost("localhost")
       .setURI("/ws");
     wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
-      ctx.assertFalse(ws.headers().contains("sec-websocket-extensions"), "Expected extensions to be declined");
+      ctx.verify(v -> {
+        assertFalse("Expected extensions to be declined", ws.headers().contains("sec-websocket-extensions"));
+      });
       ws.textMessageHandler(msg -> {
-        ctx.assertEquals("hello", msg);
+        ctx.verify(v -> {
+          assertEquals("hello", msg);
+        });
         ws.close();
       });
       ws.writeTextMessage("hello");
@@ -327,7 +349,7 @@ public class WebSocketTest extends TestBase {
     Async backendClosed = ctx.async();
     Promise<Void> resolving = Promise.promise();
     SocketAddress backend = startNetBackend(ctx, 8081, so -> {
-      so.handler(buff -> ctx.fail("Upgrade sent for a client that has gone"));
+      so.handler(buff -> ctx.verify(v -> fail("Upgrade sent for a client that has gone")));
       so.closeHandler(v -> backendClosed.complete());
     });
     startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> {

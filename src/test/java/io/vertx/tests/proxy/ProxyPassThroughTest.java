@@ -21,6 +21,7 @@ import org.junit.Test;
 import java.util.Random;
 
 import static io.vertx.core.http.HttpMethod.GET;
+import static org.junit.Assert.assertEquals;
 
 public class ProxyPassThroughTest extends TestBase {
 
@@ -40,7 +41,9 @@ public class ProxyPassThroughTest extends TestBase {
     client = vertx.createHttpClient();
     Async async = ctx.async();
     client.getNow(8080, "localhost", "/", resp -> {
-      ctx.assertEquals(404, resp.statusCode());
+      ctx.verify(v -> {
+        assertEquals(404, resp.statusCode());
+      });
       async.complete();
     });
   }
@@ -49,8 +52,10 @@ public class ProxyPassThroughTest extends TestBase {
   @Test
   public void testGet(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals("localhost:8081", req.authority().toString());
+      ctx.verify(v -> {
+        assertEquals("/somepath", req.uri());
+        assertEquals("localhost:8081", req.authority().toString());
+      });
       req.response().end("Hello World");
     });
     startProxy(backend);
@@ -59,11 +64,15 @@ public class ProxyPassThroughTest extends TestBase {
         .compose(req -> req
             .send()
             .compose(resp -> {
-              ctx.assertEquals(200, resp.statusCode());
+              ctx.verify(v -> {
+                assertEquals(200, resp.statusCode());
+              });
               return resp.body();
             }))
         .onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals("Hello World", body.toString());
+          ctx.verify(v -> {
+            assertEquals("Hello World", body.toString());
+          });
         }));
   }
 
@@ -76,7 +85,9 @@ public class ProxyPassThroughTest extends TestBase {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
       req.bodyHandler(buff -> {
         req.response().end();
-        ctx.assertEquals(Buffer.buffer(body), buff);
+        ctx.verify(v -> {
+          assertEquals(Buffer.buffer(body), buff);
+        });
         async.countDown();
       });
     });
@@ -86,7 +97,9 @@ public class ProxyPassThroughTest extends TestBase {
         .compose(req -> req
             .send(Buffer.buffer(body))
             .compose(resp -> {
-              ctx.assertEquals(200, resp.statusCode());
+              ctx.verify(v -> {
+                assertEquals(200, resp.statusCode());
+              });
               return resp.body();
             }))
         .onComplete(ctx.asyncAssertSuccess(buff -> async.countDown()));
@@ -95,7 +108,9 @@ public class ProxyPassThroughTest extends TestBase {
   @Test
   public void testResponse(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(HttpMethod.POST, req.method());
+      ctx.verify(v -> {
+        assertEquals(HttpMethod.POST, req.method());
+      });
       req.response()
         .addCookie(Cookie.cookie("some-cookie-name", "some-cookie-value"))
         .putHeader("some-header", "some-header-value")
@@ -108,15 +123,19 @@ public class ProxyPassThroughTest extends TestBase {
     Async async = ctx.async();
     client.request(HttpMethod.POST, 8080, "localhost", "/path")
       .compose(req -> req.send().compose(resp -> {
-        ctx.assertEquals(1, resp.cookies().size());
-        ctx.assertEquals("some-cookie-name=some-cookie-value", resp.cookies().get(0));
-        ctx.assertEquals("some-header-value", resp.getHeader("some-header"));
-        ctx.assertEquals(203, resp.statusCode());
-        ctx.assertEquals("some-status-message", resp.statusMessage());
+        ctx.verify(v -> {
+          assertEquals(1, resp.cookies().size());
+          assertEquals("some-cookie-name=some-cookie-value", resp.cookies().get(0));
+          assertEquals("some-header-value", resp.getHeader("some-header"));
+          assertEquals(203, resp.statusCode());
+          assertEquals("some-status-message", resp.statusMessage());
+        });
         return resp.body();
       }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("some-data", body.toString());
+        ctx.verify(v -> {
+          assertEquals("some-data", body.toString());
+        });
         async.complete();
       }));
   }

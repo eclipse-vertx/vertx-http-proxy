@@ -11,6 +11,7 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.tests.TestBase;
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 public class WebSocketInterceptorTest extends TestBase {
 
@@ -59,11 +60,13 @@ public class WebSocketInterceptorTest extends TestBase {
       .compose(req -> req.send()
         .expecting(HttpResponseExpectation.SC_OK))
       .compose(HttpClientResponse::body).await();
-    ctx.assertEquals(body.toString().endsWith("/updated"), httpHit);
+    assertEquals(body.toString().endsWith("/updated"), httpHit);
     webSocketClient.connect(8080, "localhost", "/ws")
       .onComplete(ctx.asyncAssertSuccess(webSocket -> {
         webSocket.handler(buffer -> {
-          ctx.assertEquals(buffer.toString().endsWith("/updated"), wsHit);
+          ctx.verify(v -> {
+            assertEquals(buffer.toString().endsWith("/updated"), wsHit);
+          });
           latch.countDown();
           webSocket.close();
         });

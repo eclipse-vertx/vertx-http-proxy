@@ -24,6 +24,9 @@ import io.vertx.tests.TestBase;
 import org.junit.Test;
 
 import static io.vertx.core.http.HttpMethod.GET;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class ProxyHeadersTest extends TestBase {
 
@@ -47,8 +50,10 @@ public class ProxyHeadersTest extends TestBase {
     client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertNotNull(resp.getHeader("date"));
-        ctx.assertNull(resp.getHeader("warning"));
+        ctx.verify(v -> {
+          assertNotNull(resp.getHeader("date"));
+          assertNull(resp.getHeader("warning"));
+        });
       }));
     }));
   }
@@ -66,7 +71,9 @@ public class ProxyHeadersTest extends TestBase {
     client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertNotNull(resp.getHeader("date"));
+        ctx.verify(v -> {
+          assertNotNull(resp.getHeader("date"));
+        });
         latch.complete();
       }));
     }));
@@ -86,8 +93,10 @@ public class ProxyHeadersTest extends TestBase {
     client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertEquals(expectedDate, resp.getHeader("date"));
-        ctx.assertEquals(expectedWarning, resp.getHeader("warning"));
+        ctx.verify(v -> {
+          assertEquals(expectedDate, resp.getHeader("date"));
+          assertEquals(expectedWarning, resp.getHeader("warning"));
+        });
         latch.complete();
       }));
     }));
@@ -96,8 +105,10 @@ public class ProxyHeadersTest extends TestBase {
   @Test
   public void testPropagateHeaders(TestContext ctx) {
     SocketAddress backend = startHttpBackend(ctx, new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
-      ctx.assertEquals("request_header_value", req.getHeader("request_header"));
-      ctx.assertNull(req.getHeader("proxy-authenticate"));
+      ctx.verify(v -> {
+        assertEquals("request_header_value", req.getHeader("request_header"));
+        assertNull(req.getHeader("proxy-authenticate"));
+      });
       req.response().putHeader("response_header", "response_header_value").end();
     });
     startProxy(backend);
@@ -108,8 +119,10 @@ public class ProxyHeadersTest extends TestBase {
         .putHeader("request_header", "request_header_value")
         .putHeader("proxy-authenticate", "proxy-authenticate_value")
         .send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertEquals(200, resp.statusCode());
-        ctx.assertEquals("response_header_value", resp.getHeader("response_header"));
+        ctx.verify(v -> {
+          assertEquals(200, resp.statusCode());
+          assertEquals("response_header_value", resp.getHeader("response_header"));
+        });
         latch.complete();
       }));
     }));
@@ -130,14 +143,18 @@ public class ProxyHeadersTest extends TestBase {
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send()
         .compose(resp -> {
-          ctx.assertEquals(200, resp.statusCode());
-          ctx.assertEquals("should-forward", resp.getHeader("x-end-to-end"));
-          ctx.assertNull(resp.getHeader("connection"));
-          ctx.assertNull(resp.getHeader("keep-alive"));
+          ctx.verify(v -> {
+            assertEquals(200, resp.statusCode());
+            assertEquals("should-forward", resp.getHeader("x-end-to-end"));
+            assertNull(resp.getHeader("connection"));
+            assertNull(resp.getHeader("keep-alive"));
+          });
           return resp.body();
         })
         .onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals("ok", body.toString());
+          ctx.verify(v -> {
+            assertEquals("ok", body.toString());
+          });
           latch.complete();
         }));
     }));
@@ -160,10 +177,12 @@ public class ProxyHeadersTest extends TestBase {
 
   private void testAuthority(TestContext ctx, HostAndPort requestAuthority) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals("localhost", req.authority().host());
-      ctx.assertEquals(8081, req.authority().port());
-      ctx.assertEquals(null, req.getHeader("x-forwarded-host"));
+      ctx.verify(v -> {
+        assertEquals("/somepath", req.uri());
+        assertEquals("localhost", req.authority().host());
+        assertEquals(8081, req.authority().port());
+        assertEquals(null, req.getHeader("x-forwarded-host"));
+      });
       req.response().end("Hello World");
     });
     startProxy(proxy -> {
@@ -175,11 +194,15 @@ public class ProxyHeadersTest extends TestBase {
         .authority(requestAuthority)
         .send()
         .compose(resp -> {
-          ctx.assertEquals(200, resp.statusCode());
+          ctx.verify(v -> {
+            assertEquals(200, resp.statusCode());
+          });
           return resp.body();
         }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("Hello World", body.toString());
+        ctx.verify(v -> {
+          assertEquals("Hello World", body.toString());
+        });
       }));
   }
 
@@ -200,9 +223,11 @@ public class ProxyHeadersTest extends TestBase {
 
   private void testAuthorityOverride(TestContext ctx, HostAndPort authority, String expectedAuthority, String expectedForwardedHost) {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("/somepath", req.uri());
-      ctx.assertEquals(expectedAuthority, req.authority().toString());
-      ctx.assertEquals(expectedForwardedHost, req.getHeader("x-forwarded-host"));
+      ctx.verify(v -> {
+        assertEquals("/somepath", req.uri());
+        assertEquals(expectedAuthority, req.authority().toString());
+        assertEquals(expectedForwardedHost, req.getHeader("x-forwarded-host"));
+      });
       req.response().end("Hello World");
     });
     startProxy(proxy -> {
@@ -211,8 +236,10 @@ public class ProxyHeadersTest extends TestBase {
         @Override
         public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
           ProxyRequest request = context.request();
-          ctx.assertEquals("localhost", request.proxiedRequest().authority().host());
-          ctx.assertEquals(8080, request.proxiedRequest().authority().port());
+          ctx.verify(v -> {
+            assertEquals("localhost", request.proxiedRequest().authority().host());
+            assertEquals(8080, request.proxiedRequest().authority().port());
+          });
           request.setAuthority(authority);
           return ProxyInterceptor.super.handleProxyRequest(context);
         }
@@ -223,11 +250,15 @@ public class ProxyHeadersTest extends TestBase {
       .compose(req -> req
         .send()
         .compose(resp -> {
-          ctx.assertEquals(200, resp.statusCode());
+          ctx.verify(v -> {
+            assertEquals(200, resp.statusCode());
+          });
           return resp.body();
         }))
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("Hello World", body.toString());
+        ctx.verify(v -> {
+          assertEquals("Hello World", body.toString());
+        });
       }));
   }
 }

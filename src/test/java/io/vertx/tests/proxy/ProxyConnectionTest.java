@@ -30,6 +30,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.vertx.core.http.HttpMethod.GET;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Connection lifecycle tests (close during/after upload, backend/frontend close).
@@ -78,7 +80,9 @@ public class ProxyConnectionTest extends TestBase {
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.asyncAssertSuccess(req -> {
           req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-            ctx.assertEquals(502, resp.statusCode());
+            ctx.verify(v -> {
+              assertEquals(502, resp.statusCode());
+            });
             async.complete();
           }));
           req.putHeader("Content-Length", "2048");
@@ -160,7 +164,9 @@ public class ProxyConnectionTest extends TestBase {
           req.putHeader("Content-Length", "2048");
           req.write(Buffer.buffer(new byte[1024]));
           req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-            ctx.assertEquals(200, resp.statusCode());
+            ctx.verify(v -> {
+              assertEquals(200, resp.statusCode());
+            });
           }));
         }));
   }
@@ -251,17 +257,23 @@ public class ProxyConnectionTest extends TestBase {
       for (int i = 0; i < num; i++) {
         sb.append("chunk-").append(i);
       }
-      ctx.assertEquals("chunked", req.getHeader("transfer-encoding"));
+      ctx.verify(v -> {
+        assertEquals("chunked", req.getHeader("transfer-encoding"));
+      });
       req.handler(buff -> {
         String part = buff.toString();
         if (sb.indexOf(part) == 0) {
           sb.delete(0, part.length());
         } else {
-          ctx.fail();
+          ctx.verify(v -> {
+            fail();
+          });
         }
       });
-      req.endHandler(v -> {
-        ctx.assertEquals("", sb.toString());
+      req.endHandler(end -> {
+        ctx.verify(v -> {
+          assertEquals("", sb.toString());
+        });
         latch.complete();
       });
       req.response().end();

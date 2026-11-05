@@ -25,6 +25,11 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.function.Consumer;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
 public class ForwardedHeadersTest extends TestBase {
@@ -36,11 +41,13 @@ public class ForwardedHeadersTest extends TestBase {
   @Test
   public void testForwardedHeadersDisabledByDefault(TestContext ctx) {
     runForwardedHeadersTest(ctx, null, null, null, req -> {
-      ctx.assertNull(req.getHeader("X-Forwarded-For"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Proto"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Host"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Port"));
-      ctx.assertNull(req.getHeader("Forwarded"));
+      ctx.verify(v -> {
+        assertNull(req.getHeader("X-Forwarded-For"));
+        assertNull(req.getHeader("X-Forwarded-Proto"));
+        assertNull(req.getHeader("X-Forwarded-Host"));
+        assertNull(req.getHeader("X-Forwarded-Port"));
+        assertNull(req.getHeader("Forwarded"));
+      });
     });
   }
 
@@ -57,11 +64,13 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedFor = req.getHeader("X-Forwarded-For");
-      ctx.assertNotNull(xForwardedFor);
-      ctx.assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Proto"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Host"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Port"));
+      ctx.verify(v -> {
+        assertNotNull(xForwardedFor);
+        assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
+        assertNull(req.getHeader("X-Forwarded-Proto"));
+        assertNull(req.getHeader("X-Forwarded-Host"));
+        assertNull(req.getHeader("X-Forwarded-Port"));
+      });
     });
   }
 
@@ -78,9 +87,11 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedProto = req.getHeader("X-Forwarded-Proto");
-      ctx.assertNotNull(xForwardedProto);
-      ctx.assertEquals("http", xForwardedProto);
-      ctx.assertNull(req.getHeader("X-Forwarded-For"));
+      ctx.verify(v -> {
+        assertNotNull(xForwardedProto);
+        assertEquals("http", xForwardedProto);
+        assertNull(req.getHeader("X-Forwarded-For"));
+      });
     });
   }
 
@@ -97,8 +108,10 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedHost = req.getHeader("X-Forwarded-Host");
-      ctx.assertNotNull(xForwardedHost);
-      ctx.assertEquals("localhost", xForwardedHost);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedHost);
+        assertEquals("localhost", xForwardedHost);
+      });
     });
   }
 
@@ -115,8 +128,10 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedPort = req.getHeader("X-Forwarded-Port");
-      ctx.assertNotNull(xForwardedPort);
-      ctx.assertEquals("8080", xForwardedPort);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedPort);
+        assertEquals("8080", xForwardedPort);
+      });
     });
   }
 
@@ -133,20 +148,28 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedFor = req.getHeader("X-Forwarded-For");
-      ctx.assertNotNull(xForwardedFor);
-      ctx.assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
+      ctx.verify(v -> {
+        assertNotNull(xForwardedFor);
+        assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
+      });
 
       String xForwardedProto = req.getHeader("X-Forwarded-Proto");
-      ctx.assertNotNull(xForwardedProto);
-      ctx.assertEquals("http", xForwardedProto);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedProto);
+        assertEquals("http", xForwardedProto);
+      });
 
       String xForwardedHost = req.getHeader("X-Forwarded-Host");
-      ctx.assertNotNull(xForwardedHost);
-      ctx.assertEquals("localhost", xForwardedHost);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedHost);
+        assertEquals("localhost", xForwardedHost);
+      });
 
       String xForwardedPort = req.getHeader("X-Forwarded-Port");
-      ctx.assertNotNull(xForwardedPort);
-      ctx.assertEquals("8080", xForwardedPort);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedPort);
+        assertEquals("8080", xForwardedPort);
+      });
     });
   }
 
@@ -162,12 +185,16 @@ public class ForwardedHeadersTest extends TestBase {
       req.putHeader("X-Forwarded-For", "192.168.1.100");
     }, req -> {
       String xForwardedFor = req.getHeader("X-Forwarded-For");
-      ctx.assertNotNull(xForwardedFor);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedFor);
+      });
       // Should contain both the original client and the proxy's append
       List<String> parts = List.of(xForwardedFor.split(",\\s*"));
-      ctx.assertTrue(parts.size() >= 2);
-      ctx.assertEquals("192.168.1.100", parts.get(0));
-      ctx.assertTrue(parts.get(1).contains("127.0.0.1") || parts.get(1).contains("0:0:0:0:0:0:0:1"));
+      ctx.verify(v -> {
+        assertTrue(parts.size() >= 2);
+        assertEquals("192.168.1.100", parts.get(0));
+        assertTrue(parts.get(1).contains("127.0.0.1") || parts.get(1).contains("0:0:0:0:0:0:0:1"));
+      });
     });
   }
 
@@ -185,14 +212,18 @@ public class ForwardedHeadersTest extends TestBase {
     // Should NOT have X-Forwarded-* headers when using RFC 7239
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String forwarded = req.getHeader("Forwarded");
-      ctx.assertNotNull(forwarded);
-      ctx.assertTrue(forwarded.contains("for="));
-      ctx.assertTrue(forwarded.contains("proto=http"));
-      ctx.assertTrue(forwarded.contains("host="));
+      ctx.verify(v -> {
+        assertNotNull(forwarded);
+        assertTrue(forwarded.contains("for="));
+        assertTrue(forwarded.contains("proto=http"));
+        assertTrue(forwarded.contains("host="));
+      });
 
       // Should NOT have X-Forwarded-* headers when using RFC 7239
-      ctx.assertNull(req.getHeader("X-Forwarded-For"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Proto"));
+      ctx.verify(v -> {
+        assertNull(req.getHeader("X-Forwarded-For"));
+        assertNull(req.getHeader("X-Forwarded-Proto"));
+      });
     });
   }
 
@@ -210,13 +241,17 @@ public class ForwardedHeadersTest extends TestBase {
       req.putHeader("Forwarded", "for=192.0.2.60;proto=https");
     }, req -> {
       String forwarded = req.getHeader("Forwarded");
-      ctx.assertNotNull(forwarded);
+      ctx.verify(v -> {
+        assertNotNull(forwarded);
+      });
       // Should contain both the original and the appended entry
       List<String> parts = List.of(forwarded.split(",\\s*"));
-      ctx.assertEquals(2, parts.size());
-      ctx.assertTrue(parts.get(0).contains("for=192.0.2.60"));
-      ctx.assertTrue(parts.get(1).contains("for="));
-      ctx.assertTrue(parts.get(1).contains("proto=http"));
+      ctx.verify(v -> {
+        assertEquals(2, parts.size());
+        assertTrue(parts.get(0).contains("for=192.0.2.60"));
+        assertTrue(parts.get(1).contains("for="));
+        assertTrue(parts.get(1).contains("proto=http"));
+      });
     });
   }
 
@@ -233,10 +268,12 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String forwarded = req.getHeader("Forwarded");
-      ctx.assertNotNull(forwarded);
-      ctx.assertTrue(forwarded.contains("for="));
-      ctx.assertFalse(forwarded.contains("proto="));
-      ctx.assertFalse(forwarded.contains("host="));
+      ctx.verify(v -> {
+        assertNotNull(forwarded);
+        assertTrue(forwarded.contains("for="));
+        assertFalse(forwarded.contains("proto="));
+        assertFalse(forwarded.contains("host="));
+      });
     });
   }
 
@@ -261,8 +298,10 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, httpsServerOptions, null, req -> {
       String xForwardedProto = req.getHeader("X-Forwarded-Proto");
-      ctx.assertNotNull(xForwardedProto);
-      ctx.assertEquals("https", xForwardedProto);
+      ctx.verify(v -> {
+        assertNotNull(xForwardedProto);
+        assertEquals("https", xForwardedProto);
+      });
     });
   }
 
@@ -276,8 +315,10 @@ public class ForwardedHeadersTest extends TestBase {
       );
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
-      ctx.assertNull(req.getHeader("X-Forwarded-For"));
-      ctx.assertNull(req.getHeader("X-Forwarded-Proto"));
+      ctx.verify(v -> {
+        assertNull(req.getHeader("X-Forwarded-For"));
+        assertNull(req.getHeader("X-Forwarded-Proto"));
+      });
     });
   }
 
@@ -313,7 +354,9 @@ public class ForwardedHeadersTest extends TestBase {
         return req.send().compose(HttpClientResponse::body);
       })
       .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.assertEquals("OK", body.toString());
+        ctx.verify(v -> {
+          assertEquals("OK", body.toString());
+        });
         latch.complete();
       }));
 

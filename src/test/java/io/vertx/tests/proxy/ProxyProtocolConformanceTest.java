@@ -27,6 +27,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static io.vertx.core.http.HttpMethod.GET;
 import static io.vertx.core.http.HttpMethod.HEAD;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ProxyProtocolConformanceTest extends TestBase {
 
@@ -49,7 +52,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
     client.request(GET, 8080, "localhost", "/")
         .compose(req ->
       req.send().compose(resp -> {
-        ctx.assertEquals(502, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(502, resp.statusCode());
+        });
         return resp.body();
       })).onComplete(ctx.asyncAssertSuccess(b -> {
     }));
@@ -82,22 +87,30 @@ public class ProxyProtocolConformanceTest extends TestBase {
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
         if (version == HttpVersion.HTTP_1_1) {
-          ctx.assertEquals("chunked", resp.getHeader("transfer-encoding"));
-          ctx.assertEquals(null, resp.getHeader("content-length"));
+          ctx.verify(v -> {
+            assertEquals("chunked", resp.getHeader("transfer-encoding"));
+            assertEquals(null, resp.getHeader("content-length"));
+          });
         } else {
-          ctx.assertEquals(null, resp.getHeader("transfer-encoding"));
-          ctx.assertEquals("" + sb.length(), resp.getHeader("content-length"));
+          ctx.verify(v -> {
+            assertEquals(null, resp.getHeader("transfer-encoding"));
+            assertEquals("" + sb.length(), resp.getHeader("content-length"));
+          });
         }
         resp.handler(buff -> {
           String part = buff.toString();
           if (sb.indexOf(part) == 0) {
             sb.delete(0, part.length());
           } else {
-            ctx.fail();
+            ctx.verify(v -> {
+              fail();
+            });
           }
         });
-        resp.endHandler(v -> {
-          ctx.assertEquals("", sb.toString());
+        resp.endHandler(end -> {
+          ctx.verify(v -> {
+            assertEquals("", sb.toString());
+          });
           latch.complete();
         });
       }));
@@ -108,15 +121,19 @@ public class ProxyProtocolConformanceTest extends TestBase {
   public void testIllegalClientHttpVersion(TestContext ctx) {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.fail();
+      ctx.verify(v -> {
+        fail();
+      });
     });
     startProxy(backend);
     NetClient client = vertx.createNetClient();
     client.connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
       Buffer resp = Buffer.buffer();
       so.handler(resp::appendBuffer);
-      so.closeHandler(v -> {
-        ctx.assertTrue(resp.toString().startsWith("HTTP/1.1 501 Not Implemented\r\n"));
+      so.closeHandler(closed -> {
+        ctx.verify(v -> {
+          assertTrue(resp.toString().startsWith("HTTP/1.1 501 Not Implemented\r\n"));
+        });
         latch.complete();
       });
       so.write("GET /somepath http/1.1\r\n\r\n");
@@ -129,14 +146,18 @@ public class ProxyProtocolConformanceTest extends TestBase {
     Async latch = ctx.async();
     String uri = "/" + randomAlphaString(5999);
     SocketAddress backend = startHttpBackend(ctx, new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
-      ctx.assertEquals(uri, req.uri());
+      ctx.verify(v -> {
+        assertEquals(uri, req.uri());
+      });
       req.response().end();
     });
     startProxy(backend);
     client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "" + uri).onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.assertEquals(200, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(200, resp.statusCode());
+        });
         latch.complete();
       }));
     }));
@@ -169,11 +190,15 @@ public class ProxyProtocolConformanceTest extends TestBase {
     client = vertx.createHttpClient(/*new HttpClientOptions().setProtocolVersion(HttpVersion.HTTP_1_0)*/);
     client.request(GET, 8080, "localhost", "/somepath").compose(req ->
       req.send().compose(resp -> {
-        ctx.assertEquals(200, resp.statusCode());
+        ctx.verify(v -> {
+          assertEquals(200, resp.statusCode());
+        });
         return resp.body();
       })
     ).onComplete(ctx.asyncAssertSuccess(body -> {
-      ctx.assertEquals("0123456789", body.toString());
+      ctx.verify(v -> {
+        assertEquals("0123456789", body.toString());
+      });
       latch.complete();
     }));
   }
@@ -216,7 +241,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
 
   private void checkBadRequest(TestContext ctx, String... requests) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.fail();
+      ctx.verify(v -> {
+        fail();
+      });
     });
     startProxy(backend);
     for (String request : requests) {
@@ -265,7 +292,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
   @Test
   public void testRawMethod(TestContext ctx) throws Exception {
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("FOO", req.method().name());
+      ctx.verify(v -> {
+        assertEquals("FOO", req.method().name());
+      });
       req.response().end();
     });
     startProxy(backend);
@@ -279,7 +308,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
   public void testHead(TestContext ctx) throws Exception {
     Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(HEAD, req.method());
+      ctx.verify(v -> {
+        assertEquals(HEAD, req.method());
+      });
       req.response().putHeader("content-length", "" + "content".length()).end();
     });
     startProxy(backend);
@@ -287,7 +318,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
     client.request(HEAD, 8080, "localhost", "/").compose(req ->
       req.send().compose(HttpClientResponse::body)
     ).onComplete(ctx.asyncAssertSuccess(body -> {
-      ctx.assertEquals("", body.toString());
+      ctx.verify(v -> {
+        assertEquals("", body.toString());
+      });
       latch.complete();
     }));
   }
@@ -309,7 +342,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
     client.request(HEAD, 8080, "localhost", "/").compose(req ->
       req.send().compose(HttpClientResponse::body)
     ).onComplete(ctx.asyncAssertSuccess(body -> {
-      ctx.assertEquals("", body.toString());
+      ctx.verify(v -> {
+        assertEquals("", body.toString());
+      });
       latch.complete();
     }));
   }
@@ -332,10 +367,14 @@ public class ProxyProtocolConformanceTest extends TestBase {
       try (Closeable proxy = startProxy(backend)) {
         client.request(GET, 8080, "localhost", "/somepath")
             .compose(req -> req.send().compose(resp -> {
-              ctx.assertEquals(501, resp.statusCode());
+              ctx.verify(v -> {
+                assertEquals(501, resp.statusCode());
+              });
               return resp.body();
             })).onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.assertEquals("", body.toString());
+          ctx.verify(v -> {
+            assertEquals("", body.toString());
+          });
           latch.complete();
         }));
         latch.awaitSuccess(10000);
