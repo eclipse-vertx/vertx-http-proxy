@@ -14,13 +14,13 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.BodyTransformers;
 import io.vertx.httpproxy.ProxyInterceptor;
-import org.junit.Test;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * The cache interceptor is registered before user interceptors: on the response path user interceptors run first, so
@@ -29,7 +29,7 @@ import static org.junit.Assert.assertEquals;
 public class CacheBodyTransformerTest extends CacheTestBase {
 
   @Test
-  public void testCachedResponseHasTransformedBody(TestContext ctx) {
+  public void testCachedResponseHasTransformedBody(VertxTestContext ctx) {
     AtomicInteger backendHits = new AtomicInteger();
     AtomicInteger transformations = new AtomicInteger();
     SocketAddress backend = startHttpBackend(8081, req -> {
@@ -48,31 +48,24 @@ public class CacheBodyTransformerTest extends CacheTestBase {
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req1 -> req1.send().compose(resp1 -> {
-        ctx.verify(v -> {
-          assertEquals(200, resp1.statusCode());
-        });
+        assertEquals(200, resp1.statusCode());
         return resp1.body();
       }))
       .compose(body1 -> {
-        ctx.verify(v -> {
-          assertEquals("CONTENT", body1.toString());
-          assertEquals(1, backendHits.get());
-          assertEquals(1, transformations.get());
-        });
+        assertEquals("CONTENT", body1.toString());
+        assertEquals(1, backendHits.get());
+        assertEquals(1, transformations.get());
         return client.request(HttpMethod.GET, 8080, "localhost", "/");
       })
       .compose(req2 -> req2.send().compose(resp2 -> {
-        ctx.verify(v -> {
-          assertEquals(200, resp2.statusCode());
-        });
+        assertEquals(200, resp2.statusCode());
         return resp2.body();
       }))
-      .onComplete(ctx.asyncAssertSuccess(body2 -> {
-        ctx.verify(v -> {
-          assertEquals("CONTENT", body2.toString());
-          assertEquals(1, backendHits.get());
-          assertEquals(1, transformations.get());
-        });
+      .onComplete(ctx.succeeding(body2 -> {
+        assertEquals("CONTENT", body2.toString());
+        assertEquals(1, backendHits.get());
+        assertEquals(1, transformations.get());
+        ctx.completeNow();
       }));
   }
 }

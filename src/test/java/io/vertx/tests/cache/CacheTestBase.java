@@ -12,12 +12,12 @@ package io.vertx.tests.cache;
 
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.cache.CacheOptions;
-import io.vertx.tests.TestBase;
+import io.vertx.tests.VertxTestBase;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public abstract class CacheTestBase extends TestBase {
+public abstract class CacheTestBase extends VertxTestBase {
 
   public CacheTestBase() {
     super(new ProxyOptions().setCacheOptions(new CacheOptions()));

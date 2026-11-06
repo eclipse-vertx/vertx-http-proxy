@@ -10,9 +10,11 @@
  */
 package io.vertx.tests.cache;
 
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
-import org.junit.Rule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
@@ -23,12 +25,21 @@ public abstract class CacheWireMockTestBase extends CacheTestBase {
 
   protected HttpClient client;
 
-  @Rule
-  public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().port(8081));
+  /**
+   * Registered on an instance field, so the server is started and stopped around every test method, like the
+   * {@code WireMockRule} it replaces. {@code configureStaticDsl} keeps the static {@code stubFor(...)} DSL working,
+   * which the subclasses use; unlike the rule, the extension does not configure it by default.
+   */
+  @RegisterExtension
+  WireMockExtension wireMock = WireMockExtension.newInstance()
+    .options(wireMockConfig().port(8081))
+    .configureStaticDsl(true)
+    .build();
 
+  @BeforeEach
   @Override
-  public void setUp() {
-    super.setUp();
+  public void setUp(Vertx vertx) {
+    super.setUp(vertx);
     client = vertx.createHttpClient();
   }
 }

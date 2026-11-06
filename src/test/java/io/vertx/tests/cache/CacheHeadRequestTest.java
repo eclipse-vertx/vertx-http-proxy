@@ -14,18 +14,19 @@ import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.impl.ParseUtils;
-import org.junit.Test;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -33,16 +34,16 @@ import static org.junit.Assert.assertNull;
 public class CacheHeadRequestTest extends CacheWireMockTestBase {
 
   @Test
-  public void testUncacheableGetInvalidatesEntryOnOk(TestContext ctx) throws Exception {
+  public void testUncacheableGetInvalidatesEntryOnOk(VertxTestContext ctx) throws Exception {
     testUncacheableRequestInvalidatesEntryOnOk(ctx, HttpMethod.GET);
   }
 
   @Test
-  public void testUncacheableHeadInvalidatesEntryOnOk(TestContext ctx) throws Exception {
+  public void testUncacheableHeadInvalidatesEntryOnOk(VertxTestContext ctx) throws Exception {
     testUncacheableRequestInvalidatesEntryOnOk(ctx, HttpMethod.HEAD);
   }
 
-  private void testUncacheableRequestInvalidatesEntryOnOk(TestContext ctx, HttpMethod method) throws Exception {
+  private void testUncacheableRequestInvalidatesEntryOnOk(VertxTestContext ctx, HttpMethod method) throws Exception {
     stubFor(get(urlEqualTo("/img.jpg")).inScenario("s").whenScenarioStateIs(STARTED)
         .willReturn(
             aResponse()
@@ -71,52 +72,40 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
     startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
-    Async latch = ctx.async();
+    Checkpoint latch = ctx.checkpoint();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1
             .send()
             .compose(resp1 -> {
-              ctx.verify(v -> {
-                assertEquals(200, resp1.statusCode());
-              });
+              assertEquals(200, resp1.statusCode());
               return resp1.body();
             }))
-        .onComplete(ctx.asyncAssertSuccess(body1 -> {
-          ctx.verify(v -> {
-            assertEquals("content", body1.toString());
-          });
+        .onComplete(ctx.succeeding(body1 -> {
+          assertEquals("content", body1.toString());
           vertx.setTimer(3000, id -> {
             client.request(method, 8080, "localhost", "/img.jpg")
                 .compose(req2 ->
                     req2.putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
                         .send().compose(resp2 -> {
-                      ctx.verify(v -> {
-                        assertEquals(200, resp2.statusCode());
-                      });
+                      assertEquals(200, resp2.statusCode());
                       return resp2.body();
                     }))
                 .compose(body2 -> {
-                  ctx.verify(v -> {
-                    assertEquals(method == HttpMethod.GET ? "content2" : "", body2.toString());
-                  });
+                  assertEquals(method == HttpMethod.GET ? "content2" : "", body2.toString());
                   return client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg");
                 })
                 .compose(req3 -> req3
                     .send()
                     .compose(resp3 -> {
-                      ctx.verify(v -> {
-                        assertEquals(200, resp3.statusCode());
-                      });
+                      assertEquals(200, resp3.statusCode());
                       return resp3.body();
-                    })).onComplete(ctx.asyncAssertSuccess(body3 -> {
-              ctx.verify(v -> {
-                assertEquals("content2", body3.toString());
-              });
-              latch.complete();
+                    })).onComplete(ctx.succeeding(body3 -> {
+              assertEquals("content2", body3.toString());
+              latch.flag();
             }));
           });
         }));
-    latch.awaitSuccess(10000);
+    latch.await(Duration.ofMillis(10000));
     // Commented out since the initial import of the project (2020-11-30), never revisited. Probable reason (from
     // reading the stubs, not verified by running it): the assertions expect a conditional request answered with 304,
     // but the stubs of this test never answer 304 and the 2nd and 3rd client requests do not send If-None-Match.
@@ -131,16 +120,16 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
   }
 
   @Test
-  public void testUncacheableHeadRevalidatesEntryOnOk(TestContext ctx) throws Exception {
+  public void testUncacheableHeadRevalidatesEntryOnOk(VertxTestContext ctx) throws Exception {
     testUncacheableHeadRevalidatesEntry(ctx, 200);
   }
 
   @Test
-  public void testUncacheableHeadRevalidatesEntryOnNotModified(TestContext ctx) throws Exception {
+  public void testUncacheableHeadRevalidatesEntryOnNotModified(VertxTestContext ctx) throws Exception {
     testUncacheableHeadRevalidatesEntry(ctx, 304);
   }
 
-  private void testUncacheableHeadRevalidatesEntry(TestContext ctx, int status) throws Exception {
+  private void testUncacheableHeadRevalidatesEntry(VertxTestContext ctx, int status) throws Exception {
     stubFor(get(urlEqualTo("/img.jpg"))
         .willReturn(
             aResponse()
@@ -159,37 +148,29 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
     startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
-    Async latch = ctx.async();
+    Checkpoint latch = ctx.checkpoint();
     client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1.send()
             .compose(resp1 -> {
-              ctx.verify(v -> {
-                assertEquals(200, resp1.statusCode());
-              });
+              assertEquals(200, resp1.statusCode());
               return resp1.body();
             }))
-        .onComplete(ctx.asyncAssertSuccess(body1 -> {
-          ctx.verify(v -> {
-            assertEquals("content", body1.toString());
-          });
+        .onComplete(ctx.succeeding(body1 -> {
+          assertEquals("content", body1.toString());
           vertx.setTimer(3000, id -> {
             client.request(HttpMethod.HEAD, 8080, "localhost", "/img.jpg")
                 .compose(req2 -> req2
                     .putHeader(HttpHeaders.CACHE_CONTROL, "max-age=1")
                     .send().compose(resp2 -> {
-                      ctx.verify(v -> {
-                        assertEquals(200, resp2.statusCode());
-                      });
+                      assertEquals(200, resp2.statusCode());
                       return resp2.body();
-                    })).onComplete(ctx.asyncAssertSuccess(body2 -> {
-              ctx.verify(v -> {
-                assertEquals("", body2.toString());
-              });
-              latch.complete();
+                    })).onComplete(ctx.succeeding(body2 -> {
+              assertEquals("", body2.toString());
+              latch.flag();
             }));
           });
         }));
-    latch.awaitSuccess(10000);
+    latch.await(Duration.ofMillis(10000));
     ServeEvent event1 = getAllServeEvents().get(1);
     assertNull(event1.getRequest().getHeader("If-None-Match"));
     assertEquals(200, event1.getResponse().getStatus());
@@ -199,7 +180,7 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
   }
 
   @Test
-  public void testHeadDoesNotPopulateCache(TestContext ctx) throws Exception {
+  public void testHeadDoesNotPopulateCache(VertxTestContext ctx) throws Exception {
     stubFor(get(urlEqualTo("/img.jpg"))
         .willReturn(
             aResponse()
@@ -218,33 +199,25 @@ public class CacheHeadRequestTest extends CacheWireMockTestBase {
                 .withHeader("Date", ParseUtils.formatHttpDate(Instant.now()))
                 .withHeader("Expires", ParseUtils.formatHttpDate(Instant.now().plus(5000, ChronoUnit.MILLIS)))));
     startProxy(SocketAddress.inetSocketAddress(8081, "localhost"));
-    Async latch = ctx.async();
+    Checkpoint latch = ctx.checkpoint();
     client.request(HttpMethod.HEAD, 8080, "localhost", "/img.jpg")
         .compose(req1 -> req1.send().compose(resp1 -> {
-          ctx.verify(v -> {
-            assertEquals(200, resp1.statusCode());
-          });
+          assertEquals(200, resp1.statusCode());
           return resp1.body();
         }))
         .compose(body1 -> {
-          ctx.verify(v -> {
-            assertEquals("", body1.toString());
-          });
+          assertEquals("", body1.toString());
           return client.request(HttpMethod.GET, 8080, "localhost", "/img.jpg");
         })
         .compose(req2 -> req2.send().compose(resp2 -> {
-          ctx.verify(v -> {
-            assertEquals(200, resp2.statusCode());
-          });
+          assertEquals(200, resp2.statusCode());
           return resp2.body();
         }))
-        .onComplete(ctx.asyncAssertSuccess(body2 -> {
-          ctx.verify(v -> {
-            assertEquals("content", body2.toString());
-          });
-          latch.complete();
+        .onComplete(ctx.succeeding(body2 -> {
+          assertEquals("content", body2.toString());
+          latch.flag();
         }));
-    latch.awaitSuccess(10000);
+    latch.await(Duration.ofMillis(10000));
     ServeEvent event1 = getAllServeEvents().get(1);
     assertNull(event1.getRequest().getHeader("If-None-Match"));
     assertEquals(200, event1.getResponse().getStatus());

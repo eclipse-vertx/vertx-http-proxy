@@ -3,16 +3,18 @@ package io.vertx.tests.cache;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.WebSocketClient;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.time.Duration;
 
 public class CacheWebSocketTest extends CacheTestBase {
 
   @Test
-  public void testWsWithCache(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testWsWithCache(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.toWebSocket().onSuccess(ws -> {
         ws.handler(ws::write);
@@ -20,19 +22,15 @@ public class CacheWebSocketTest extends CacheTestBase {
     });
     startProxy(backend);
     WebSocketClient client = vertx.createWebSocketClient();
-    client.connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws1 -> {
+    client.connect(8080, "localhost", "/").onComplete(ctx.succeeding(ws1 -> {
       ws1.handler(buffer -> {
-        ctx.verify(v -> {
-          assertEquals(buffer.toString(), "v1");
-        });
-        ws1.close().onComplete(ctx.asyncAssertSuccess(closed -> {
-          client.connect(8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(ws2 -> {
+        assertEquals(buffer.toString(), "v1");
+        ws1.close().onComplete(ctx.succeeding(closed -> {
+          client.connect(8080, "localhost", "/").onComplete(ctx.succeeding(ws2 -> {
             ws2.handler(buffer2 -> {
-              ctx.verify(v -> {
-                assertEquals(buffer2.toString(), "v2");
-              });
-              ws2.close().onComplete(ctx.asyncAssertSuccess(v2 -> {
-                latch.complete();
+              assertEquals(buffer2.toString(), "v2");
+              ws2.close().onComplete(ctx.succeeding(v2 -> {
+                latch.flag();
               }));
             });
             ws2.write(Buffer.buffer("v2")); // second WebSocket, send and reply "v2"
@@ -41,6 +39,6 @@ public class CacheWebSocketTest extends CacheTestBase {
       });
       ws1.write(Buffer.buffer("v1")); // first WebSocket, send and reply "v1"
     }));
-    latch.awaitSuccess(20_000);
+    latch.await(Duration.ofMillis(20000));
   }
 }
