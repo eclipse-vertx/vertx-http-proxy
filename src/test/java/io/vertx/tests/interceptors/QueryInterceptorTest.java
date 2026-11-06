@@ -15,32 +15,28 @@ import io.netty.handler.codec.http.QueryStringDecoder;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class QueryInterceptorTest extends TestBase {
+public class QueryInterceptorTest extends VertxTestBase {
 
   @Test
-  public void addParamTest(TestContext ctx) {
-    Async latch = ctx.async();
+  public void addParamTest(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
-      ctx.verify(v -> {
-        assertEquals(parameters.get("k1").get(0), "v1");
-        assertEquals(parameters.get("k2").get(0), "v2");
-      });
+      assertEquals(parameters.get("k1").get(0), "v1");
+      assertEquals(parameters.get("k2").get(0), "v2");
       req.response().end("Hello");
     });
 
@@ -49,19 +45,16 @@ public class QueryInterceptorTest extends TestBase {
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello/world?k2=v2")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+      .onComplete(ctx.succeedingThenComplete());
   }
 
   @Test
-  public void removeParamTest(TestContext ctx) {
-    Async latch = ctx.async();
+  public void removeParamTest(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
-      ctx.verify(v -> {
-        assertEquals(parameters.get("k1").get(0), "v1");
-        assertTrue(parameters.get("k2") == null);
-      });
+      assertEquals(parameters.get("k1").get(0), "v1");
+      assertTrue(parameters.get("k2") == null);
       req.response().end("Hello");
     });
 
@@ -70,7 +63,7 @@ public class QueryInterceptorTest extends TestBase {
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello/world?k1=v1&k2=v2")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+      .onComplete(ctx.succeedingThenComplete());
   }
 
 }
