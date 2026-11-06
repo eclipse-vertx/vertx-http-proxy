@@ -4,8 +4,8 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.httpproxy.spi.cache.Resource;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -60,7 +60,7 @@ public class ResourceSerializationTest {
     Resource recovered = new Resource();
     recovered.readFromBuffer(0, buffer);
 
-    Assert.assertTrue(resourceEquals(resource, recovered));
+    Assertions.assertTrue(resourceEquals(resource, recovered));
   }
 
   @Test
@@ -79,7 +79,7 @@ public class ResourceSerializationTest {
     Resource recovered = new Resource();
     recovered.readFromBuffer(4, buffer);
 
-    Assert.assertTrue(resourceEquals(resource, recovered));
+    Assertions.assertTrue(resourceEquals(resource, recovered));
   }
 
   @Test
@@ -91,7 +91,7 @@ public class ResourceSerializationTest {
     Resource recovered = new Resource();
     recovered.readFromBuffer(0, buffer);
 
-    Assert.assertTrue(resourceEquals(resource, recovered));
+    Assertions.assertTrue(resourceEquals(resource, recovered));
   }
 
 
