@@ -9,13 +9,13 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class WebSocketInterceptorTest extends VertxTestBase {
+public class WebSocketInterceptorTest extends TestBase {
 
   private SocketAddress backend(VertxTestContext ctx, Checkpoint async) {
     return startHttpBackend(8081, req -> {

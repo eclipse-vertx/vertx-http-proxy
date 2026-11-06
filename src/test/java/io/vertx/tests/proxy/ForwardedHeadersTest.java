@@ -18,7 +18,7 @@ import io.vertx.httpproxy.ForwardedHeadersOptions;
 import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ForwardedHeadersTest extends VertxTestBase {
+public class ForwardedHeadersTest extends TestBase {
 
   public ForwardedHeadersTest() {
     super(new ProxyOptions());

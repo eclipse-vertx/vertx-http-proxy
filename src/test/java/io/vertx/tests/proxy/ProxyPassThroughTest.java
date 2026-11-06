@@ -15,7 +15,7 @@ import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
@@ -23,7 +23,7 @@ import java.util.Random;
 import static io.vertx.core.http.HttpMethod.GET;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ProxyPassThroughTest extends VertxTestBase {
+public class ProxyPassThroughTest extends TestBase {
 
   private HttpClient client;
 

@@ -17,7 +17,7 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class QueryInterceptorTest extends VertxTestBase {
+public class QueryInterceptorTest extends TestBase {
 
   @Test
   public void addParamTest(VertxTestContext ctx) {

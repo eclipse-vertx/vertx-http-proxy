@@ -17,7 +17,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.*;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ProxyRequestTest extends VertxTestBase {
+public class ProxyRequestTest extends TestBase {
 
   private HttpClient httpClient;
   private HttpClient backendClient;

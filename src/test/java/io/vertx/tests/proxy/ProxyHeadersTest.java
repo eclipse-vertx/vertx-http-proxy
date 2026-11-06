@@ -19,7 +19,7 @@ import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import static io.vertx.core.http.HttpMethod.GET;
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-public class ProxyHeadersTest extends VertxTestBase {
+public class ProxyHeadersTest extends TestBase {
 
   private HttpClient client;
 

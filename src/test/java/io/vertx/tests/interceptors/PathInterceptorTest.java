@@ -17,14 +17,14 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class PathInterceptorTest extends VertxTestBase {
+public class PathInterceptorTest extends TestBase {
 
   @Test
   public void addPrefixTest(VertxTestContext ctx) {

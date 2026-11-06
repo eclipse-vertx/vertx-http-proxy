@@ -15,7 +15,7 @@ import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.OriginRequestProvider;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ProxyOriginTest extends VertxTestBase {
+public class ProxyOriginTest extends TestBase {
 
   private HttpClient client;
 

@@ -18,7 +18,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 @ParameterizedClass(name = "{2}")
 @MethodSource("data")
-public class ProxyConnectionTest extends VertxTestBase {
+public class ProxyConnectionTest extends TestBase {
 
   public static Stream<Arguments> data() {
     return Stream.of(

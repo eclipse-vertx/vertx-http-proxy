@@ -15,7 +15,7 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class HeaderInterceptorTest extends VertxTestBase {
+public class HeaderInterceptorTest extends TestBase {
 
   private HttpClientAgent client;
 

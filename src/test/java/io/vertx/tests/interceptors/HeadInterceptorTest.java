@@ -19,7 +19,7 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -28,7 +28,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-public class HeadInterceptorTest extends VertxTestBase {
+public class HeadInterceptorTest extends TestBase {
 
   @Test
   public void testCombined(VertxTestContext ctx) {

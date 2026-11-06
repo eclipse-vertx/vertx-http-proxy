@@ -24,7 +24,7 @@ import io.vertx.core.streams.ReadStream;
 import io.vertx.httpproxy.*;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.tests.VertxTestBase;
+import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ProxyInterceptorTest extends VertxTestBase {
+public class ProxyInterceptorTest extends TestBase {
 
   private HttpClient client;
   private HttpClient httpClient;
