@@ -32,7 +32,7 @@ public class CacheBodyTransformerTest extends CacheTestBase {
   public void testCachedResponseHasTransformedBody(TestContext ctx) {
     AtomicInteger backendHits = new AtomicInteger();
     AtomicInteger transformations = new AtomicInteger();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       backendHits.incrementAndGet();
       req.response()
         .putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")

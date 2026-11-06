@@ -33,7 +33,7 @@ public class HeadInterceptorTest extends TestBase {
   @Test
   public void testCombined(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(req.path(), "/prefix/hello");
       });

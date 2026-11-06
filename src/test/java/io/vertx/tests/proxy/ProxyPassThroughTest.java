@@ -51,7 +51,7 @@ public class ProxyPassThroughTest extends TestBase {
 
   @Test
   public void testGet(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals("/somepath", req.uri());
         assertEquals("localhost:8081", req.authority().toString());
@@ -82,7 +82,7 @@ public class ProxyPassThroughTest extends TestBase {
     Random random = new Random();
     random.nextBytes(body);
     Async async = ctx.async(2);
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.bodyHandler(buff -> {
         req.response().end();
         ctx.verify(v -> {
@@ -107,7 +107,7 @@ public class ProxyPassThroughTest extends TestBase {
 
   @Test
   public void testResponse(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(HttpMethod.POST, req.method());
       });

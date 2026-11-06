@@ -13,7 +13,7 @@ public class CacheWebSocketTest extends CacheTestBase {
   @Test
   public void testWsWithCache(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.toWebSocket().onSuccess(ws -> {
         ws.handler(ws::write);
       });

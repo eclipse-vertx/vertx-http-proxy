@@ -34,7 +34,7 @@ public class QueryInterceptorTest extends TestBase {
   @Test
   public void addParamTest(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
       ctx.verify(v -> {
@@ -55,7 +55,7 @@ public class QueryInterceptorTest extends TestBase {
   @Test
   public void removeParamTest(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
       ctx.verify(v -> {

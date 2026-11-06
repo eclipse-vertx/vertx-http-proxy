@@ -56,7 +56,7 @@ public class ProxyTrailersTest extends TestBase {
   }
 
   private void testTrailers(TestContext ctx, ProxyInterceptor interceptor) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .setChunked(true)
         .putHeader("content-type", "text/plain")

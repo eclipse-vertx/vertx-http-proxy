@@ -16,7 +16,7 @@ import static org.junit.Assert.assertEquals;
 public class WebSocketInterceptorTest extends TestBase {
 
   private SocketAddress backend(TestContext ctx, Async async) {
-    return startHttpBackend(ctx, 8081, req -> {
+    return startHttpBackend(8081, req -> {
       if (req.uri().startsWith("/ws")) {
         Future<ServerWebSocket> fut = req.toWebSocket();
         fut.onComplete(ctx.asyncAssertSuccess(ws -> {

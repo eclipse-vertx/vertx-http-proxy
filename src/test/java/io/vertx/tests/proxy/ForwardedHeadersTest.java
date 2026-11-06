@@ -325,7 +325,7 @@ public class ForwardedHeadersTest extends TestBase {
   private void runForwardedHeadersTest(TestContext ctx, ProxyOptions options, HttpServerOptions serverOpts, Consumer<HttpClientRequest> requestCustomizer, Handler<HttpServerRequest> backendHandler) {
     Async latch = ctx.async();
 
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       backendHandler.handle(req);
       req.response().end("OK");
     });

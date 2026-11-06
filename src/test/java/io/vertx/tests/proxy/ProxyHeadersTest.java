@@ -40,7 +40,7 @@ public class ProxyHeadersTest extends TestBase {
 
   @Test
   public void testSuppressIncorrectWarningHeaders(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
           .putHeader("date", "Tue, 15 Nov 1994 08:12:30 GMT")
           .putHeader("warning", "199 Miscellaneous warning \"Tue, 15 Nov 1994 08:12:31 GMT\"")
@@ -61,7 +61,7 @@ public class ProxyHeadersTest extends TestBase {
   @Test
   public void testAddMissingHeaderDate(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
 //          .putHeader("date", "Tue, 15 Nov 1994 08:12:30 GMT")
 //          .putHeader("warning", "199 Miscellaneous warning \"Tue, 15 Nov 1994 08:12:31 GMT\"")
@@ -84,7 +84,7 @@ public class ProxyHeadersTest extends TestBase {
     String expectedDate = "Tue, 15 Nov 1994 08:12:31 GMT";
     String expectedWarning = "199 Miscellaneous warning \"" + expectedDate + "\"";
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
           .putHeader("warning", expectedWarning)
           .end();
@@ -104,7 +104,7 @@ public class ProxyHeadersTest extends TestBase {
 
   @Test
   public void testPropagateHeaders(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
+    SocketAddress backend = startHttpBackend(new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
       ctx.verify(v -> {
         assertEquals("request_header_value", req.getHeader("request_header"));
         assertNull(req.getHeader("proxy-authenticate"));
@@ -130,7 +130,7 @@ public class ProxyHeadersTest extends TestBase {
 
   @Test
   public void testIgnoreHopByHopResponseHeaders(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Connection", "keep-alive")
         .putHeader("Keep-Alive", "timeout=5")
@@ -176,7 +176,7 @@ public class ProxyHeadersTest extends TestBase {
   }
 
   private void testAuthority(TestContext ctx, HostAndPort requestAuthority) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals("/somepath", req.uri());
         assertEquals("localhost", req.authority().host());
@@ -222,7 +222,7 @@ public class ProxyHeadersTest extends TestBase {
   }
 
   private void testAuthorityOverride(TestContext ctx, HostAndPort authority, String expectedAuthority, String expectedForwardedHost) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals("/somepath", req.uri());
         assertEquals(expectedAuthority, req.authority().toString());

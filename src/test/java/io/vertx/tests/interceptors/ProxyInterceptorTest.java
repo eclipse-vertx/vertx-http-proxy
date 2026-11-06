@@ -54,7 +54,7 @@ public class ProxyInterceptorTest extends TestBase {
   @Test
   public void testFilter(TestContext ctx) {
     Async latch = ctx.async(3);
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
       @Override
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
@@ -83,7 +83,7 @@ public class ProxyInterceptorTest extends TestBase {
   @Test
   public void testFilterNullBodies(TestContext ctx) {
     Async latch = ctx.async(3);
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onComplete(ctx.asyncAssertSuccess(body -> {
         ctx.verify(v -> {
           assertEquals(0, body.length());
@@ -126,7 +126,7 @@ public class ProxyInterceptorTest extends TestBase {
 
   @Test
   public void testFilterRequestFail(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
       @Override
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
@@ -147,7 +147,7 @@ public class ProxyInterceptorTest extends TestBase {
 
   @Test
   public void testFilterResponseFail(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
       @Override
       public Future<Void> handleProxyResponse(ProxyContext context) {
@@ -168,7 +168,7 @@ public class ProxyInterceptorTest extends TestBase {
 
   @Test
   public void testVariableFromInterceptor(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> req.response().end("HOLA"));
+    SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     ProxyInterceptor interceptor = new ProxyInterceptor() {
       @Override
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
@@ -197,7 +197,7 @@ public class ProxyInterceptorTest extends TestBase {
   public void testRequestFilter(TestContext ctx) {
     Filter filter = new Filter();
     CompletableFuture<Integer> onResume = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.pause();
       onResume.thenAccept(num -> {
         req.bodyHandler(body -> {
@@ -223,7 +223,7 @@ public class ProxyInterceptorTest extends TestBase {
         return context.sendRequest();
       }
     });
-    startHttpServer(ctx, serverOptions, proxy);
+    startHttpServer(serverOptions, proxy);
     httpClient.request(HttpMethod.POST, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.setChunked(true);
       AtomicInteger num = new AtomicInteger();
@@ -249,7 +249,7 @@ public class ProxyInterceptorTest extends TestBase {
   public void testResponseFilter(TestContext ctx) {
     Filter filter = new Filter();
     CompletableFuture<Integer> onResume = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response().setChunked(true);
       AtomicInteger num = new AtomicInteger();
       vertx.setPeriodic(1, id -> {
@@ -275,7 +275,7 @@ public class ProxyInterceptorTest extends TestBase {
         return context.sendResponse();
       }
     });
-    startHttpServer(ctx, serverOptions, proxy);
+    startHttpServer(serverOptions, proxy);
     Async async = ctx.async();
     httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {

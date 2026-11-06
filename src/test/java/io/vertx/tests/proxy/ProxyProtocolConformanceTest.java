@@ -43,7 +43,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
 
   @Test
   public void testBackendRepliesIncorrectHttpVersion(TestContext ctx) {
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.write("HTTP/1.2 200 OK\r\n\r\n");
       so.close();
     });
@@ -73,7 +73,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
   private void checkChunkedResponse(TestContext ctx, HttpVersion version) {
     int num = 50;
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       resp.setChunked(true);
       streamChunkedBody(resp, num);
@@ -120,7 +120,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
   @Test
   public void testIllegalClientHttpVersion(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         fail();
       });
@@ -145,7 +145,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
     serverOptions.setMaxInitialLineLength(10000);
     Async latch = ctx.async();
     String uri = "/" + randomAlphaString(5999);
-    SocketAddress backend = startHttpBackend(ctx, new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
+    SocketAddress backend = startHttpBackend(new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
       ctx.verify(v -> {
         assertEquals(uri, req.uri());
       });
@@ -167,7 +167,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
   public void testLargeChunkExtValue(TestContext ctx) {
     String s = "" + randomAlphaString(4096);
     Async latch = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       Buffer body = Buffer.buffer();
       so.handler(buff -> {
         body.appendBuffer(buff);
@@ -240,7 +240,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
   }
 
   private void checkBadRequest(TestContext ctx, String... requests) throws Exception {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         fail();
       });
@@ -291,7 +291,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
 
   @Test
   public void testRawMethod(TestContext ctx) throws Exception {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals("FOO", req.method().name());
       });
@@ -307,7 +307,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
   @Test
   public void testHead(TestContext ctx) throws Exception {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(HEAD, req.method());
       });
@@ -329,7 +329,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
   @Test
   public void testHeadWithNotSendBody(TestContext ctx) throws Exception {
     Async latch = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.write(
         "HTTP/1.1 200 OK\r\n" +
           "content-length: 20\r\n" +
@@ -351,7 +351,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
 
   private void checkBadResponse(TestContext ctx, String... responses) throws Exception {
     AtomicReference<String> responseBody = new AtomicReference<>();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       Buffer body = Buffer.buffer();
       so.handler(buff -> {
         body.appendBuffer(buff);

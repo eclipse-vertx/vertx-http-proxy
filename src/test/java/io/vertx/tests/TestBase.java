@@ -22,7 +22,6 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.httpproxy.HttpProxy;
@@ -120,33 +119,27 @@ public abstract class TestBase {
     }
   }
 
-  protected void startHttpServer(TestContext ctx, HttpServerOptions options, Handler<HttpServerRequest> handler) {
+  protected void startHttpServer(HttpServerOptions options, Handler<HttpServerRequest> handler) {
     HttpServer proxyServer = vertx.createHttpServer(options);
     proxyServer.requestHandler(handler);
-    Async async1 = ctx.async();
-    proxyServer.listen().onComplete(ctx.asyncAssertSuccess(p -> async1.complete()));
-    async1.awaitSuccess();
+    proxyServer.listen().await();
   }
 
-  protected SocketAddress startHttpBackend(TestContext ctx, int port, Handler<HttpServerRequest> handler) {
-    return startHttpBackend(ctx, new HttpServerOptions().setPort(port).setHost("localhost"), handler);
+  protected SocketAddress startHttpBackend(int port, Handler<HttpServerRequest> handler) {
+    return startHttpBackend(new HttpServerOptions().setPort(port).setHost("localhost"), handler);
   }
 
-  protected SocketAddress startHttpBackend(TestContext ctx, HttpServerOptions options, Handler<HttpServerRequest> handler) {
+  protected SocketAddress startHttpBackend(HttpServerOptions options, Handler<HttpServerRequest> handler) {
     HttpServer backendServer = vertx.createHttpServer(options);
     backendServer.requestHandler(handler);
-    Async async = ctx.async();
-    backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
-    async.awaitSuccess();
+    backendServer.listen().await();
     return SocketAddress.inetSocketAddress(options.getPort(), "localhost");
   }
 
-  protected SocketAddress startNetBackend(TestContext ctx, int port, Handler<NetSocket> handler) {
+  protected SocketAddress startNetBackend(int port, Handler<NetSocket> handler) {
     NetServer backendServer = vertx.createNetServer(new HttpServerOptions().setPort(port).setHost("localhost"));
     backendServer.connectHandler(handler);
-    Async async = ctx.async();
-    backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
-    async.awaitSuccess();
+    backendServer.listen().await();
     return SocketAddress.inetSocketAddress(port, "localhost");
   }
 

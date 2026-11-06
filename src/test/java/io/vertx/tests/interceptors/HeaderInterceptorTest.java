@@ -31,7 +31,7 @@ public class HeaderInterceptorTest extends TestBase {
 
   @Test
   public void testFilterRequestHeader(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(req.headers().get("k1"), "v1");
         assertEquals(req.headers().get("k2"), null);
@@ -54,8 +54,8 @@ public class HeaderInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testFilterResponseHeader(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+  public void testFilterResponseHeader() {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("k1", "v1")
         .putHeader("k2", "v2")

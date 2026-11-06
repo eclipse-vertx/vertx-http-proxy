@@ -126,7 +126,7 @@ public class ProxyRequestTest extends TestBase {
 
   private void testCloseBackendResponse(TestContext ctx, boolean chunked) {
     CompletableFuture<Void> cont = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
         resp.setChunked(true);
@@ -140,7 +140,7 @@ public class ProxyRequestTest extends TestBase {
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     Async async = ctx.async();
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertFailure(err -> async.complete()));
@@ -167,7 +167,7 @@ public class ProxyRequestTest extends TestBase {
   }
 
   private void testCloseFrontendResponse(TestContext ctx, boolean chunked) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
         resp.setChunked(true);
@@ -183,7 +183,7 @@ public class ProxyRequestTest extends TestBase {
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     Async async = ctx.async();
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertFailure(err -> async.complete()));
@@ -211,7 +211,7 @@ public class ProxyRequestTest extends TestBase {
 
   private void testCloseChunkedFrontendRequest(TestContext ctx, boolean chunked) throws Exception {
     Promise<Void> latch = Promise.promise();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.handler(buff -> {
         ctx.verify(v -> {
           assertEquals("part", buff.toString());
@@ -221,7 +221,7 @@ public class ProxyRequestTest extends TestBase {
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     Async async = ctx.async();
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.proxy(clientReq).onComplete(ctx.asyncAssertFailure(err -> async.complete()));
@@ -252,7 +252,7 @@ public class ProxyRequestTest extends TestBase {
   }
 
   private void testCloseBackendRequest(TestContext ctx, boolean chunked) throws Exception {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.handler(buff -> {
         ctx.verify(v -> {
           assertEquals("part", buff.toString());
@@ -262,7 +262,7 @@ public class ProxyRequestTest extends TestBase {
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     Async async = ctx.async();
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       req.pause();
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(backReq -> {
@@ -291,13 +291,13 @@ public class ProxyRequestTest extends TestBase {
   @Test
   public void testLatency(TestContext ctx) throws Exception {
     httpClient = vertx.createHttpClient();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       req.bodyHandler(resp::end);
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     Async async = ctx.async();
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       req.pause();
       vertx.setTimer(500, id1 -> {
         ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
@@ -322,7 +322,7 @@ public class ProxyRequestTest extends TestBase {
 
   @Test
   public void testUpdateRequestHeaders(TestContext ctx) throws Exception {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertNotEquals("example.org", req.getHeader(HttpHeaders.HOST));
         assertNull(req.getHeader("header"));
@@ -331,7 +331,7 @@ public class ProxyRequestTest extends TestBase {
       req.response().putHeader("header", "header_value").end();
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       MultiMap clientHeaders = proxyReq.headers();
       clientHeaders.add("proxy_header", "proxy_header_value");
@@ -373,7 +373,7 @@ public class ProxyRequestTest extends TestBase {
     Async drainedLatch = ctx.async();
     CompletableFuture<Void> full = new CompletableFuture<>();
     Buffer chunk = Buffer.buffer(new byte[1024]);
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       resp
         .setChunked(true)
@@ -391,7 +391,7 @@ public class ProxyRequestTest extends TestBase {
       });
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.asyncAssertSuccess(clientReq -> {
         proxyReq.send(clientReq).onComplete(ctx.asyncAssertSuccess(proxyResp -> {
@@ -420,7 +420,7 @@ public class ProxyRequestTest extends TestBase {
   @Test
   public void testReleaseProxyRequest(TestContext ctx) {
     CompletableFuture<Void> full = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(null, req.getHeader("header"));
       });
@@ -429,7 +429,7 @@ public class ProxyRequestTest extends TestBase {
       }));
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       full.whenComplete((v, err) -> {
         proxyReq.release();
@@ -467,7 +467,7 @@ public class ProxyRequestTest extends TestBase {
 
   @Test
   public void testReleaseProxyRequestAndFail(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         fail("Shouldn't be called");
       });
@@ -482,7 +482,7 @@ public class ProxyRequestTest extends TestBase {
         return Future.failedFuture("boom");
       }
     });
-    startHttpServer(ctx, serverOptions, proxy);
+    startHttpServer(serverOptions, proxy);
     httpClient = vertx.createHttpClient();
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
       req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
@@ -495,7 +495,7 @@ public class ProxyRequestTest extends TestBase {
 
   @Test
   public void testSendDefaultProxyResponse(TestContext ctx) {
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       proxyReq.response().send();
     });
@@ -519,7 +519,7 @@ public class ProxyRequestTest extends TestBase {
 
   @Test
   public void testSendProxyResponse(TestContext ctx) {
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       proxyReq.response()
         .setStatusCode(302)
@@ -552,9 +552,9 @@ public class ProxyRequestTest extends TestBase {
                            Handler<HttpServerRequest> backendHandler,
                            Handler<AsyncResult<Void>> expect) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, backendHandler);
+    SocketAddress backend = startHttpBackend(8081, backendHandler);
     httpClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       req.pause(); // Should it be necessary ?
       ProxyRequest proxyRequest = ProxyRequest.reverseProxy(req);
       httpClient.request(new RequestOptions().setServer(backend)).onComplete(ar -> {
@@ -579,13 +579,13 @@ public class ProxyRequestTest extends TestBase {
 
   @Test
   public void testInvalidContentType(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req
         .response()
         .putHeader(HttpHeaders.CONTENT_TYPE, "invalid response content type").end();
     });
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
-    startHttpServer(ctx, serverOptions, req -> {
+    startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       ctx.verify(v -> {
         assertEquals("invalid request content type", proxyReq.headers().get(HttpHeaders.CONTENT_TYPE));

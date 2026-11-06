@@ -52,7 +52,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testModifyRequestJson(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onSuccess(buffer -> {
         JsonObject jsonObject = buffer.toJsonObject();
         ctx.verify(v -> {
@@ -88,7 +88,7 @@ public class BodyInterceptorTest extends TestBase {
   public void testModifyResponseJson(TestContext ctx) {
     Async latch = ctx.async();
     String content = "{\"k2\": 2}";
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Content-Type", "application/json")
         .end(content);
@@ -124,7 +124,7 @@ public class BodyInterceptorTest extends TestBase {
   public void testJsonArray(TestContext ctx) {
     Async latch = ctx.async();
     String content = "[1, 2, 3]";
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Content-Type", "application/json")
         .end(content);
@@ -155,7 +155,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testDiscard(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")
         .end("hello");
@@ -184,7 +184,7 @@ public class BodyInterceptorTest extends TestBase {
   public void testTransformText(TestContext ctx) {
     Async latch = ctx.async();
     byte[] content = new byte[]{-78, -30, -54, -44}; // gbk encoding, represents 测试 in gbk
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")
         .end(Buffer.buffer(content));
@@ -214,7 +214,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testObjectTypes(TestContext ctx) {
     Async latch = ctx.async(3);
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onSuccess(buffer -> {
         Object json = Json.decodeValue(buffer);
         ctx.verify(v -> {
@@ -253,7 +253,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testResponseMaxBufferedBytes(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Content-Type", "application/json")
         .end(Buffer.buffer("A".repeat(1024)));
@@ -280,7 +280,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testRequestMaxBufferedBytes(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         fail();
       });
@@ -313,7 +313,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testResponseMaxBufferedBytesCumulation(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse response = req.response()
         .putHeader("Content-Type", "application/json")
         .setChunked(true);
@@ -345,7 +345,7 @@ public class BodyInterceptorTest extends TestBase {
   @Test
   public void testRequestMaxBufferedBytesCumulation(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         fail();
       });
@@ -424,7 +424,7 @@ public class BodyInterceptorTest extends TestBase {
 
   private void testResponseTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Content-Type", "application/json")
         .end();
@@ -464,7 +464,7 @@ public class BodyInterceptorTest extends TestBase {
 
   private void testRequestTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         fail();
       });
@@ -488,17 +488,16 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testRequestConsumes1(TestContext ctx) {
-    testRequestConsumes(ctx, "application/json", MediaType.APPLICATION_JSON, true);
+  public void testRequestConsumes1() {
+    testRequestConsumes("application/json", MediaType.APPLICATION_JSON, true);
   }
 
   @Test
-  public void testRequestConsumes4(TestContext ctx) {
-    testRequestConsumes(ctx, "text/plain", MediaType.APPLICATION_JSON, false);
+  public void testRequestConsumes4() {
+    testRequestConsumes("text/plain", MediaType.APPLICATION_JSON, false);
   }
 
-  private void testRequestConsumes(TestContext ctx,
-                                    String contentType,
+  private void testRequestConsumes(String contentType,
                                     MediaType interceptorConsumes,
                                     boolean expectedInvoked) {
 
@@ -519,7 +518,7 @@ public class BodyInterceptorTest extends TestBase {
       }
     };
 
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .end();
     });
@@ -537,17 +536,16 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testResponseConsumes1(TestContext ctx) {
-    testResponseConsumes(ctx, "application/json", MediaType.APPLICATION_JSON, true);
+  public void testResponseConsumes1() {
+    testResponseConsumes("application/json", MediaType.APPLICATION_JSON, true);
   }
 
   @Test
-  public void testResponseConsumes4(TestContext ctx) {
-    testResponseConsumes(ctx, "text/plain", MediaType.APPLICATION_JSON, false);
+  public void testResponseConsumes4() {
+    testResponseConsumes("text/plain", MediaType.APPLICATION_JSON, false);
   }
 
-  private void testResponseConsumes(TestContext ctx,
-                                   String contentType,
+  private void testResponseConsumes(String contentType,
                                    MediaType interceptorConsumes,
                                    boolean expectedInvoked) {
 
@@ -568,7 +566,7 @@ public class BodyInterceptorTest extends TestBase {
       }
     };
 
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
         .end();
@@ -587,43 +585,42 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testResponseProduces1(TestContext ctx) {
-    String contentType = testResponseProduces(ctx, "application/json", MediaType.APPLICATION_JSON, "application/json", true);
+  public void testResponseProduces1() {
+    String contentType = testResponseProduces("application/json", MediaType.APPLICATION_JSON, "application/json", true);
     assertEquals("application/json", contentType);
   }
 
   @Test
-  public void testResponseProduces2(TestContext ctx) {
-    String contentType = testResponseProduces(ctx, "application/*", MediaType.APPLICATION_JSON, "application/json", true);
+  public void testResponseProduces2() {
+    String contentType = testResponseProduces("application/*", MediaType.APPLICATION_JSON, "application/json", true);
     assertEquals("application/json", contentType);
   }
 
   @Test
-  public void testResponseProduces3(TestContext ctx) {
-    String contentType = testResponseProduces(ctx, "*/*", MediaType.APPLICATION_JSON, "application/json", true);
+  public void testResponseProduces3() {
+    String contentType = testResponseProduces("*/*", MediaType.APPLICATION_JSON, "application/json", true);
     assertEquals("application/json", contentType);
   }
 
   @Test
-  public void testResponseProduces4(TestContext ctx) {
-    String contentType = testResponseProduces(ctx, "application/json,text/plain", MediaType.APPLICATION_JSON, "application/json", true);
+  public void testResponseProduces4() {
+    String contentType = testResponseProduces("application/json,text/plain", MediaType.APPLICATION_JSON, "application/json", true);
     assertEquals("application/json", contentType);
   }
 
   @Test
-  public void testResponseProduces5(TestContext ctx) {
-    String contentType = testResponseProduces(ctx, "application/json;q=0.1,text/plain", MediaType.APPLICATION_JSON, "application/json", true);
+  public void testResponseProduces5() {
+    String contentType = testResponseProduces("application/json;q=0.1,text/plain", MediaType.APPLICATION_JSON, "application/json", true);
     assertEquals("application/json", contentType);
   }
 
   @Test
-  public void testResponseProduces6(TestContext ctx) {
-    String contentType = testResponseProduces(ctx, "text/plain", MediaType.APPLICATION_JSON, "text/plain", false);
+  public void testResponseProduces6() {
+    String contentType = testResponseProduces("text/plain", MediaType.APPLICATION_JSON, "text/plain", false);
     assertEquals("text/plain", contentType);
   }
 
-  private String testResponseProduces(TestContext ctx,
-                                      String acceptHeader,
+  private String testResponseProduces(String acceptHeader,
                                       MediaType interceptorProduces,
                                       String responseContentType,
                                       boolean expectedInvoked) {
@@ -645,7 +642,7 @@ public class BodyInterceptorTest extends TestBase {
       }
     };
 
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader(HttpHeaders.CONTENT_TYPE, responseContentType)
         .end();
@@ -667,7 +664,7 @@ public class BodyInterceptorTest extends TestBase {
 
   @Test
   public void testInvalidContentType(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals("invalid request content type", req.getHeader(HttpHeaders.CONTENT_TYPE));
       });
@@ -709,7 +706,7 @@ public class BodyInterceptorTest extends TestBase {
 
   @Test
   public void testInvalidAcceptHeader(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onSuccess(buffer -> {
         req
           .response()

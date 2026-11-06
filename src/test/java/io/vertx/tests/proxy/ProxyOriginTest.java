@@ -41,7 +41,7 @@ public class ProxyOriginTest extends TestBase {
     SocketAddress[] backends = new SocketAddress[3];
     for (int i = 0;i < backends.length;i++) {
       int value = i;
-      backends[i] = startHttpBackend(ctx, 8081 + value, req -> req.response().end("" + value));
+      backends[i] = startHttpBackend(8081 + value, req -> req.response().end("" + value));
     }
     AtomicInteger count = new AtomicInteger();
     startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length]))));

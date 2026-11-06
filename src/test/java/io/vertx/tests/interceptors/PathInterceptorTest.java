@@ -29,7 +29,7 @@ public class PathInterceptorTest extends TestBase {
   @Test
   public void addPrefixTest(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(req.uri(), "/prefix/hello");
       });
@@ -47,7 +47,7 @@ public class PathInterceptorTest extends TestBase {
   @Test
   public void removePrefixTest(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(req.uri(), "/hello");
       });
@@ -65,7 +65,7 @@ public class PathInterceptorTest extends TestBase {
   @Test
   public void absentPrefixTest(TestContext ctx) {
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(req.uri(), "/hello");
       });

@@ -66,7 +66,7 @@ public class ProxyConnectionTest extends TestBase {
 
   @Test
   public void testBackendClosesDuringUpload(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       AtomicInteger len = new AtomicInteger();
       req.handler(buff -> {
         if (len.addAndGet(buff.length()) == 1024) {
@@ -94,7 +94,7 @@ public class ProxyConnectionTest extends TestBase {
   public void testClientClosesDuringUpload(TestContext ctx) {
     Async async = ctx.async();
     Promise<Void> closeLatch = Promise.promise();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response().closeHandler(v -> {
         async.complete();
       });
@@ -119,7 +119,7 @@ public class ProxyConnectionTest extends TestBase {
   public void testClientClosesAfterUpload(TestContext ctx) {
     Async async = ctx.async();
     Promise<Void> closeLatch = Promise.promise();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.endHandler(v -> {
         closeLatch.complete();
         vertx.setTimer(200, id -> {
@@ -144,7 +144,7 @@ public class ProxyConnectionTest extends TestBase {
 
   @Test
   public void testBackendCloseResponseWithOnGoingRequest(TestContext ctx) {
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       Buffer body = Buffer.buffer();
       so.handler(buff -> {
         body.appendBuffer(buff);
@@ -183,7 +183,7 @@ public class ProxyConnectionTest extends TestBase {
 
   private void testBackendCloseResponse(TestContext ctx, boolean chunked) {
     CompletableFuture<Void> closeFuture = new CompletableFuture<>();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
         resp.setChunked(true);
@@ -223,7 +223,7 @@ public class ProxyConnectionTest extends TestBase {
 
   private void testFrontendCloseResponse(TestContext ctx, boolean chunked) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
         resp.setChunked(true);
@@ -252,7 +252,7 @@ public class ProxyConnectionTest extends TestBase {
     Assume.assumeTrue("testChunkedTransferEncodingRequest requires keep-alive or pipelined connection mode", keepAlive);
     int num = 50;
     Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < num; i++) {
         sb.append("chunk-").append(i);

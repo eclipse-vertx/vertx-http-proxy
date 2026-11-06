@@ -62,7 +62,7 @@ public class WebSocketTest extends TestBase {
 
   private void testWebSocket(TestContext ctx, WebSocketVersion version) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
       fut.onComplete(ctx.asyncAssertSuccess(ws -> {
         ws.handler(buff -> ws.write(buff));
@@ -89,7 +89,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testWebSocketReject(TestContext ctx) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response().setStatusCode(400).end();
     });
     startProxy(backend);
@@ -109,7 +109,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testInboundClose(TestContext ctx) {
     Async async = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> {
         so.close();
       });
@@ -131,7 +131,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testWebSocketFirefox(TestContext ctx) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
       fut.onComplete(ctx.asyncAssertSuccess(ws -> {
         ws.closeHandler(v -> {
@@ -163,7 +163,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testWebSocketHostHeader(TestContext ctx) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals("localhost:8081", req.headers().get("Host"));
       });
@@ -198,7 +198,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testVariableFromInterceptor(TestContext ctx) {
     Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
       fut.onComplete(ctx.asyncAssertSuccess(ws -> {
         ws.handler(buff -> ws.write(buff));
@@ -240,7 +240,7 @@ public class WebSocketTest extends TestBase {
     HttpServerOptions backendOptions = new HttpServerOptions().setPort(8081).setHost("localhost")
       .setPerFrameWebSocketCompressionSupported(false) // Disable extension in the backend
       .setPerMessageWebSocketCompressionSupported(false); // Disable extension in the backend
-    SocketAddress backend = startHttpBackend(ctx, backendOptions, req -> {
+    SocketAddress backend = startHttpBackend(backendOptions, req -> {
       ctx.verify(v -> {
         assertTrue(req.headers().contains("sec-websocket-extensions"));
       });
@@ -296,7 +296,7 @@ public class WebSocketTest extends TestBase {
   public void testClientCloseDuringUpgradeClosesBackendConnection(TestContext ctx) {
     Async backendClosed = ctx.async();
     Promise<Void> upgradeReceived = Promise.promise();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       // Never answers the upgrade
       so.handler(buff -> upgradeReceived.tryComplete());
       so.closeHandler(v -> backendClosed.complete());
@@ -311,7 +311,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testClientCloseAfterUpgradeClosesBackendConnection(TestContext ctx) {
     Async backendClosed = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> {
         so.write(UPGRADE_RESPONSE);
       });
@@ -330,7 +330,7 @@ public class WebSocketTest extends TestBase {
   @Test
   public void testBackendCloseAfterUpgradeClosesClientConnection(TestContext ctx) {
     Async clientClosed = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> {
         so.write(UPGRADE_RESPONSE);
         // Close the backend side after upgrade completes
@@ -348,7 +348,7 @@ public class WebSocketTest extends TestBase {
   public void testClientCloseBeforeOriginResolvedSendsNoUpgrade(TestContext ctx) {
     Async backendClosed = ctx.async();
     Promise<Void> resolving = Promise.promise();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> ctx.verify(v -> fail("Upgrade sent for a client that has gone")));
       so.closeHandler(v -> backendClosed.complete());
     });

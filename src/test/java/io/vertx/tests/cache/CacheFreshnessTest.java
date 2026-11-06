@@ -190,7 +190,7 @@ public class CacheFreshnessTest extends CacheTestBase {
   }
 
   private void testPublic(TestContext ctx, Handler<MultiMap> respHandler) throws Exception {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       hits.incrementAndGet();
       ctx.verify(v -> {
         assertEquals(HttpMethod.GET, req.method());
@@ -234,7 +234,7 @@ public class CacheFreshnessTest extends CacheTestBase {
   private void testPublicInvalidClientMaxAge(TestContext ctx, long maxAge) throws Exception {
     Async latch = ctx.async();
     long now = System.currentTimeMillis();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       ctx.verify(v -> {
         assertEquals(HttpMethod.GET, req.method());
       });
