@@ -14,28 +14,25 @@ package io.vertx.tests.interceptors;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.Set;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class HeaderInterceptorTest extends TestBase {
+public class HeaderInterceptorTest extends VertxTestBase {
 
   private HttpClientAgent client;
 
   @Test
-  public void testFilterRequestHeader(TestContext ctx) {
+  public void testFilterRequestHeader() {
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        assertEquals(req.headers().get("k1"), "v1");
-        assertEquals(req.headers().get("k2"), null);
-      });
+      assertEquals(req.headers().get("k1"), "v1");
+      assertEquals(req.headers().get("k2"), null);
       req.response().end("Hello");
     });
 

@@ -18,47 +18,42 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.core.Vertx;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class BodyInterceptorTest extends TestBase {
+public class BodyInterceptorTest extends VertxTestBase {
 
   HttpClient client = null;
 
+  @BeforeEach
   @Override
-  public void setUp() {
-    super.setUp();
+  public void setUp(Vertx vertx) {
+    super.setUp(vertx);
     client = vertx.createHttpClient();
   }
 
-  @Override
-  public void tearDown(TestContext context) {
-    if (client != null) client.close();
-    super.tearDown(context);
-  }
-
   @Test
-  public void testModifyRequestJson(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testModifyRequestJson(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onSuccess(buffer -> {
         JsonObject jsonObject = buffer.toJsonObject();
-        ctx.verify(v -> {
-          assertEquals(jsonObject.getInteger("k1"), Integer.valueOf(1));
-          assertEquals(jsonObject.getInteger("k2"), null);
-        });
+        assertEquals(jsonObject.getInteger("k1"), 1);
+        assertEquals(jsonObject.getInteger("k2"), null);
         req.response().end("Hello");
       });
     });
@@ -79,14 +74,14 @@ public class BodyInterceptorTest extends TestBase {
         .write(content)
         .compose(r -> request.send())
       )
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        latch.complete();
+      .onComplete(ctx.succeeding(response -> {
+        latch.flag();
       }));
   }
 
   @Test
-  public void testModifyResponseJson(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testModifyResponseJson(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     String content = "{\"k2\": 2}";
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
@@ -104,25 +99,21 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertEquals("application/json", response.getHeader(HttpHeaders.CONTENT_TYPE));
-        });
+      .onComplete(ctx.succeeding(response -> {
+        assertEquals("application/json", response.getHeader(HttpHeaders.CONTENT_TYPE));
         response.body().compose((buffer -> {
           JsonObject jsonObject = buffer.toJsonObject();
-          ctx.verify(v -> {
-            assertEquals(jsonObject.getInteger("k1"), Integer.valueOf(1));
-            assertEquals(jsonObject.getInteger("k2"), null);
-          });
-          latch.complete();
+          assertEquals(jsonObject.getInteger("k1"), 1);
+          assertEquals(jsonObject.getInteger("k2"), null);
+          latch.flag();
           return Future.succeededFuture();
         }));
       }));
   }
 
   @Test
-  public void testJsonArray(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testJsonArray(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     String content = "[1, 2, 3]";
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
@@ -140,21 +131,19 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
+      .onComplete(ctx.succeeding(response -> {
         response.body().compose((buffer -> {
           JsonArray jsonArray = buffer.toJsonArray();
-          ctx.verify(v -> {
-            assertEquals(jsonArray.size(), 2);
-          });
-          latch.complete();
+          assertEquals(jsonArray.size(), 2);
+          latch.flag();
           return Future.succeededFuture();
         }));
       }));
   }
 
   @Test
-  public void testDiscard(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testDiscard(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")
@@ -166,23 +155,19 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertNull(response.getHeader(HttpHeaders.CONTENT_TYPE));
-        });
+      .onComplete(ctx.succeeding(response -> {
+        assertNull(response.getHeader(HttpHeaders.CONTENT_TYPE));
         response.body().compose((buffer -> {
-          ctx.verify(v -> {
-            assertEquals(buffer.length(), 0);
-          });
-          latch.complete();
+          assertEquals(buffer.length(), 0);
+          latch.flag();
           return Future.succeededFuture();
         }));
       }));
   }
 
   @Test
-  public void testTransformText(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testTransformText(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     byte[] content = new byte[]{-78, -30, -54, -44}; // gbk encoding, represents 测试 in gbk
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
@@ -200,28 +185,24 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
+      .onComplete(ctx.succeeding(response -> {
         response.body().compose((buffer -> {
-          ctx.verify(v -> {
-            assertEquals(buffer.toString(), "success");
-          });
-          latch.complete();
+          assertEquals(buffer.toString(), "success");
+          latch.flag();
           return Future.succeededFuture();
         }));
       }));
   }
 
   @Test
-  public void testObjectTypes(TestContext ctx) {
-    Async latch = ctx.async(3);
+  public void testObjectTypes(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint(3);
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onSuccess(buffer -> {
         Object json = Json.decodeValue(buffer);
-        ctx.verify(v -> {
-          if (json instanceof JsonObject) assertEquals(((JsonObject) json).getInteger("k"), Integer.valueOf(1));
-          if (json instanceof Integer) assertEquals(json, Integer.valueOf(1));
-          if (json instanceof JsonArray) assertEquals(((JsonArray) json).getInteger(0), Integer.valueOf(1));
-        });
+        if (json instanceof JsonObject) assertEquals(((JsonObject) json).getInteger("k"), 1);
+        if (json instanceof Integer) assertEquals(json, 1);
+        if (json instanceof JsonArray) assertEquals(((JsonArray) json).getInteger(0), 1);
         req.response().end("Hello");
       });
     });
@@ -244,15 +225,15 @@ public class BodyInterceptorTest extends TestBase {
           .write(content)
           .compose(r -> request.send())
         )
-        .onComplete(ctx.asyncAssertSuccess(response -> {
-          latch.countDown();
+        .onComplete(ctx.succeeding(response -> {
+          latch.flag();
         }));
     }
   }
 
   @Test
-  public void testResponseMaxBufferedBytes(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testResponseMaxBufferedBytes(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Content-Type", "application/json")
@@ -264,55 +245,43 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertEquals(500, response.statusCode());
-        });
-        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals(0, body.length());
-          });
-          latch.complete();
+      .onComplete(ctx.succeeding(response -> {
+        assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.succeeding(body -> {
+          assertEquals(0, body.length());
+          latch.flag();
         }));
       }));
   }
 
   @Test
-  public void testRequestMaxBufferedBytes(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testRequestMaxBufferedBytes(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        fail();
-      });
+      fail();
     });
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null,
         MediaType.APPLICATION_JSON, 512, buffer -> {
-        ctx.verify(v -> {
-          fail();
-        });
+        fail();
         return buffer;
       })).build()));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertEquals(500, response.statusCode());
-        });
-        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals(0, body.length());
-          });
-          latch.complete();
+      .onComplete(ctx.succeeding(response -> {
+        assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.succeeding(body -> {
+          assertEquals(0, body.length());
+          latch.flag();
         }));
       })));
   }
 
   @Test
-  public void testResponseMaxBufferedBytesCumulation(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testResponseMaxBufferedBytesCumulation(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse response = req.response()
         .putHeader("Content-Type", "application/json")
@@ -329,33 +298,25 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertEquals(500, response.statusCode());
-        });
-        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals(0, body.length());
-          });
-          latch.complete();
+      .onComplete(ctx.succeeding(response -> {
+        assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.succeeding(body -> {
+          assertEquals(0, body.length());
+          latch.flag();
         }));
       }));
   }
 
   @Test
-  public void testRequestMaxBufferedBytesCumulation(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testRequestMaxBufferedBytesCumulation(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        fail();
-      });
+      fail();
     });
 
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, 512, buffer -> {
-        ctx.verify(v -> {
-          fail();
-        });
+        fail();
         return buffer;
       })).build()));
 
@@ -367,28 +328,24 @@ public class BodyInterceptorTest extends TestBase {
         }
         return request.send();
       })
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertEquals(500, response.statusCode());
-        });
-        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals(0, body.length());
-          });
-          latch.complete();
+      .onComplete(ctx.succeeding(response -> {
+        assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.succeeding(body -> {
+          assertEquals(0, body.length());
+          latch.flag();
         }));
       }));
   }
 
   @Test
-  public void testResponseBodyTransformationError1(TestContext ctx) {
+  public void testResponseBodyTransformationError1(VertxTestContext ctx) {
     testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, buffer -> {
       throw new RuntimeException();
     })).build());
   }
 
   @Test
-  public void testResponseBodyTransformationError2(TestContext ctx) {
+  public void testResponseBodyTransformationError2(VertxTestContext ctx) {
     testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(new BodyTransformer() {
       @Override
       public boolean consumes(MediaType mediaType) {
@@ -402,7 +359,7 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testResponseBodyTransformationError3(TestContext ctx) {
+  public void testResponseBodyTransformationError3(VertxTestContext ctx) {
     testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseBody(new BodyTransformer() {
       @Override
       public boolean consumes(MediaType mediaType) {
@@ -416,14 +373,14 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testResponseHeadTransformationError(TestContext ctx) {
+  public void testResponseHeadTransformationError(VertxTestContext ctx) {
     testResponseTransformationError(ctx, ProxyInterceptor.builder().transformingResponseHeaders(headers -> {
       throw new RuntimeException();
     }).build());
   }
 
-  private void testResponseTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
-    Async latch = ctx.async();
+  private void testResponseTransformationError(VertxTestContext ctx, ProxyInterceptor interceptor) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Content-Type", "application/json")
@@ -435,54 +392,44 @@ public class BodyInterceptorTest extends TestBase {
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.verify(v -> {
-          assertEquals(500, response.statusCode());
-        });
-        response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals(0, body.length());
-          });
-          latch.complete();
+      .onComplete(ctx.succeeding(response -> {
+        assertEquals(500, response.statusCode());
+        response.body().onComplete(ctx.succeeding(body -> {
+          assertEquals(0, body.length());
+          latch.flag();
         }));
       }));
   }
 
   @Test
-  public void testRequestBodyTransformationError(TestContext ctx) {
+  public void testRequestBodyTransformationError(VertxTestContext ctx) {
     testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestBody(BodyTransformers.transform(null, MediaType.APPLICATION_JSON, buffer -> {
       throw new RuntimeException();
     })).build());
   }
 
   @Test
-  public void testRequestHeadTransformationError(TestContext ctx) {
+  public void testRequestHeadTransformationError(VertxTestContext ctx) {
     testRequestTransformationError(ctx, ProxyInterceptor.builder().transformingRequestHeaders(headers -> {
       throw new RuntimeException();
     }).build());
   }
 
-  private void testRequestTransformationError(TestContext ctx, ProxyInterceptor interceptor) {
-    Async latch = ctx.async();
+  private void testRequestTransformationError(VertxTestContext ctx, ProxyInterceptor interceptor) {
+    Checkpoint latch = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        fail();
-      });
+      fail();
     });
 
     startProxy(proxy -> proxy.origin(backend).addInterceptor(interceptor));
 
     client.request(HttpMethod.POST, 8080, "localhost", "/")
       .compose(request -> request.send(Buffer.buffer("A".repeat(1024)))
-        .onComplete(ctx.asyncAssertSuccess(response -> {
-          ctx.verify(v -> {
-            assertEquals(500, response.statusCode());
-          });
-          response.body().onComplete(ctx.asyncAssertSuccess(body -> {
-            ctx.verify(v -> {
-              assertEquals(0, body.length());
-            });
-            latch.complete();
+        .onComplete(ctx.succeeding(response -> {
+          assertEquals(500, response.statusCode());
+          response.body().onComplete(ctx.succeeding(body -> {
+            assertEquals(0, body.length());
+            latch.flag();
           }));
         })));
   }
@@ -663,11 +610,9 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testInvalidContentType(TestContext ctx) {
+  public void testInvalidContentType() {
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        assertEquals("invalid request content type", req.getHeader(HttpHeaders.CONTENT_TYPE));
-      });
+      assertEquals("invalid request content type", req.getHeader(HttpHeaders.CONTENT_TYPE));
       req.body().onSuccess(buffer -> {
         req
           .response()
@@ -682,9 +627,7 @@ public class BodyInterceptorTest extends TestBase {
       }
       @Override
       public Future<Body> transform(Body body) {
-        ctx.verify(v -> {
-          fail();
-        });
+        fail();
         return BodyTransformer.super.transform(body);
       }
     };
@@ -705,7 +648,7 @@ public class BodyInterceptorTest extends TestBase {
   }
 
   @Test
-  public void testInvalidAcceptHeader(TestContext ctx) {
+  public void testInvalidAcceptHeader() {
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.body().onSuccess(buffer -> {
         req
@@ -721,9 +664,7 @@ public class BodyInterceptorTest extends TestBase {
       }
       @Override
       public Future<Body> transform(Body body) {
-        ctx.verify(v -> {
-          fail();
-        });
+        fail();
         return BodyTransformer.super.transform(body);
       }
     };

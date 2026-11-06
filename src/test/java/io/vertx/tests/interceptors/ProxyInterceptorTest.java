@@ -21,51 +21,43 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.ReadStream;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_LENGTH;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class ProxyInterceptorTest extends TestBase {
+public class ProxyInterceptorTest extends VertxTestBase {
 
   private HttpClient client;
   private HttpClient httpClient;
   private HttpClient backendClient;
 
-  @Override
-  public void tearDown(TestContext context) {
-    super.tearDown(context);
-    client = null;
-    httpClient = null;
-    backendClient = null;
-  }
-
   @Test
-  public void testFilter(TestContext ctx) {
-    Async latch = ctx.async(3);
+  public void testFilter(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint(3);
     SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
       @Override
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
         Future<ProxyResponse> fut = context.sendRequest();
-        fut.onComplete(ctx.asyncAssertSuccess(v -> latch.countDown()));
+        fut.onComplete(ctx.succeeding(v -> latch.flag()));
         return fut;
       }
       @Override
       public Future<Void> handleProxyResponse(ProxyContext context) {
         Future<Void> fut = context.sendResponse();
-        fut.onComplete(ctx.asyncAssertSuccess(v -> latch.countDown()));
+        fut.onComplete(ctx.succeeding(v -> latch.flag()));
         return fut;
       }
     }));
@@ -76,19 +68,17 @@ public class ProxyInterceptorTest extends TestBase {
         .send()
         .compose(HttpClientResponse::body)
       ).onSuccess(buff -> {
-        latch.countDown();
+        latch.flag();
       });
   }
 
   @Test
-  public void testFilterNullBodies(TestContext ctx) {
-    Async latch = ctx.async(3);
+  public void testFilterNullBodies(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint(3);
     SocketAddress backend = startHttpBackend(8081, req -> {
-      req.body().onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.verify(v -> {
-          assertEquals(0, body.length());
-          assertEquals("0", req.getHeader(CONTENT_LENGTH));
-        });
+      req.body().onComplete(ctx.succeeding(body -> {
+        assertEquals(0, body.length());
+        assertEquals("0", req.getHeader(CONTENT_LENGTH));
         req.response().end("IGNORED_BACKEND_RESPONSE_BODY");
       }));
     });
@@ -97,7 +87,7 @@ public class ProxyInterceptorTest extends TestBase {
       public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
         context.request().setBody(null);
         Future<ProxyResponse> fut = context.sendRequest();
-        fut.onComplete(ctx.asyncAssertSuccess(v -> latch.countDown()));
+        fut.onComplete(ctx.succeeding(v -> latch.flag()));
         return fut;
       }
 
@@ -105,7 +95,7 @@ public class ProxyInterceptorTest extends TestBase {
       public Future<Void> handleProxyResponse(ProxyContext context) {
         context.response().setBody(null);
         Future<Void> fut = context.sendResponse();
-        fut.onComplete(ctx.asyncAssertSuccess(v -> latch.countDown()));
+        fut.onComplete(ctx.succeeding(v -> latch.flag()));
         return fut;
       }
     }));
@@ -115,17 +105,15 @@ public class ProxyInterceptorTest extends TestBase {
       .compose(req -> req
         .send("IGNORED_CLIENT_REQUEST_BODY")
         .compose(resp -> resp.body().map(resp))
-      ).onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.verify(v -> {
-          assertEquals(0, resp.body().result().length());
-          assertEquals("0", resp.getHeader(CONTENT_LENGTH));
-        });
-        latch.countDown();
+      ).onComplete(ctx.succeeding(resp -> {
+        assertEquals(0, resp.body().result().length());
+        assertEquals("0", resp.getHeader(CONTENT_LENGTH));
+        latch.flag();
       }));
   }
 
   @Test
-  public void testFilterRequestFail(TestContext ctx) {
+  public void testFilterRequestFail(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
       @Override
@@ -134,19 +122,17 @@ public class ProxyInterceptorTest extends TestBase {
       }
     }));
     client = vertx.createHttpClient();
-    Async async = ctx.async();
+    Checkpoint async = ctx.checkpoint();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.verify(v -> {
-          assertEquals(502, resp.statusCode());
-        });
+        assertEquals(502, resp.statusCode());
         return resp.body();
       }))
-      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+      .onComplete(ctx.succeeding(body -> async.flag()));
   }
 
   @Test
-  public void testFilterResponseFail(TestContext ctx) {
+  public void testFilterResponseFail(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     startProxy(proxy -> proxy.origin(backend).addInterceptor(new ProxyInterceptor() {
       @Override
@@ -155,19 +141,17 @@ public class ProxyInterceptorTest extends TestBase {
       }
     }));
     client = vertx.createHttpClient();
-    Async async = ctx.async();
+    Checkpoint async = ctx.checkpoint();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.verify(v -> {
-          assertEquals(502, resp.statusCode());
-        });
+        assertEquals(502, resp.statusCode());
         return resp.body();
       }))
-      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+      .onComplete(ctx.succeeding(body -> async.flag()));
   }
 
   @Test
-  public void testVariableFromInterceptor(TestContext ctx) {
+  public void testVariableFromInterceptor(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> req.response().end("HOLA"));
     ProxyInterceptor interceptor = new ProxyInterceptor() {
       @Override
@@ -177,9 +161,7 @@ public class ProxyInterceptorTest extends TestBase {
       }
     };
     OriginRequestProvider provider = (proxyContext) -> {
-      ctx.verify(v -> {
-        assertEquals("bar", proxyContext.get("foo", String.class));
-      });
+      assertEquals("bar", proxyContext.get("foo", String.class));
       return client.request(new RequestOptions().setServer(backend));
     };
     startProxy(proxy -> proxy.origin(provider).addInterceptor(interceptor));
@@ -190,26 +172,27 @@ public class ProxyInterceptorTest extends TestBase {
         .send()
         .compose(HttpClientResponse::body)
       )
-      .onComplete(ctx.asyncAssertSuccess(buffer -> ctx.verify(v -> assertEquals("HOLA", buffer.toString()))));
+      .onComplete(ctx.succeeding(buffer -> {
+        assertEquals("HOLA", buffer.toString());
+        ctx.completeNow();
+      }));
   }
 
   @Test
-  public void testRequestFilter(TestContext ctx) {
+  public void testRequestFilter(VertxTestContext ctx) {
     Filter filter = new Filter();
     CompletableFuture<Integer> onResume = new CompletableFuture<>();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.pause();
       onResume.thenAccept(num -> {
         req.bodyHandler(body -> {
-          ctx.verify(v -> {
-            assertEquals(filter.expected, body);
-          });
+          assertEquals(filter.expected, body);
           req.response().end();
         });
         req.resume();
       });
     });
-    Async async = ctx.async();
+    Checkpoint async = ctx.checkpoint();
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     httpClient = vertx.createHttpClient();
     HttpProxy proxy = HttpProxy.reverseProxy(backendClient);
@@ -224,7 +207,7 @@ public class ProxyInterceptorTest extends TestBase {
       }
     });
     startHttpServer(serverOptions, proxy);
-    httpClient.request(HttpMethod.POST, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
+    httpClient.request(HttpMethod.POST, 8080, "localhost", "/somepath").onComplete(ctx.succeeding(req -> {
       req.setChunked(true);
       AtomicInteger num = new AtomicInteger();
       vertx.setPeriodic(1, id -> {
@@ -239,14 +222,14 @@ public class ProxyInterceptorTest extends TestBase {
       });
       req.response()
         .flatMap(HttpClientResponse::body)
-        .onComplete(ctx.asyncAssertSuccess(v -> {
-          async.complete();
+        .onComplete(ctx.succeeding(v -> {
+          async.flag();
         }));
     }));
   }
 
   @Test
-  public void testResponseFilter(TestContext ctx) {
+  public void testResponseFilter(VertxTestContext ctx) {
     Filter filter = new Filter();
     CompletableFuture<Integer> onResume = new CompletableFuture<>();
     SocketAddress backend = startHttpBackend(8081, req -> {
@@ -276,16 +259,16 @@ public class ProxyInterceptorTest extends TestBase {
       }
     });
     startHttpServer(serverOptions, proxy);
-    Async async = ctx.async();
+    Checkpoint async = ctx.checkpoint();
     httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
+    httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.succeeding(req -> {
+      req.send().onComplete(ctx.succeeding(resp -> {
         resp.pause();
         onResume.thenAccept(num -> {
           resp.resume();
         });
         resp.endHandler(v -> {
-          async.complete();
+          async.flag();
         });
       }));
     }));
