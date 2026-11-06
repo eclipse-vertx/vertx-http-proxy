@@ -14,32 +14,25 @@ import io.vertx.core.Future;
 import io.vertx.core.http.*;
 import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyRequest;
 import io.vertx.httpproxy.ProxyResponse;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import static io.vertx.core.http.HttpMethod.GET;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-public class ProxyHeadersTest extends TestBase {
+public class ProxyHeadersTest extends VertxTestBase {
 
   private HttpClient client;
 
-  @Override
-  public void tearDown(TestContext context) {
-    super.tearDown(context);
-    client = null;
-  }
-
   @Test
-  public void testSuppressIncorrectWarningHeaders(TestContext ctx) {
+  public void testSuppressIncorrectWarningHeaders(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
           .putHeader("date", "Tue, 15 Nov 1994 08:12:30 GMT")
@@ -48,19 +41,17 @@ public class ProxyHeadersTest extends TestBase {
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.verify(v -> {
-          assertNotNull(resp.getHeader("date"));
-          assertNull(resp.getHeader("warning"));
-        });
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
+      req.send().onComplete(ctx.succeeding(resp -> {
+        assertNotNull(resp.getHeader("date"));
+        assertNull(resp.getHeader("warning"));
+        ctx.completeNow();
       }));
     }));
   }
 
   @Test
-  public void testAddMissingHeaderDate(TestContext ctx) {
-    Async latch = ctx.async();
+  public void testAddMissingHeaderDate(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
 //          .putHeader("date", "Tue, 15 Nov 1994 08:12:30 GMT")
@@ -69,21 +60,18 @@ public class ProxyHeadersTest extends TestBase {
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.verify(v -> {
-          assertNotNull(resp.getHeader("date"));
-        });
-        latch.complete();
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
+      req.send().onComplete(ctx.succeeding(resp -> {
+        assertNotNull(resp.getHeader("date"));
+        ctx.completeNow();
       }));
     }));
   }
 
   @Test
-  public void testAddMissingHeaderDateFromWarning(TestContext ctx) {
+  public void testAddMissingHeaderDateFromWarning(VertxTestContext ctx) {
     String expectedDate = "Tue, 15 Nov 1994 08:12:31 GMT";
     String expectedWarning = "199 Miscellaneous warning \"" + expectedDate + "\"";
-    Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
           .putHeader("warning", expectedWarning)
@@ -91,45 +79,38 @@ public class ProxyHeadersTest extends TestBase {
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.verify(v -> {
-          assertEquals(expectedDate, resp.getHeader("date"));
-          assertEquals(expectedWarning, resp.getHeader("warning"));
-        });
-        latch.complete();
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
+      req.send().onComplete(ctx.succeeding(resp -> {
+        assertEquals(expectedDate, resp.getHeader("date"));
+        assertEquals(expectedWarning, resp.getHeader("warning"));
+        ctx.completeNow();
       }));
     }));
   }
 
   @Test
-  public void testPropagateHeaders(TestContext ctx) {
+  public void testPropagateHeaders(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(new HttpServerOptions().setPort(8081).setMaxInitialLineLength(10000), req -> {
-      ctx.verify(v -> {
-        assertEquals("request_header_value", req.getHeader("request_header"));
-        assertNull(req.getHeader("proxy-authenticate"));
-      });
+      assertEquals("request_header_value", req.getHeader("request_header"));
+      assertNull(req.getHeader("proxy-authenticate"));
       req.response().putHeader("response_header", "response_header_value").end();
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    Async latch = ctx.async();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
       req
         .putHeader("request_header", "request_header_value")
         .putHeader("proxy-authenticate", "proxy-authenticate_value")
-        .send().onComplete(ctx.asyncAssertSuccess(resp -> {
-        ctx.verify(v -> {
-          assertEquals(200, resp.statusCode());
-          assertEquals("response_header_value", resp.getHeader("response_header"));
-        });
-        latch.complete();
+        .send().onComplete(ctx.succeeding(resp -> {
+        assertEquals(200, resp.statusCode());
+        assertEquals("response_header_value", resp.getHeader("response_header"));
+        ctx.completeNow();
       }));
     }));
   }
 
   @Test
-  public void testIgnoreHopByHopResponseHeaders(TestContext ctx) {
+  public void testIgnoreHopByHopResponseHeaders(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("Connection", "keep-alive")
@@ -139,50 +120,43 @@ public class ProxyHeadersTest extends TestBase {
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    Async latch = ctx.async();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
       req.send()
         .compose(resp -> {
-          ctx.verify(v -> {
-            assertEquals(200, resp.statusCode());
-            assertEquals("should-forward", resp.getHeader("x-end-to-end"));
-            assertNull(resp.getHeader("connection"));
-            assertNull(resp.getHeader("keep-alive"));
-          });
+          assertEquals(200, resp.statusCode());
+          assertEquals("should-forward", resp.getHeader("x-end-to-end"));
+          assertNull(resp.getHeader("connection"));
+          assertNull(resp.getHeader("keep-alive"));
           return resp.body();
         })
-        .onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals("ok", body.toString());
-          });
-          latch.complete();
+        .onComplete(ctx.succeeding(body -> {
+          assertEquals("ok", body.toString());
+          ctx.completeNow();
         }));
     }));
   }
 
   @Test
-  public void testIPV6Authority(TestContext ctx) {
+  public void testIPV6Authority(VertxTestContext ctx) {
     testAuthority(ctx, HostAndPort.authority("[7a03:908:671:b520:ba27:bbff:ffff:fed2]", 1234));
   }
 
   @Test
-  public void testIPV4Authority(TestContext ctx) {
+  public void testIPV4Authority(VertxTestContext ctx) {
     testAuthority(ctx, HostAndPort.authority("192.168.0.1", 1234));
   }
 
   @Test
-  public void testMissingPortAuthority(TestContext ctx) {
+  public void testMissingPortAuthority(VertxTestContext ctx) {
     testAuthority(ctx, HostAndPort.authority("localhost", -1));
   }
 
-  private void testAuthority(TestContext ctx, HostAndPort requestAuthority) {
+  private void testAuthority(VertxTestContext ctx, HostAndPort requestAuthority) {
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        assertEquals("/somepath", req.uri());
-        assertEquals("localhost", req.authority().host());
-        assertEquals(8081, req.authority().port());
-        assertEquals(null, req.getHeader("x-forwarded-host"));
-      });
+      assertEquals("/somepath", req.uri());
+      assertEquals("localhost", req.authority().host());
+      assertEquals(8081, req.authority().port());
+      assertEquals(null, req.getHeader("x-forwarded-host"));
       req.response().end("Hello World");
     });
     startProxy(proxy -> {
@@ -194,40 +168,35 @@ public class ProxyHeadersTest extends TestBase {
         .authority(requestAuthority)
         .send()
         .compose(resp -> {
-          ctx.verify(v -> {
-            assertEquals(200, resp.statusCode());
-          });
+          assertEquals(200, resp.statusCode());
           return resp.body();
         }))
-      .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.verify(v -> {
-          assertEquals("Hello World", body.toString());
-        });
+      .onComplete(ctx.succeeding(body -> {
+        assertEquals("Hello World", body.toString());
+        ctx.completeNow();
       }));
   }
 
   @Test
-  public void testAuthorityOverride1(TestContext ctx) {
+  public void testAuthorityOverride1(VertxTestContext ctx) {
     testAuthorityOverride(ctx, HostAndPort.authority("foo", 8080), "foo:8080", "localhost:8080");
   }
 
   @Test
-  public void testAuthorityOverride2(TestContext ctx) {
+  public void testAuthorityOverride2(VertxTestContext ctx) {
     testAuthorityOverride(ctx, HostAndPort.authority("foo"), "foo", "localhost:8080");
   }
 
   @Test
-  public void testAuthorityOverride3(TestContext ctx) {
+  public void testAuthorityOverride3(VertxTestContext ctx) {
     testAuthorityOverride(ctx, HostAndPort.authority("localhost", 8080), "localhost:8080", null);
   }
 
-  private void testAuthorityOverride(TestContext ctx, HostAndPort authority, String expectedAuthority, String expectedForwardedHost) {
+  private void testAuthorityOverride(VertxTestContext ctx, HostAndPort authority, String expectedAuthority, String expectedForwardedHost) {
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        assertEquals("/somepath", req.uri());
-        assertEquals(expectedAuthority, req.authority().toString());
-        assertEquals(expectedForwardedHost, req.getHeader("x-forwarded-host"));
-      });
+      assertEquals("/somepath", req.uri());
+      assertEquals(expectedAuthority, req.authority().toString());
+      assertEquals(expectedForwardedHost, req.getHeader("x-forwarded-host"));
       req.response().end("Hello World");
     });
     startProxy(proxy -> {
@@ -236,10 +205,8 @@ public class ProxyHeadersTest extends TestBase {
         @Override
         public Future<ProxyResponse> handleProxyRequest(ProxyContext context) {
           ProxyRequest request = context.request();
-          ctx.verify(v -> {
-            assertEquals("localhost", request.proxiedRequest().authority().host());
-            assertEquals(8080, request.proxiedRequest().authority().port());
-          });
+          assertEquals("localhost", request.proxiedRequest().authority().host());
+          assertEquals(8080, request.proxiedRequest().authority().port());
           request.setAuthority(authority);
           return ProxyInterceptor.super.handleProxyRequest(context);
         }
@@ -250,15 +217,12 @@ public class ProxyHeadersTest extends TestBase {
       .compose(req -> req
         .send()
         .compose(resp -> {
-          ctx.verify(v -> {
-            assertEquals(200, resp.statusCode());
-          });
+          assertEquals(200, resp.statusCode());
           return resp.body();
         }))
-      .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.verify(v -> {
-          assertEquals("Hello World", body.toString());
-        });
+      .onComplete(ctx.succeeding(body -> {
+        assertEquals("Hello World", body.toString());
+        ctx.completeNow();
       }));
   }
 }

@@ -13,30 +13,23 @@ package io.vertx.tests.proxy;
 import io.vertx.core.Future;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.OriginRequestProvider;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ProxyOriginTest extends TestBase {
+public class ProxyOriginTest extends VertxTestBase {
 
   private HttpClient client;
 
-  @Override
-  public void tearDown(TestContext context) {
-    super.tearDown(context);
-    client = null;
-  }
-
   @Test
-  public void testRoundRobinSelector(TestContext ctx) {
+  public void testRoundRobinSelector(VertxTestContext ctx) {
     int numRequests = 10;
     SocketAddress[] backends = new SocketAddress[3];
     for (int i = 0;i < backends.length;i++) {
@@ -47,7 +40,6 @@ public class ProxyOriginTest extends TestBase {
     startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> Future.succeededFuture(backends[count.getAndIncrement() % backends.length]))));
     client = vertx.createHttpClient();
     Map<String, AtomicInteger> result = Collections.synchronizedMap(new HashMap<>());
-    Async latch = ctx.async();
     for (int i = 0;i < backends.length * numRequests;i++) {
       client
           .request(HttpMethod.GET, 8080, "localhost", "/")
@@ -61,14 +53,10 @@ public class ProxyOriginTest extends TestBase {
           if (total == backends.length * numRequests) {
             for (int j = 0;j < backends.length;j++) {
               AtomicInteger val = result.remove("" + j);
-              ctx.verify(v -> {
-                assertEquals(numRequests, val.get());
-              });
+              assertEquals(numRequests, val.get());
             }
-            ctx.verify(v -> {
-              assertEquals(result, Collections.emptyMap());
-            });
-            latch.complete();
+            assertEquals(result, Collections.emptyMap());
+            ctx.completeNow();
           }
         }
       });
@@ -76,38 +64,30 @@ public class ProxyOriginTest extends TestBase {
   }
 
   @Test
-  public void testUpstreamRefuse(TestContext ctx) {
+  public void testUpstreamRefuse(VertxTestContext ctx) {
     SocketAddress backend = SocketAddress.inetSocketAddress(8081, "localhost");
     startProxy(proxy -> proxy.origin(backend));
     client = vertx.createHttpClient();
-    Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.verify(v -> {
-          assertEquals(502, resp.statusCode());
-        });
+        assertEquals(502, resp.statusCode());
         return resp.body();
       }))
-      .onComplete(ctx.asyncAssertSuccess(body -> async.complete()));
+      .onComplete(ctx.succeedingThenComplete());
   }
 
   @Test
-  public void testMissingOriginReturns502(TestContext ctx) {
+  public void testMissingOriginReturns502(VertxTestContext ctx) {
     startProxy(request -> Future.succeededFuture(SocketAddress.inetSocketAddress(1234, "localhost")));
     client = vertx.createHttpClient();
-    Async async = ctx.async();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(res -> {
-        ctx.verify(v -> {
-          assertEquals(502, res.statusCode());
-        });
+        assertEquals(502, res.statusCode());
         return res.body();
       }))
-      .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.verify(v -> {
-          assertEquals("", body.toString());
-        });
-        async.complete();
+      .onComplete(ctx.succeeding(body -> {
+        assertEquals("", body.toString());
+        ctx.completeNow();
       }));
   }
 }

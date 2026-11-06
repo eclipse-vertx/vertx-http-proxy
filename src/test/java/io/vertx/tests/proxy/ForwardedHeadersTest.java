@@ -14,45 +14,40 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.*;
 import io.vertx.core.net.PemKeyCertOptions;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.httpproxy.ForwardedHeadersOptions;
 import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.function.Consumer;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(VertxUnitRunner.class)
-public class ForwardedHeadersTest extends TestBase {
+public class ForwardedHeadersTest extends VertxTestBase {
 
   public ForwardedHeadersTest() {
     super(new ProxyOptions());
   }
 
   @Test
-  public void testForwardedHeadersDisabledByDefault(TestContext ctx) {
+  public void testForwardedHeadersDisabledByDefault(VertxTestContext ctx) {
     runForwardedHeadersTest(ctx, null, null, null, req -> {
-      ctx.verify(v -> {
-        assertNull(req.getHeader("X-Forwarded-For"));
-        assertNull(req.getHeader("X-Forwarded-Proto"));
-        assertNull(req.getHeader("X-Forwarded-Host"));
-        assertNull(req.getHeader("X-Forwarded-Port"));
-        assertNull(req.getHeader("Forwarded"));
-      });
+      assertNull(req.getHeader("X-Forwarded-For"));
+      assertNull(req.getHeader("X-Forwarded-Proto"));
+      assertNull(req.getHeader("X-Forwarded-Host"));
+      assertNull(req.getHeader("X-Forwarded-Port"));
+      assertNull(req.getHeader("Forwarded"));
     });
   }
 
   @Test
-  public void testXForwardedForEnabled(TestContext ctx) {
+  public void testXForwardedForEnabled(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -64,18 +59,16 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedFor = req.getHeader("X-Forwarded-For");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedFor);
-        assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
-        assertNull(req.getHeader("X-Forwarded-Proto"));
-        assertNull(req.getHeader("X-Forwarded-Host"));
-        assertNull(req.getHeader("X-Forwarded-Port"));
-      });
+      assertNotNull(xForwardedFor);
+      assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
+      assertNull(req.getHeader("X-Forwarded-Proto"));
+      assertNull(req.getHeader("X-Forwarded-Host"));
+      assertNull(req.getHeader("X-Forwarded-Port"));
     });
   }
 
   @Test
-  public void testXForwardedProtoEnabled(TestContext ctx) {
+  public void testXForwardedProtoEnabled(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -87,16 +80,14 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedProto = req.getHeader("X-Forwarded-Proto");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedProto);
-        assertEquals("http", xForwardedProto);
-        assertNull(req.getHeader("X-Forwarded-For"));
-      });
+      assertNotNull(xForwardedProto);
+      assertEquals("http", xForwardedProto);
+      assertNull(req.getHeader("X-Forwarded-For"));
     });
   }
 
   @Test
-  public void testXForwardedHostEnabled(TestContext ctx) {
+  public void testXForwardedHostEnabled(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -108,15 +99,13 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedHost = req.getHeader("X-Forwarded-Host");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedHost);
-        assertEquals("localhost", xForwardedHost);
-      });
+      assertNotNull(xForwardedHost);
+      assertEquals("localhost", xForwardedHost);
     });
   }
 
   @Test
-  public void testXForwardedPortEnabled(TestContext ctx) {
+  public void testXForwardedPortEnabled(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -128,15 +117,13 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedPort = req.getHeader("X-Forwarded-Port");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedPort);
-        assertEquals("8080", xForwardedPort);
-      });
+      assertNotNull(xForwardedPort);
+      assertEquals("8080", xForwardedPort);
     });
   }
 
   @Test
-  public void testAllXForwardedHeadersEnabled(TestContext ctx) {
+  public void testAllXForwardedHeadersEnabled(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -148,33 +135,25 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String xForwardedFor = req.getHeader("X-Forwarded-For");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedFor);
-        assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
-      });
+      assertNotNull(xForwardedFor);
+      assertTrue(xForwardedFor.contains("127.0.0.1") || xForwardedFor.contains("0:0:0:0:0:0:0:1"));
 
       String xForwardedProto = req.getHeader("X-Forwarded-Proto");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedProto);
-        assertEquals("http", xForwardedProto);
-      });
+      assertNotNull(xForwardedProto);
+      assertEquals("http", xForwardedProto);
 
       String xForwardedHost = req.getHeader("X-Forwarded-Host");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedHost);
-        assertEquals("localhost", xForwardedHost);
-      });
+      assertNotNull(xForwardedHost);
+      assertEquals("localhost", xForwardedHost);
 
       String xForwardedPort = req.getHeader("X-Forwarded-Port");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedPort);
-        assertEquals("8080", xForwardedPort);
-      });
+      assertNotNull(xForwardedPort);
+      assertEquals("8080", xForwardedPort);
     });
   }
 
   @Test
-  public void testXForwardedForChainPreservation(TestContext ctx) {
+  public void testXForwardedForChainPreservation(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -185,21 +164,17 @@ public class ForwardedHeadersTest extends TestBase {
       req.putHeader("X-Forwarded-For", "192.168.1.100");
     }, req -> {
       String xForwardedFor = req.getHeader("X-Forwarded-For");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedFor);
-      });
+      assertNotNull(xForwardedFor);
       // Should contain both the original client and the proxy's append
       List<String> parts = List.of(xForwardedFor.split(",\\s*"));
-      ctx.verify(v -> {
-        assertTrue(parts.size() >= 2);
-        assertEquals("192.168.1.100", parts.get(0));
-        assertTrue(parts.get(1).contains("127.0.0.1") || parts.get(1).contains("0:0:0:0:0:0:0:1"));
-      });
+      assertTrue(parts.size() >= 2);
+      assertEquals("192.168.1.100", parts.get(0));
+      assertTrue(parts.get(1).contains("127.0.0.1") || parts.get(1).contains("0:0:0:0:0:0:0:1"));
     });
   }
 
   @Test
-  public void testRfc7239ForwardedHeader(TestContext ctx) {
+  public void testRfc7239ForwardedHeader(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -212,23 +187,19 @@ public class ForwardedHeadersTest extends TestBase {
     // Should NOT have X-Forwarded-* headers when using RFC 7239
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String forwarded = req.getHeader("Forwarded");
-      ctx.verify(v -> {
-        assertNotNull(forwarded);
-        assertTrue(forwarded.contains("for="));
-        assertTrue(forwarded.contains("proto=http"));
-        assertTrue(forwarded.contains("host="));
-      });
+      assertNotNull(forwarded);
+      assertTrue(forwarded.contains("for="));
+      assertTrue(forwarded.contains("proto=http"));
+      assertTrue(forwarded.contains("host="));
 
       // Should NOT have X-Forwarded-* headers when using RFC 7239
-      ctx.verify(v -> {
-        assertNull(req.getHeader("X-Forwarded-For"));
-        assertNull(req.getHeader("X-Forwarded-Proto"));
-      });
+      assertNull(req.getHeader("X-Forwarded-For"));
+      assertNull(req.getHeader("X-Forwarded-Proto"));
     });
   }
 
   @Test
-  public void testRfc7239ForwardedHeaderChainPreservation(TestContext ctx) {
+  public void testRfc7239ForwardedHeaderChainPreservation(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -241,22 +212,18 @@ public class ForwardedHeadersTest extends TestBase {
       req.putHeader("Forwarded", "for=192.0.2.60;proto=https");
     }, req -> {
       String forwarded = req.getHeader("Forwarded");
-      ctx.verify(v -> {
-        assertNotNull(forwarded);
-      });
+      assertNotNull(forwarded);
       // Should contain both the original and the appended entry
       List<String> parts = List.of(forwarded.split(",\\s*"));
-      ctx.verify(v -> {
-        assertEquals(2, parts.size());
-        assertTrue(parts.get(0).contains("for=192.0.2.60"));
-        assertTrue(parts.get(1).contains("for="));
-        assertTrue(parts.get(1).contains("proto=http"));
-      });
+      assertEquals(2, parts.size());
+      assertTrue(parts.get(0).contains("for=192.0.2.60"));
+      assertTrue(parts.get(1).contains("for="));
+      assertTrue(parts.get(1).contains("proto=http"));
     });
   }
 
   @Test
-  public void testRfc7239ForOnlyEnabled(TestContext ctx) {
+  public void testRfc7239ForOnlyEnabled(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -268,17 +235,15 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
       String forwarded = req.getHeader("Forwarded");
-      ctx.verify(v -> {
-        assertNotNull(forwarded);
-        assertTrue(forwarded.contains("for="));
-        assertFalse(forwarded.contains("proto="));
-        assertFalse(forwarded.contains("host="));
-      });
+      assertNotNull(forwarded);
+      assertTrue(forwarded.contains("for="));
+      assertFalse(forwarded.contains("proto="));
+      assertFalse(forwarded.contains("host="));
     });
   }
 
   @Test
-  public void testForwardedHeadersWithHttps(TestContext ctx) {
+  public void testForwardedHeadersWithHttps(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(true)
@@ -298,15 +263,13 @@ public class ForwardedHeadersTest extends TestBase {
 
     runForwardedHeadersTest(ctx, options, httpsServerOptions, null, req -> {
       String xForwardedProto = req.getHeader("X-Forwarded-Proto");
-      ctx.verify(v -> {
-        assertNotNull(xForwardedProto);
-        assertEquals("https", xForwardedProto);
-      });
+      assertNotNull(xForwardedProto);
+      assertEquals("https", xForwardedProto);
     });
   }
 
   @Test
-  public void testEnabledFalseDoesNotAddHeaders(TestContext ctx) {
+  public void testEnabledFalseDoesNotAddHeaders(VertxTestContext ctx) {
     ProxyOptions options = new ProxyOptions()
       .setForwardedHeadersOptions(new ForwardedHeadersOptions()
         .setEnabled(false)  // Explicitly disabled
@@ -315,15 +278,13 @@ public class ForwardedHeadersTest extends TestBase {
       );
 
     runForwardedHeadersTest(ctx, options, null, null, req -> {
-      ctx.verify(v -> {
-        assertNull(req.getHeader("X-Forwarded-For"));
-        assertNull(req.getHeader("X-Forwarded-Proto"));
-      });
+      assertNull(req.getHeader("X-Forwarded-For"));
+      assertNull(req.getHeader("X-Forwarded-Proto"));
     });
   }
 
-  private void runForwardedHeadersTest(TestContext ctx, ProxyOptions options, HttpServerOptions serverOpts, Consumer<HttpClientRequest> requestCustomizer, Handler<HttpServerRequest> backendHandler) {
-    Async latch = ctx.async();
+  private void runForwardedHeadersTest(VertxTestContext ctx, ProxyOptions options, HttpServerOptions serverOpts, Consumer<HttpClientRequest> requestCustomizer, Handler<HttpServerRequest> backendHandler) {
+    Checkpoint latch = ctx.checkpoint();
 
     SocketAddress backend = startHttpBackend(8081, req -> {
       backendHandler.handle(req);
@@ -353,11 +314,9 @@ public class ForwardedHeadersTest extends TestBase {
         }
         return req.send().compose(HttpClientResponse::body);
       })
-      .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.verify(v -> {
-          assertEquals("OK", body.toString());
-        });
-        latch.complete();
+      .onComplete(ctx.succeeding(body -> {
+        assertEquals("OK", body.toString());
+        latch.flag();
       }));
 
     latch.await();

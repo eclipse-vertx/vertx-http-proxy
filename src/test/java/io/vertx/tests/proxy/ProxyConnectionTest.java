@@ -11,61 +11,64 @@
 package io.vertx.tests.proxy;
 
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.WriteStream;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
-import io.vertx.tests.TestBase;
-import org.junit.Assume;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static io.vertx.core.http.HttpMethod.GET;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Connection lifecycle tests (close during/after upload, backend/frontend close).
  * Parameterized by connection mode: keep-alive, pipelined, non-persistent.
  */
-@RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(VertxUnitRunnerWithParametersFactory.class)
-public class ProxyConnectionTest extends TestBase {
+@ParameterizedClass(name = "{2}")
+@MethodSource("data")
+public class ProxyConnectionTest extends VertxTestBase {
 
-  @Parameterized.Parameters(name = "{2}")
-  public static Collection<Object[]> data() {
-    return Arrays.asList(new Object[][]{
-      {true,  false, "keep-alive"},
-      {true,  true,  "pipelined"},
-      {false, false, "non-persistent"},
-    });
+  public static Stream<Arguments> data() {
+    return Stream.of(
+      Arguments.of(true,  false, "keep-alive"),
+      Arguments.of(true,  true,  "pipelined"),
+      Arguments.of(false, false, "non-persistent")
+    );
   }
 
-  private final boolean keepAlive;
-  private final boolean pipelining;
+  @Parameter(0)
+  boolean keepAlive;
 
-  public ProxyConnectionTest(boolean keepAlive, boolean pipelining, String label) {
-    this.keepAlive = keepAlive;
-    this.pipelining = pipelining;
-  }
+  @Parameter(1)
+  boolean pipelining;
 
+  @Parameter(2)
+  String label;
+
+  @BeforeEach
   @Override
-  public void setUp() {
-    super.setUp();
+  public void setUp(Vertx vertx) {
+    super.setUp(vertx);
     clientOptions.setKeepAlive(keepAlive).setPipelining(pipelining);
   }
 
   @Test
-  public void testBackendClosesDuringUpload(TestContext ctx) {
+  public void testBackendClosesDuringUpload(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       AtomicInteger len = new AtomicInteger();
       req.handler(buff -> {
@@ -76,14 +79,11 @@ public class ProxyConnectionTest extends TestBase {
     });
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
-    Async async = ctx.async();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-            ctx.verify(v -> {
-              assertEquals(502, resp.statusCode());
-            });
-            async.complete();
+        .onComplete(ctx.succeeding(req -> {
+          req.response().onComplete(ctx.succeeding(resp -> {
+            assertEquals(502, resp.statusCode());
+            ctx.completeNow();
           }));
           req.putHeader("Content-Length", "2048");
           req.write(Buffer.buffer(new byte[1024]));
@@ -91,12 +91,13 @@ public class ProxyConnectionTest extends TestBase {
   }
 
   @Test
-  public void testClientClosesDuringUpload(TestContext ctx) {
-    Async async = ctx.async();
+  public void testClientClosesDuringUpload(VertxTestContext ctx) {
+    Checkpoint backendResponseClosed = ctx.checkpoint();
+    Checkpoint clientResponseFailed = ctx.checkpoint();
     Promise<Void> closeLatch = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response().closeHandler(v -> {
-        async.complete();
+        backendResponseClosed.flag();
       });
       req.handler(buff -> {
         closeLatch.tryComplete();
@@ -105,8 +106,8 @@ public class ProxyConnectionTest extends TestBase {
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.response().onComplete(ctx.asyncAssertFailure());
+        .onComplete(ctx.succeeding(req -> {
+          req.response().onComplete(ctx.failing(err -> clientResponseFailed.flag()));
           req.putHeader("Content-Length", "2048");
           req.write(Buffer.buffer(new byte[1024]));
           closeLatch.future().onComplete(ar -> {
@@ -116,8 +117,9 @@ public class ProxyConnectionTest extends TestBase {
   }
 
   @Test
-  public void testClientClosesAfterUpload(TestContext ctx) {
-    Async async = ctx.async();
+  public void testClientClosesAfterUpload(VertxTestContext ctx) {
+    Checkpoint backendResponseClosed = ctx.checkpoint();
+    Checkpoint clientRequestFailed = ctx.checkpoint();
     Promise<Void> closeLatch = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.endHandler(v -> {
@@ -127,23 +129,23 @@ public class ProxyConnectionTest extends TestBase {
         });
       });
       req.response().closeHandler(v -> {
-        async.complete();
+        backendResponseClosed.flag();
       });
     });
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
+        .onComplete(ctx.succeeding(req -> {
           closeLatch.future().onSuccess(v -> {
             HttpConnection conn = req.connection();
             conn.close();
           });
-          req.send(Buffer.buffer(new byte[1024])).onComplete(ctx.asyncAssertFailure());
+          req.send(Buffer.buffer(new byte[1024])).onComplete(ctx.failing(err -> clientRequestFailed.flag()));
         }));
   }
 
   @Test
-  public void testBackendCloseResponseWithOnGoingRequest(TestContext ctx) {
+  public void testBackendCloseResponseWithOnGoingRequest(VertxTestContext ctx) {
     SocketAddress backend = startNetBackend(8081, so -> {
       Buffer body = Buffer.buffer();
       so.handler(buff -> {
@@ -160,28 +162,27 @@ public class ProxyConnectionTest extends TestBase {
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
+        .onComplete(ctx.succeeding(req -> {
           req.putHeader("Content-Length", "2048");
           req.write(Buffer.buffer(new byte[1024]));
-          req.response().onComplete(ctx.asyncAssertSuccess(resp -> {
-            ctx.verify(v -> {
-              assertEquals(200, resp.statusCode());
-            });
+          req.response().onComplete(ctx.succeeding(resp -> {
+            assertEquals(200, resp.statusCode());
+            ctx.completeNow();
           }));
         }));
   }
 
   @Test
-  public void testBackendCloseResponse(TestContext ctx) {
+  public void testBackendCloseResponse(VertxTestContext ctx) {
     testBackendCloseResponse(ctx, false);
   }
 
   @Test
-  public void testBackendCloseChunkedResponse(TestContext ctx) {
+  public void testBackendCloseChunkedResponse(VertxTestContext ctx) {
     testBackendCloseResponse(ctx, true);
   }
 
-  private void testBackendCloseResponse(TestContext ctx, boolean chunked) {
+  private void testBackendCloseResponse(VertxTestContext ctx, boolean chunked) {
     CompletableFuture<Void> closeFuture = new CompletableFuture<>();
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
@@ -197,32 +198,30 @@ public class ProxyConnectionTest extends TestBase {
     });
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
-    Async async = ctx.async();
     client.request(GET, 8080, "localhost", "/")
-        .onComplete(ctx.asyncAssertSuccess(req -> {
-          req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
+        .onComplete(ctx.succeeding(req -> {
+          req.send().onComplete(ctx.succeeding(resp -> {
             resp.handler(buff -> {
               closeFuture.complete(null);
             });
             resp.exceptionHandler(err -> {
-              async.complete();
+              ctx.completeNow();
             });
           }));
     }));
   }
 
   @Test
-  public void testFrontendCloseResponse(TestContext ctx) {
+  public void testFrontendCloseResponse(VertxTestContext ctx) {
     testFrontendCloseResponse(ctx, false);
   }
 
   @Test
-  public void testFrontendCloseChunkedResponse(TestContext ctx) {
+  public void testFrontendCloseChunkedResponse(VertxTestContext ctx) {
     testFrontendCloseResponse(ctx, true);
   }
 
-  private void testFrontendCloseResponse(TestContext ctx, boolean chunked) {
-    Async async = ctx.async();
+  private void testFrontendCloseResponse(VertxTestContext ctx, boolean chunked) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
@@ -232,13 +231,13 @@ public class ProxyConnectionTest extends TestBase {
       }
       resp.write("part");
       resp.exceptionHandler(err -> {
-        async.complete();
+        ctx.completeNow();
       });
     });
     startProxy(backend);
     HttpClient client = vertx.createHttpClient();
-    client.request(GET, 8080, "localhost", "/").onComplete(ctx.asyncAssertSuccess(req -> {
-      req.send().onComplete(ctx.asyncAssertSuccess(resp -> {
+    client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
+      req.send().onComplete(ctx.succeeding(resp -> {
         resp.handler(buff -> {
           resp.request().connection().close();
         });
@@ -247,34 +246,27 @@ public class ProxyConnectionTest extends TestBase {
   }
 
   @Test
-  public void testChunkedTransferEncodingRequest(TestContext ctx) {
+  public void testChunkedTransferEncodingRequest(VertxTestContext ctx) {
     // Does not pass in non-persistent mode (times out when run in a suite)
-    Assume.assumeTrue("testChunkedTransferEncodingRequest requires keep-alive or pipelined connection mode", keepAlive);
+    Assumptions.assumeTrue(keepAlive, "testChunkedTransferEncodingRequest requires keep-alive or pipelined connection mode");
     int num = 50;
-    Async latch = ctx.async();
     SocketAddress backend = startHttpBackend(8081, req -> {
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < num; i++) {
         sb.append("chunk-").append(i);
       }
-      ctx.verify(v -> {
-        assertEquals("chunked", req.getHeader("transfer-encoding"));
-      });
+      assertEquals("chunked", req.getHeader("transfer-encoding"));
       req.handler(buff -> {
         String part = buff.toString();
         if (sb.indexOf(part) == 0) {
           sb.delete(0, part.length());
         } else {
-          ctx.verify(v -> {
-            fail();
-          });
+          fail();
         }
       });
       req.endHandler(end -> {
-        ctx.verify(v -> {
-          assertEquals("", sb.toString());
-        });
-        latch.complete();
+        assertEquals("", sb.toString());
+        ctx.completeNow();
       });
       req.response().end();
     });

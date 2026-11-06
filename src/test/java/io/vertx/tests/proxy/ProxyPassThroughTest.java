@@ -13,49 +13,38 @@ package io.vertx.tests.proxy;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.Random;
 
 import static io.vertx.core.http.HttpMethod.GET;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ProxyPassThroughTest extends TestBase {
+public class ProxyPassThroughTest extends VertxTestBase {
 
   private HttpClient client;
-
-  @Override
-  public void tearDown(TestContext context) {
-    super.tearDown(context);
-    client = null;
-  }
 
   /*
    * Cannot be restored: startProxy(ctx) and client.getNow(...) no longer exist in the current API.
   @Test
-  public void testNotfound(TestContext ctx) {
+  public void testNotfound(VertxTestContext ctx) {
     startProxy(ctx);
     client = vertx.createHttpClient();
-    Async async = ctx.async();
     client.getNow(8080, "localhost", "/", resp -> {
-      ctx.verify(v -> {
-        assertEquals(404, resp.statusCode());
-      });
-      async.complete();
+      assertEquals(404, resp.statusCode());
+      ctx.completeNow();
     });
   }
   */
 
   @Test
-  public void testGet(TestContext ctx) {
+  public void testGet(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        assertEquals("/somepath", req.uri());
-        assertEquals("localhost:8081", req.authority().toString());
-      });
+      assertEquals("/somepath", req.uri());
+      assertEquals("localhost:8081", req.authority().toString());
       req.response().end("Hello World");
     });
     startProxy(backend);
@@ -64,31 +53,26 @@ public class ProxyPassThroughTest extends TestBase {
         .compose(req -> req
             .send()
             .compose(resp -> {
-              ctx.verify(v -> {
-                assertEquals(200, resp.statusCode());
-              });
+              assertEquals(200, resp.statusCode());
               return resp.body();
             }))
-        .onComplete(ctx.asyncAssertSuccess(body -> {
-          ctx.verify(v -> {
-            assertEquals("Hello World", body.toString());
-          });
+        .onComplete(ctx.succeeding(body -> {
+          assertEquals("Hello World", body.toString());
+          ctx.completeNow();
         }));
   }
 
   @Test
-  public void testPost(TestContext ctx) {
+  public void testPost(VertxTestContext ctx) {
     byte[] body = new byte[1024];
     Random random = new Random();
     random.nextBytes(body);
-    Async async = ctx.async(2);
+    Checkpoint checkpoint = ctx.checkpoint(2);
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.bodyHandler(buff -> {
         req.response().end();
-        ctx.verify(v -> {
-          assertEquals(Buffer.buffer(body), buff);
-        });
-        async.countDown();
+        assertEquals(Buffer.buffer(body), buff);
+        checkpoint.flag();
       });
     });
     startProxy(backend);
@@ -97,20 +81,16 @@ public class ProxyPassThroughTest extends TestBase {
         .compose(req -> req
             .send(Buffer.buffer(body))
             .compose(resp -> {
-              ctx.verify(v -> {
-                assertEquals(200, resp.statusCode());
-              });
+              assertEquals(200, resp.statusCode());
               return resp.body();
             }))
-        .onComplete(ctx.asyncAssertSuccess(buff -> async.countDown()));
+        .onComplete(ctx.succeeding(buff -> checkpoint.flag()));
   }
 
   @Test
-  public void testResponse(TestContext ctx) {
+  public void testResponse(VertxTestContext ctx) {
     SocketAddress backend = startHttpBackend(8081, req -> {
-      ctx.verify(v -> {
-        assertEquals(HttpMethod.POST, req.method());
-      });
+      assertEquals(HttpMethod.POST, req.method());
       req.response()
         .addCookie(Cookie.cookie("some-cookie-name", "some-cookie-value"))
         .putHeader("some-header", "some-header-value")
@@ -120,23 +100,18 @@ public class ProxyPassThroughTest extends TestBase {
     });
     startProxy(backend);
     client = vertx.createHttpClient();
-    Async async = ctx.async();
     client.request(HttpMethod.POST, 8080, "localhost", "/path")
       .compose(req -> req.send().compose(resp -> {
-        ctx.verify(v -> {
-          assertEquals(1, resp.cookies().size());
-          assertEquals("some-cookie-name=some-cookie-value", resp.cookies().get(0));
-          assertEquals("some-header-value", resp.getHeader("some-header"));
-          assertEquals(203, resp.statusCode());
-          assertEquals("some-status-message", resp.statusMessage());
-        });
+        assertEquals(1, resp.cookies().size());
+        assertEquals("some-cookie-name=some-cookie-value", resp.cookies().get(0));
+        assertEquals("some-header-value", resp.getHeader("some-header"));
+        assertEquals(203, resp.statusCode());
+        assertEquals("some-status-message", resp.statusMessage());
         return resp.body();
       }))
-      .onComplete(ctx.asyncAssertSuccess(body -> {
-        ctx.verify(v -> {
-          assertEquals("some-data", body.toString());
-        });
-        async.complete();
+      .onComplete(ctx.succeeding(body -> {
+        assertEquals("some-data", body.toString());
+        ctx.completeNow();
       }));
   }
 }

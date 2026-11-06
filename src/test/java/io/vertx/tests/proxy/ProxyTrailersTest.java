@@ -13,30 +13,24 @@ package io.vertx.tests.proxy;
 import io.vertx.core.Future;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.*;
-import io.vertx.tests.TestBase;
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.VertxTestBase;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-public class ProxyTrailersTest extends TestBase {
+public class ProxyTrailersTest extends VertxTestBase {
 
   private HttpClient client;
 
-  @Override
-  public void tearDown(TestContext context) {
-    super.tearDown(context);
-    client = null;
-  }
-
   @Test
-  public void testTrailersForwarding(TestContext ctx) {
+  public void testTrailersForwarding(VertxTestContext ctx) {
     testTrailers(ctx, null);
   }
 
   @Test
-  public void testTrailersNotForwardedWhenBodyIsModified(TestContext ctx) {
+  public void testTrailersNotForwardedWhenBodyIsModified(VertxTestContext ctx) {
     testTrailers(ctx, new ProxyInterceptor() {
       @Override
       public Future<Void> handleProxyResponse(ProxyContext context) {
@@ -48,14 +42,14 @@ public class ProxyTrailersTest extends TestBase {
   }
 
   @Test
-  public void testTrailersNotForwardedWhenBodyIsTransformed(TestContext ctx) {
+  public void testTrailersNotForwardedWhenBodyIsTransformed(VertxTestContext ctx) {
     ProxyInterceptor interceptor = ProxyInterceptor.builder()
       .transformingResponseBody(BodyTransformers.text(String::toUpperCase, "UTF-8"))
       .build();
     testTrailers(ctx, interceptor);
   }
 
-  private void testTrailers(TestContext ctx, ProxyInterceptor interceptor) {
+  private void testTrailers(VertxTestContext ctx, ProxyInterceptor interceptor) {
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .setChunked(true)
@@ -75,23 +69,18 @@ public class ProxyTrailersTest extends TestBase {
     client = vertx.createHttpClient();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req -> req.send().compose(resp -> {
-        ctx.verify(v -> {
-          assertEquals(200, resp.statusCode());
-        });
+        assertEquals(200, resp.statusCode());
         return resp.body().map(body -> resp);
       }))
-      .onComplete(ctx.asyncAssertSuccess(resp -> {
+      .onComplete(ctx.succeeding(resp -> {
         if (interceptor == null) {
-          ctx.verify(v -> {
-            assertEquals("trailer-value", resp.trailers().get("X-Custom-Trailer"));
-            assertEquals("another-value", resp.trailers().get("X-Another-Trailer"));
-          });
+          assertEquals("trailer-value", resp.trailers().get("X-Custom-Trailer"));
+          assertEquals("another-value", resp.trailers().get("X-Another-Trailer"));
         } else {
-          ctx.verify(v -> {
-            assertNull(resp.trailers().get("X-Custom-Trailer"));
-            assertNull(resp.trailers().get("X-Another-Trailer"));
-          });
+          assertNull(resp.trailers().get("X-Custom-Trailer"));
+          assertNull(resp.trailers().get("X-Another-Trailer"));
         }
+        ctx.completeNow();
       }));
   }
 }
