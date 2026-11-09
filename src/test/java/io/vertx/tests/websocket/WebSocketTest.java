@@ -15,20 +15,23 @@ import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.OriginRequestProvider;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
 import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.junit5.Checkpoint;
-import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -328,28 +331,47 @@ public class WebSocketTest extends TestBase {
     }));
   }
 
-  // The backend connection is only closed when the proxy's pooled connection expires, which takes the default
-  // 60 s keep-alive timeout: more than the 30 s default of VertxExtension.
-  // See https://github.com/eclipse-vertx/vertx-http-proxy/issues/166
   @Test
-  @Timeout(value = 90, timeUnit = TimeUnit.SECONDS)
   public void testClientCloseBeforeOriginResolvedSendsNoUpgrade(VertxTestContext ctx) {
-    Checkpoint backendClosed = ctx.checkpoint();
-    Promise<Void> resolving = Promise.promise();
+    int maxBackendConnections = 1;
+    poolOptions.setHttp1MaxSize(maxBackendConnections);
+    Checkpoint nextRequestServed = ctx.checkpoint();
+    List<NetSocket> backendConnections = new CopyOnWriteArrayList<>();
+    Promise<Void> backendConnected = Promise.promise();
+    Promise<Void> originResolving = Promise.promise();
     SocketAddress backend = startNetBackend(8081, so -> {
-      so.handler(buff -> fail("Upgrade sent for a client that has gone"));
-      so.closeHandler(v -> backendClosed.flag());
+      backendConnections.add(so);
+      backendConnected.tryComplete();
+      so.handler(buff -> {
+        assertFalse(buff.toString().contains("Upgrade"),
+          "The upgrade must not be sent to the backend when the client has gone before the origin is resolved");
+        so.write(Buffer.buffer("HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"));
+      });
     });
     startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> {
+      if (!proxyContext.isWebSocket()) {
+        return Future.succeededFuture(backend);
+      }
       Promise<SocketAddress> origin = Promise.promise();
-      // Resolved only once the client has gone
       proxyContext.request().proxiedRequest().connection().closeHandler(v -> origin.complete(backend));
-      resolving.complete();
+      originResolving.complete();
       return origin.future();
     })));
+    httpClient = vertx.createHttpClient();
     netClient = vertx.createNetClient();
     netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
-      resolving.future().onComplete(ctx.succeeding(v -> so.close()));
+      originResolving.future().onComplete(ctx.succeeding(v -> so.close()));
+      backendConnected.future().onComplete(ctx.succeeding(v -> {
+        httpClient.request(HttpMethod.GET, 8080, "localhost", "/plain")
+          .compose(HttpClientRequest::send)
+          .onComplete(ctx.succeeding(response -> {
+            assertEquals(200, response.statusCode(),
+              "The backend connection opened for the upgrade must be released when the client has gone");
+            assertEquals(maxBackendConnections, backendConnections.size(),
+              "The backend connection opened for the upgrade must be reused by the next request, not closed");
+            nextRequestServed.flag();
+          }));
+      }));
       so.write(UPGRADE);
     }));
   }
