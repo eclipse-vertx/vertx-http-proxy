@@ -10,6 +10,7 @@
  */
 package io.vertx.tests.proxy;
 
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -22,7 +23,6 @@ import io.vertx.core.streams.WriteStream;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.tests.TestBase;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.Parameter;
@@ -252,9 +252,10 @@ public class ProxyConnectionTest extends TestBase {
 
   @Test
   public void testChunkedTransferEncodingRequest(VertxTestContext ctx) {
-    // Does not pass in non-persistent mode (times out when run in a suite)
-    Assumptions.assumeTrue(keepAlive, "testChunkedTransferEncodingRequest requires keep-alive or pipelined connection mode");
     int num = 50;
+    Checkpoint backendReceivedBody = ctx.checkpoint();
+    Checkpoint clientRequestEnded = ctx.checkpoint();
+    Checkpoint clientReceivedResponse = ctx.checkpoint();
     SocketAddress backend = startHttpBackend(8081, req -> {
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < num; i++) {
@@ -271,29 +272,57 @@ public class ProxyConnectionTest extends TestBase {
       });
       req.endHandler(end -> {
         assertEquals("", sb.toString());
-        ctx.completeNow();
+        backendReceivedBody.flag();
+        // Respond only after the request body has been consumed: in non-persistent mode the response carries
+        // `connection: close` and the server closes the connection as soon as the response is sent
+        req.response().end();
       });
+    });
+    startProxy(backend);
+    client = vertx.createHttpClient();
+    client.request(GET, 8080, "localhost", "/")
+      .onComplete(ctx.succeeding(req -> {
+          req.setChunked(true);
+        req.response().onComplete(ctx.succeeding(resp -> {
+          assertEquals(200, resp.statusCode());
+          clientReceivedResponse.flag();
+        }));
+        streamChunkedBody(req, num).onComplete(ctx.succeeding(v -> clientRequestEnded.flag()));
+      }));
+  }
+
+  @Test
+  public void testBackendRespondsBeforeRequestBodyEnd(VertxTestContext ctx) {
+    int num = 50;
+    Checkpoint clientRequestEnded = ctx.checkpoint();
+    Checkpoint clientReceivedResponse = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      // Respond without consuming the request body: the proxy stops forwarding the body when the response
+      // arrives, and in non-persistent mode the backend closes the connection as soon as it has responded
+      assertEquals("chunked", req.getHeader("transfer-encoding"));
       req.response().end();
     });
     startProxy(backend);
     client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/")
-        .onSuccess(req -> {
-          req.setChunked(true);
-          streamChunkedBody(req, num);
-        });
+      .onComplete(ctx.succeeding(req -> {
+        req.setChunked(true);
+        req.response().onComplete(ctx.succeeding(resp -> {
+          assertEquals(200, resp.statusCode());
+          resp.end().onComplete(ctx.succeeding(v -> clientReceivedResponse.flag()));
+        }));
+        // The client keeps uploading after the early response: the proxy must absorb the remaining body
+        // instead of failing the request
+        streamChunkedBody(req, num).onComplete(ctx.succeeding(v -> clientRequestEnded.flag()));
+      }));
   }
 
-  private void streamChunkedBody(WriteStream<Buffer> stream, int num) {
-    java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger(0);
-    vertx.setPeriodic(10, id -> {
-      int val = count.getAndIncrement();
-      if (val < num) {
-        stream.write(Buffer.buffer("chunk-" + val));
-      } else {
-        vertx.cancelTimer(id);
-        stream.end();
-      }
-    });
+  private Future<Void> streamChunkedBody(WriteStream<Buffer> stream, int num) {
+    Future<Void> fut = Future.succeededFuture();
+    for (int i = 0; i < num; i++) {
+      Buffer chunk = Buffer.buffer("chunk-" + i);
+      fut = fut.compose(v -> stream.write(chunk));
+    }
+    return fut.compose(v -> stream.end());
   }
 }
