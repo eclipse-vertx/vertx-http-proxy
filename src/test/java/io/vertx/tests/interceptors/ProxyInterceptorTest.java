@@ -12,6 +12,7 @@ package io.vertx.tests.interceptors;
 
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
@@ -27,7 +28,6 @@ import io.vertx.junit5.VertxTestContext;
 import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -181,10 +181,10 @@ public class ProxyInterceptorTest extends TestBase {
   @Test
   public void testRequestFilter(VertxTestContext ctx) {
     Filter filter = new Filter();
-    CompletableFuture<Integer> onResume = new CompletableFuture<>();
+    Promise<Integer> onResume = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       req.pause();
-      onResume.thenAccept(num -> {
+      onResume.future().onSuccess(num -> {
         req.bodyHandler(body -> {
           assertEquals(filter.expected, body);
           req.response().end();
@@ -231,7 +231,7 @@ public class ProxyInterceptorTest extends TestBase {
   @Test
   public void testResponseFilter(VertxTestContext ctx) {
     Filter filter = new Filter();
-    CompletableFuture<Integer> onResume = new CompletableFuture<>();
+    Promise<Integer> onResume = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response().setChunked(true);
       AtomicInteger num = new AtomicInteger();
@@ -264,7 +264,7 @@ public class ProxyInterceptorTest extends TestBase {
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.succeeding(req -> {
       req.send().onComplete(ctx.succeeding(resp -> {
         resp.pause();
-        onResume.thenAccept(num -> {
+        onResume.future().onSuccess(num -> {
           resp.resume();
         });
         resp.endHandler(v -> {
