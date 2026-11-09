@@ -22,14 +22,10 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.runner.RunWith;
+import io.vertx.junit5.VertxTest;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.io.Closeable;
 import java.util.concurrent.*;
@@ -37,9 +33,13 @@ import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 /**
+ * Base class of the proxy tests: the options, the {@link Vertx} instance and the helpers starting a proxy or a
+ * backend. The {@code Vertx} instance is created, instrumented and closed by {@code VertxExtension}, so an assertion
+ * error thrown in one of its handlers fails the test instead of being swallowed.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-@RunWith(VertxUnitRunner.class)
+@VertxTest
 public abstract class TestBase {
 
   protected ProxyOptions proxyOptions;
@@ -58,14 +58,9 @@ public abstract class TestBase {
     this.clientOptions = new HttpClientOptions();
   }
 
-  @Before
-  public void setUp() {
-    vertx = Vertx.vertx();
-  }
-
-  @After
-  public void tearDown(TestContext context) {
-    vertx.close().onComplete(context.asyncAssertSuccess());
+  @BeforeEach
+  public void setUp(Vertx vertx) {
+    this.vertx = vertx;
   }
 
   protected Closeable startProxy(SocketAddress backend) {
@@ -120,33 +115,27 @@ public abstract class TestBase {
     }
   }
 
-  protected void startHttpServer(TestContext ctx, HttpServerOptions options, Handler<HttpServerRequest> handler) {
+  protected void startHttpServer(HttpServerOptions options, Handler<HttpServerRequest> handler) {
     HttpServer proxyServer = vertx.createHttpServer(options);
     proxyServer.requestHandler(handler);
-    Async async1 = ctx.async();
-    proxyServer.listen().onComplete(ctx.asyncAssertSuccess(p -> async1.complete()));
-    async1.awaitSuccess();
+    proxyServer.listen().await();
   }
 
-  protected SocketAddress startHttpBackend(TestContext ctx, int port, Handler<HttpServerRequest> handler) {
-    return startHttpBackend(ctx, new HttpServerOptions().setPort(port).setHost("localhost"), handler);
+  protected SocketAddress startHttpBackend(int port, Handler<HttpServerRequest> handler) {
+    return startHttpBackend(new HttpServerOptions().setPort(port).setHost("localhost"), handler);
   }
 
-  protected SocketAddress startHttpBackend(TestContext ctx, HttpServerOptions options, Handler<HttpServerRequest> handler) {
+  protected SocketAddress startHttpBackend(HttpServerOptions options, Handler<HttpServerRequest> handler) {
     HttpServer backendServer = vertx.createHttpServer(options);
     backendServer.requestHandler(handler);
-    Async async = ctx.async();
-    backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
-    async.awaitSuccess();
+    backendServer.listen().await();
     return SocketAddress.inetSocketAddress(options.getPort(), "localhost");
   }
 
-  protected SocketAddress startNetBackend(TestContext ctx, int port, Handler<NetSocket> handler) {
+  protected SocketAddress startNetBackend(int port, Handler<NetSocket> handler) {
     NetServer backendServer = vertx.createNetServer(new HttpServerOptions().setPort(port).setHost("localhost"));
     backendServer.connectHandler(handler);
-    Async async = ctx.async();
-    backendServer.listen().onComplete(ctx.asyncAssertSuccess(s -> async.complete()));
-    async.awaitSuccess();
+    backendServer.listen().await();
     return SocketAddress.inetSocketAddress(port, "localhost");
   }
 

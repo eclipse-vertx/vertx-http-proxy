@@ -14,30 +14,25 @@ package io.vertx.tests.interceptors;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.ProxyTestBase;
-import org.junit.Test;
+import io.vertx.tests.TestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.Set;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class HeaderInterceptorTest extends ProxyTestBase {
+public class HeaderInterceptorTest extends TestBase {
 
   private HttpClientAgent client;
 
-  public HeaderInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
-
   @Test
-  public void testFilterRequestHeader(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.headers().get("k1"), "v1");
-      ctx.assertEquals(req.headers().get("k2"), null);
+  public void testFilterRequestHeader() {
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      assertEquals(req.headers().get("k1"), "v1");
+      assertEquals(req.headers().get("k2"), null);
       req.response().end("Hello");
     });
 
@@ -56,8 +51,8 @@ public class HeaderInterceptorTest extends ProxyTestBase {
   }
 
   @Test
-  public void testFilterResponseHeader(TestContext ctx) {
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+  public void testFilterResponseHeader() {
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response()
         .putHeader("k1", "v1")
         .putHeader("k2", "v2")
@@ -76,8 +71,8 @@ public class HeaderInterceptorTest extends ProxyTestBase {
           .end()
           .map(response.headers()))
       ).await();
-    ctx.assertEquals(headers.get("k1"), "v1");
-    ctx.assertEquals(headers.get("k2"), null);
+    assertEquals(headers.get("k1"), "v1");
+    assertEquals(headers.get("k2"), null);
   }
 
 

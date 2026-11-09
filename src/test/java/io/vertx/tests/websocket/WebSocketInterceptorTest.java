@@ -1,38 +1,36 @@
-package io.vertx.tests.interceptors;
+package io.vertx.tests.websocket;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
 import io.vertx.httpproxy.ProxyResponse;
-import io.vertx.tests.ProxyTestBase;
-import org.junit.Test;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.TestBase;
 
-public class WebSocketInterceptorTest extends ProxyTestBase {
+import java.time.Duration;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-  public WebSocketInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
+public class WebSocketInterceptorTest extends TestBase {
 
-  private SocketAddress backend(TestContext ctx, Async async) {
-    return startHttpBackend(ctx, 8081, req -> {
+  private SocketAddress backend(VertxTestContext ctx, Checkpoint async) {
+    return startHttpBackend(8081, req -> {
       if (req.uri().startsWith("/ws")) {
         Future<ServerWebSocket> fut = req.toWebSocket();
-        fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+        fut.onComplete(ctx.succeeding(ws -> {
           ws.handler(buff -> {
             ws.write(Buffer.buffer(req.uri()));
           });
           ws.closeHandler(v -> {
-            async.countDown();
+            async.flag();
           });
         }));
       } else {
-        req.response().end(req.uri()).onComplete(v -> async.countDown());
+        req.response().end(req.uri()).onComplete(v -> async.flag());
       }
     });
   }
@@ -45,8 +43,8 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
    * @param httpHit if interceptor changes the regular HTTP packet
    * @param wsHit if interceptor changes the WebSocket packet
    */
-  private void testWithInterceptor(TestContext ctx, ProxyInterceptor interceptor, boolean httpHit, boolean wsHit) {
-    Async latch = ctx.async(3);
+  private void testWithInterceptor(VertxTestContext ctx, ProxyInterceptor interceptor, boolean httpHit, boolean wsHit) {
+    Checkpoint latch = ctx.checkpoint(3);
     SocketAddress backend = backend(ctx, latch);
 
     startProxy(proxy -> {
@@ -64,40 +62,40 @@ public class WebSocketInterceptorTest extends ProxyTestBase {
       .compose(req -> req.send()
         .expecting(HttpResponseExpectation.SC_OK))
       .compose(HttpClientResponse::body).await();
-    ctx.assertEquals(body.toString().endsWith("/updated"), httpHit);
+    assertEquals(body.toString().endsWith("/updated"), httpHit);
     webSocketClient.connect(8080, "localhost", "/ws")
-      .onComplete(ctx.asyncAssertSuccess(webSocket -> {
+      .onComplete(ctx.succeeding(webSocket -> {
         webSocket.handler(buffer -> {
-          ctx.assertEquals(buffer.toString().endsWith("/updated"), wsHit);
-          latch.countDown();
+          assertEquals(buffer.toString().endsWith("/updated"), wsHit);
+          latch.flag();
           webSocket.close();
         });
         webSocket.write(Buffer.buffer("hello"));
       }));
-    latch.await(5000);
+    latch.await(Duration.ofSeconds(5));
   }
 
   @Test
-  public void testNotInterceptor(TestContext ctx) {
+  public void testNotInterceptor(VertxTestContext ctx) {
     testWithInterceptor(ctx, null, false, false);
   }
 
   @Test
-  public void testNotApplySocket(TestContext ctx) {
+  public void testNotApplySocket(VertxTestContext ctx) {
     // this interceptor only applies to regular HTTP traffic
     ProxyInterceptor interceptor = ProxyInterceptor.builder().transformingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, false);
   }
 
   @Test
-  public void testWithSocketInterceptor(TestContext ctx) {
+  public void testWithSocketInterceptor(VertxTestContext ctx) {
     // this interceptor applies to both regular HTTP traffic and WebSocket handshake
     ProxyInterceptor interceptor = ProxyInterceptor.builder().transformingPath(x -> x + "/updated").build();
     testWithInterceptor(ctx, interceptor, true, true);
   }
 
   @Test
-  public void testOnlyHitSocket(TestContext ctx) {
+  public void testOnlyHitSocket(VertxTestContext ctx) {
     // this interceptor only applies to WebSocket handshake
     ProxyInterceptor interceptor = new ProxyInterceptor() {
       @Override
