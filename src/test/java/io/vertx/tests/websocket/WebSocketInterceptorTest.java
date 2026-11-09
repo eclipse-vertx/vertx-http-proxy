@@ -10,12 +10,16 @@ import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.tests.TestBase;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class WebSocketInterceptorTest extends TestBase {
+
+  private HttpClientAgent httpClient;
+  private WebSocketClient webSocketClient;
 
   private SocketAddress backend(VertxTestContext ctx, Checkpoint async) {
     return startHttpBackend(8081, req -> {
@@ -54,8 +58,8 @@ public class WebSocketInterceptorTest extends TestBase {
       };
     });
 
-    HttpClientAgent httpClient = vertx.createHttpClient();
-    WebSocketClient webSocketClient = vertx.createWebSocketClient();
+    httpClient = vertx.createHttpClient();
+    webSocketClient = vertx.createWebSocketClient();
 
     Buffer body = httpClient
       .request(HttpMethod.GET, 8080, "localhost", "/http")

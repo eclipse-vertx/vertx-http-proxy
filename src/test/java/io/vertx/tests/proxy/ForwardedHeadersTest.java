@@ -23,13 +23,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.function.Consumer;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ForwardedHeadersTest extends TestBase {
+
+  private HttpClient client;
 
   public ForwardedHeadersTest() {
     super(new ProxyOptions());
@@ -302,7 +301,7 @@ public class ForwardedHeadersTest extends TestBase {
     // Determine client settings based on server options
     boolean isHttps = serverOpts != null && serverOpts.isSsl();
     int port = isHttps ? 8443 : 8080;
-    HttpClient client = isHttps
+    client = isHttps
       ? vertx.createHttpClient(new HttpClientOptions().setSsl(true).setTrustAll(true).setVerifyHost(false))
       : vertx.createHttpClient();
 

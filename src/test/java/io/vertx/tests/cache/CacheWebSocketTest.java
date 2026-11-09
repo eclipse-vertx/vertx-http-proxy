@@ -6,11 +6,14 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.time.Duration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class CacheWebSocketTest extends CacheTestBase {
+
+  private WebSocketClient client;
 
   @Test
   public void testWsWithCache(VertxTestContext ctx) {
@@ -21,7 +24,7 @@ public class CacheWebSocketTest extends CacheTestBase {
       });
     });
     startProxy(backend);
-    WebSocketClient client = vertx.createWebSocketClient();
+    client = vertx.createWebSocketClient();
     client.connect(8080, "localhost", "/").onComplete(ctx.succeeding(ws1 -> {
       ws1.handler(buffer -> {
         assertEquals(buffer.toString(), "v1");

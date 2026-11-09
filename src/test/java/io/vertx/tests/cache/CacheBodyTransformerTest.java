@@ -20,6 +20,7 @@ import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -27,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * the cache stores the transformed body, and on a cache hit the request does not reach later interceptors.
  */
 public class CacheBodyTransformerTest extends CacheTestBase {
+
+  private HttpClient client;
 
   @Test
   public void testCachedResponseHasTransformedBody(VertxTestContext ctx) {
@@ -45,7 +48,7 @@ public class CacheBodyTransformerTest extends CacheTestBase {
           transformations.incrementAndGet();
           return text.toUpperCase();
         }, "UTF-8")).build()));
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.GET, 8080, "localhost", "/")
       .compose(req1 -> req1.send().compose(resp1 -> {
         assertEquals(200, resp1.statusCode());
