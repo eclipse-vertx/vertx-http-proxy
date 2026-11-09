@@ -20,8 +20,6 @@ import io.vertx.junit5.VertxTestContext;
 import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.CompletableFuture;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -137,7 +135,7 @@ public class ProxyRequestTest extends TestBase {
   }
 
   private void testCloseBackendResponse(VertxTestContext ctx, boolean chunked) {
-    CompletableFuture<Void> cont = new CompletableFuture<>();
+    Promise<Void> cont = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
@@ -146,7 +144,7 @@ public class ProxyRequestTest extends TestBase {
         resp.putHeader("content-length", "10000");
       }
       resp.write("part");
-      cont.thenAccept(v -> {
+      cont.future().onSuccess(v -> {
         req.connection().close();
       });
     });
@@ -162,7 +160,7 @@ public class ProxyRequestTest extends TestBase {
     httpClient.request(HttpMethod.GET, 8080, "localhost", "/somepath").onComplete(ctx.succeeding(req ->
       req.send().onComplete(ctx.succeeding(resp -> {
         resp.handler(buff -> {
-          cont.complete(null);
+          cont.tryComplete();
         });
       }))
     ));
@@ -367,7 +365,7 @@ public class ProxyRequestTest extends TestBase {
   @Test
   public void testReleaseProxyResponse(VertxTestContext ctx) {
     Checkpoint drainedLatch = ctx.checkpoint();
-    CompletableFuture<Void> full = new CompletableFuture<>();
+    Promise<Void> full = Promise.promise();
     Buffer chunk = Buffer.buffer(new byte[1024]);
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
@@ -380,7 +378,7 @@ public class ProxyRequestTest extends TestBase {
           resp.drainHandler(v -> {
             drainedLatch.flag();
           });
-          full.complete(null);
+          full.complete();
         } else {
           resp.write(chunk);
         }
@@ -391,7 +389,7 @@ public class ProxyRequestTest extends TestBase {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
       backendClient.request(new RequestOptions().setServer(backend)).onComplete(ctx.succeeding(clientReq -> {
         proxyReq.send(clientReq).onComplete(ctx.succeeding(proxyResp -> {
-          full.whenComplete((v, err) -> {
+          full.future().onSuccess(v -> {
             proxyResp.release();
             req.response().end("another-response");
           });
@@ -411,7 +409,7 @@ public class ProxyRequestTest extends TestBase {
 
   @Test
   public void testReleaseProxyRequest(VertxTestContext ctx) {
-    CompletableFuture<Void> full = new CompletableFuture<>();
+    Promise<Void> full = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       assertEquals(null, req.getHeader("header"));
       req.body().onComplete(ctx.succeeding(body -> {
@@ -421,7 +419,7 @@ public class ProxyRequestTest extends TestBase {
     backendClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
     startHttpServer(serverOptions, req -> {
       ProxyRequest proxyReq = ProxyRequest.reverseProxy(req);
-      full.whenComplete((v, err) -> {
+      full.future().onSuccess(v -> {
         proxyReq.release();
         proxyReq.setBody(Body.body(Buffer.buffer("another-request")));
         backendClient.request(new RequestOptions().setServer(backend))
@@ -443,7 +441,7 @@ public class ProxyRequestTest extends TestBase {
           if (req.writeQueueFull()) {
             vertx.cancelTimer(id);
             req.end().onComplete(succeedingCheckpoint(ctx));
-            full.complete(null);
+            full.complete();
           } else {
             req.write(chunk);
           }
