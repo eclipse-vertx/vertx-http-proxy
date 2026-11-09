@@ -13,6 +13,7 @@ package io.vertx.tests.interceptors;
 
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
@@ -25,10 +26,13 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class HeadInterceptorTest extends TestBase {
+
+  private HttpClient client;
 
   @Test
   public void testCombined(VertxTestContext ctx) {
@@ -56,7 +60,8 @@ public class HeadInterceptorTest extends TestBase {
         })
         .build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello?k2=v2")
+    client = vertx.createHttpClient();
+    client.request(HttpMethod.GET, 8080, "localhost", "/hello?k2=v2")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.succeeding(resp -> latch.flag()));
   }

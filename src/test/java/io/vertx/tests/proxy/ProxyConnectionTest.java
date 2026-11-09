@@ -13,7 +13,10 @@ package io.vertx.tests.proxy;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.*;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpConnection;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.junit5.Checkpoint;
@@ -60,6 +63,8 @@ public class ProxyConnectionTest extends TestBase {
   @Parameter(2)
   String label;
 
+  private HttpClient client;
+
   @BeforeEach
   @Override
   public void setUp(Vertx vertx) {
@@ -78,7 +83,7 @@ public class ProxyConnectionTest extends TestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.succeeding(req -> {
           req.response().onComplete(ctx.succeeding(resp -> {
@@ -104,7 +109,7 @@ public class ProxyConnectionTest extends TestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.succeeding(req -> {
           req.response().onComplete(ctx.failing(err -> clientResponseFailed.flag()));
@@ -133,7 +138,7 @@ public class ProxyConnectionTest extends TestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.succeeding(req -> {
           closeLatch.future().onSuccess(v -> {
@@ -160,7 +165,7 @@ public class ProxyConnectionTest extends TestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(HttpMethod.POST, 8080, "localhost", "/")
         .onComplete(ctx.succeeding(req -> {
           req.putHeader("Content-Length", "2048");
@@ -197,7 +202,7 @@ public class ProxyConnectionTest extends TestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/")
         .onComplete(ctx.succeeding(req -> {
           req.send().onComplete(ctx.succeeding(resp -> {
@@ -235,7 +240,7 @@ public class ProxyConnectionTest extends TestBase {
       });
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/").onComplete(ctx.succeeding(req -> {
       req.send().onComplete(ctx.succeeding(resp -> {
         resp.handler(buff -> {
@@ -271,7 +276,7 @@ public class ProxyConnectionTest extends TestBase {
       req.response().end();
     });
     startProxy(backend);
-    HttpClient client = vertx.createHttpClient();
+    client = vertx.createHttpClient();
     client.request(GET, 8080, "localhost", "/")
         .onSuccess(req -> {
           req.setChunked(true);

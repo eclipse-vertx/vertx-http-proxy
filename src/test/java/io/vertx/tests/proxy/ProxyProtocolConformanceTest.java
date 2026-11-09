@@ -28,13 +28,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static io.vertx.core.http.HttpMethod.GET;
 import static io.vertx.core.http.HttpMethod.HEAD;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ProxyProtocolConformanceTest extends TestBase {
 
   private HttpClient client;
+  private NetClient netClient;
 
   @Test
   public void testBackendRepliesIncorrectHttpVersion(VertxTestContext ctx) {
@@ -106,8 +105,8 @@ public class ProxyProtocolConformanceTest extends TestBase {
       fail();
     });
     startProxy(backend);
-    NetClient client = vertx.createNetClient();
-    client.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+    netClient = vertx.createNetClient();
+    netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
       Buffer resp = Buffer.buffer();
       so.handler(resp::appendBuffer);
       so.closeHandler(closed -> {
@@ -214,9 +213,9 @@ public class ProxyProtocolConformanceTest extends TestBase {
     startProxy(backend);
     for (String request : requests) {
       Checkpoint latch = ctx.checkpoint();
-      NetClient client = vertx.createNetClient();
+      netClient = vertx.createNetClient();
       try {
-        client.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+        netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
           Buffer resp = Buffer.buffer();
           so.handler(buff -> {
             resp.appendBuffer(buff);
@@ -228,7 +227,7 @@ public class ProxyProtocolConformanceTest extends TestBase {
         }));
         latch.await(Duration.ofSeconds(10));
       } finally {
-        client.close();
+        netClient.close();
       }
     }
   }
