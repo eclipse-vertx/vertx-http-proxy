@@ -14,11 +14,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.*;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
@@ -45,6 +41,7 @@ public abstract class TestBase {
   protected ProxyOptions proxyOptions;
   protected HttpServerOptions serverOptions;
   protected HttpClientOptions clientOptions;
+  protected PoolOptions poolOptions;
 
   protected Vertx vertx;
 
@@ -56,6 +53,7 @@ public abstract class TestBase {
     this.proxyOptions = proxyOptions;
     this.serverOptions = new HttpServerOptions().setPort(8080).setHost("localhost");
     this.clientOptions = new HttpClientOptions();
+    this.poolOptions = new PoolOptions();
   }
 
   @BeforeEach
@@ -79,7 +77,7 @@ public abstract class TestBase {
       HttpProxy proxy;
       @Override
       public void start(Promise<Void> startFuture) {
-        proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions));
+        proxyClient = vertx.createHttpClient(new HttpClientOptions(clientOptions), new PoolOptions(poolOptions));
         proxyServer = vertx.createHttpServer(proxyOptionsConfig.apply(new HttpServerOptions(serverOptions)));
         proxy = HttpProxy.reverseProxy(proxyOptions, proxyClient);
         config.accept(proxy);
