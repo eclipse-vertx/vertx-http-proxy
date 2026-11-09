@@ -14,8 +14,12 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.net.NetClient;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.httpproxy.*;
+import io.vertx.httpproxy.OriginRequestProvider;
+import io.vertx.httpproxy.ProxyContext;
+import io.vertx.httpproxy.ProxyInterceptor;
+import io.vertx.httpproxy.ProxyResponse;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxTestContext;
@@ -23,10 +27,8 @@ import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -35,6 +37,7 @@ public class WebSocketTest extends TestBase {
 
   private WebSocketClient wsClient;
   private HttpClient httpClient;
+  private NetClient netClient;
 
   @Test
   public void testWebSocketV00(VertxTestContext ctx) {
@@ -280,7 +283,8 @@ public class WebSocketTest extends TestBase {
       so.closeHandler(v -> backendClosed.flag());
     });
     startProxy(backend);
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+    netClient = vertx.createNetClient();
+    netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
       upgradeReceived.future().onComplete(ctx.succeeding(v -> so.close()));
       so.write(UPGRADE);
     }));
@@ -296,7 +300,8 @@ public class WebSocketTest extends TestBase {
       so.closeHandler(v -> backendClosed.flag());
     });
     startProxy(backend);
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+    netClient = vertx.createNetClient();
+    netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
       so.handler(buff -> {
         // Upgrade response received by the client side, now close abruptly
         so.close();
@@ -316,7 +321,8 @@ public class WebSocketTest extends TestBase {
       });
     });
     startProxy(backend);
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+    netClient = vertx.createNetClient();
+    netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
       so.closeHandler(v -> clientClosed.flag());
       so.write(UPGRADE);
     }));
@@ -341,7 +347,8 @@ public class WebSocketTest extends TestBase {
       resolving.complete();
       return origin.future();
     })));
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+    netClient = vertx.createNetClient();
+    netClient.connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
       resolving.future().onComplete(ctx.succeeding(v -> so.close()));
       so.write(UPGRADE);
     }));

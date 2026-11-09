@@ -11,6 +11,7 @@
 
 package io.vertx.tests.interceptors;
 
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
@@ -19,12 +20,15 @@ import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.tests.TestBase;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
 public class PathInterceptorTest extends TestBase {
+
+  private HttpClient client;
 
   @Test
   public void addPrefixTest(VertxTestContext ctx) {
@@ -37,7 +41,8 @@ public class PathInterceptorTest extends TestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().addingPathPrefix("/prefix").build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
+    client = vertx.createHttpClient();
+    client.request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.succeeding(resp -> latch.flag()));
   }
@@ -53,7 +58,8 @@ public class PathInterceptorTest extends TestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().removingPathPrefix("/prefix").build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/prefix/hello")
+    client = vertx.createHttpClient();
+    client.request(HttpMethod.GET, 8080, "localhost", "/prefix/hello")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.succeeding(resp -> latch.flag()));
   }
@@ -69,7 +75,8 @@ public class PathInterceptorTest extends TestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().removingPathPrefix("/prefix").build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
+    client = vertx.createHttpClient();
+    client.request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.succeeding(resp -> latch.flag()));
   }

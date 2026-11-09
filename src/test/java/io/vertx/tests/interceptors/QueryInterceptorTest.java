@@ -12,6 +12,7 @@
 package io.vertx.tests.interceptors;
 
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
 public class QueryInterceptorTest extends TestBase {
+
+  private HttpClient client;
 
   @Test
   public void addParamTest(VertxTestContext ctx) {
@@ -43,7 +47,8 @@ public class QueryInterceptorTest extends TestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().settingQueryParam("k1", "v1").build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello/world?k2=v2")
+    client = vertx.createHttpClient();
+    client.request(HttpMethod.GET, 8080, "localhost", "/hello/world?k2=v2")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.succeedingThenComplete());
   }
@@ -61,7 +66,8 @@ public class QueryInterceptorTest extends TestBase {
     startProxy(proxy -> proxy.origin(backend)
       .addInterceptor(ProxyInterceptor.builder().removingQueryParam("k2").build()));
 
-    vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello/world?k1=v1&k2=v2")
+    client = vertx.createHttpClient();
+    client.request(HttpMethod.GET, 8080, "localhost", "/hello/world?k1=v1&k2=v2")
       .compose(HttpClientRequest::send)
       .onComplete(ctx.succeedingThenComplete());
   }
