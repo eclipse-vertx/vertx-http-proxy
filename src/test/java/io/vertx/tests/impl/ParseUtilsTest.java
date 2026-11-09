@@ -1,12 +1,12 @@
 package io.vertx.tests.impl;
 
 import io.vertx.httpproxy.impl.ParseUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ParseUtilsTest {
 

@@ -8,68 +8,62 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package io.vertx.tests;
+package io.vertx.tests.websocket;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.httpproxy.*;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.TestBase;
+import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.TimeUnit;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-@RunWith(VertxUnitRunner.class)
-public class WebSocketTest extends ProxyTestBase {
+public class WebSocketTest extends TestBase {
 
   private WebSocketClient wsClient;
   private HttpClient httpClient;
 
-  @Override
-  public void tearDown(TestContext context) {
-    super.tearDown(context);
-    wsClient = null;
-    httpClient = null;
-  }
-
-  public WebSocketTest() {
-    super(new ProxyOptions());
-  }
-
   @Test
-  public void testWebSocketV00(TestContext ctx) {
+  public void testWebSocketV00(VertxTestContext ctx) {
     testWebSocket(ctx, WebSocketVersion.V00);
   }
 
   @Test
-  public void testWebSocketV07(TestContext ctx) {
+  public void testWebSocketV07(VertxTestContext ctx) {
     testWebSocket(ctx, WebSocketVersion.V07);
   }
 
   @Test
-  public void testWebSocketV08(TestContext ctx) {
+  public void testWebSocketV08(VertxTestContext ctx) {
     testWebSocket(ctx, WebSocketVersion.V08);
   }
 
   @Test
-  public void testWebSocketV13(TestContext ctx) {
+  public void testWebSocketV13(VertxTestContext ctx) {
     testWebSocket(ctx, WebSocketVersion.V13);
   }
 
-  private void testWebSocket(TestContext ctx, WebSocketVersion version) {
-    Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+  private void testWebSocket(VertxTestContext ctx, WebSocketVersion version) {
+    Checkpoint async = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
-      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+      fut.onComplete(ctx.succeeding(ws -> {
         ws.handler(buff -> ws.write(buff));
         ws.closeHandler(v -> {
-          async.complete();
+          async.flag();
         });
       }));
     });
@@ -80,7 +74,7 @@ public class WebSocketTest extends ProxyTestBase {
       .setHost("localhost")
       .setURI("/ws")
       .setVersion(version);
-    wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
+    wsClient.connect(options).onComplete(ctx.succeeding(ws -> {
       ws.write(Buffer.buffer("ping"));
       ws.handler(buff -> {
         ws.close();
@@ -89,9 +83,9 @@ public class WebSocketTest extends ProxyTestBase {
   }
 
   @Test
-  public void testWebSocketReject(TestContext ctx) {
-    Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+  public void testWebSocketReject(VertxTestContext ctx) {
+    Checkpoint async = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
       req.response().setStatusCode(400).end();
     });
     startProxy(backend);
@@ -100,16 +94,16 @@ public class WebSocketTest extends ProxyTestBase {
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
-      ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
-      async.complete();
+    wsClient.connect(options).onComplete(ctx.failing(err -> {
+      assertTrue(err.getClass() == UpgradeRejectedException.class);
+      async.flag();
     }));
   }
 
   @Test
-  public void testInboundClose(TestContext ctx) {
-    Async async = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+  public void testInboundClose(VertxTestContext ctx) {
+    Checkpoint async = ctx.checkpoint();
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> {
         so.close();
       });
@@ -120,20 +114,20 @@ public class WebSocketTest extends ProxyTestBase {
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    wsClient.connect(options).onComplete(ctx.asyncAssertFailure(err -> {
-      ctx.assertTrue(err.getClass() == UpgradeRejectedException.class);
-      async.complete();
+    wsClient.connect(options).onComplete(ctx.failing(err -> {
+      assertTrue(err.getClass() == UpgradeRejectedException.class);
+      async.flag();
     }));
   }
 
   @Test
-  public void testWebSocketFirefox(TestContext ctx) {
-    Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+  public void testWebSocketFirefox(VertxTestContext ctx) {
+    Checkpoint async = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
-      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+      fut.onComplete(ctx.succeeding(ws -> {
         ws.closeHandler(v -> {
-          async.complete();
+          async.flag();
         });
       }));
     });
@@ -148,23 +142,23 @@ public class WebSocketTest extends ProxyTestBase {
       .putHeader("Upgrade", "Websocket")
       .putHeader("Sec-WebSocket-Version", "13")
       .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
-    httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
-      clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(101, response.statusCode());
+    httpClient.request(options).onComplete(ctx.succeeding(clientRequest -> {
+      clientRequest.connect().onComplete(ctx.succeeding(response -> {
+        assertEquals(101, response.statusCode());
         response.netSocket().close();
       }));
     }));
   }
 
   @Test
-  public void testWebSocketHostHeader(TestContext ctx) {
-    Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals("localhost:8081", req.headers().get("Host"));
+  public void testWebSocketHostHeader(VertxTestContext ctx) {
+    Checkpoint async = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      assertEquals("localhost:8081", req.headers().get("Host"));
       Future<ServerWebSocket> fut = req.toWebSocket();
-      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+      fut.onComplete(ctx.succeeding(ws -> {
         ws.closeHandler(v -> {
-          async.complete();
+          async.flag();
         });
       }));
     });
@@ -179,23 +173,23 @@ public class WebSocketTest extends ProxyTestBase {
       .putHeader("Upgrade", "Websocket")
       .putHeader("Sec-WebSocket-Version", "13")
       .putHeader("Sec-WebSocket-Key", "xy6UoM3l3TcREmAeAhZuYQ==");
-    httpClient.request(options).onComplete(ctx.asyncAssertSuccess(clientRequest -> {
-      clientRequest.connect().onComplete(ctx.asyncAssertSuccess(response -> {
-        ctx.assertEquals(101, response.statusCode());
+    httpClient.request(options).onComplete(ctx.succeeding(clientRequest -> {
+      clientRequest.connect().onComplete(ctx.succeeding(response -> {
+        assertEquals(101, response.statusCode());
         response.netSocket().close();
       }));
     }));
   }
 
   @Test
-  public void testVariableFromInterceptor(TestContext ctx) {
-    Async async = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
+  public void testVariableFromInterceptor(VertxTestContext ctx) {
+    Checkpoint async = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
       Future<ServerWebSocket> fut = req.toWebSocket();
-      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+      fut.onComplete(ctx.succeeding(ws -> {
         ws.handler(buff -> ws.write(buff));
         ws.closeHandler(v -> {
-          async.complete();
+          async.flag();
         });
       }));
     });
@@ -207,7 +201,7 @@ public class WebSocketTest extends ProxyTestBase {
       }
     };
     OriginRequestProvider provider = (proxyContext) -> {
-      ctx.assertEquals("bar", proxyContext.get("foo", String.class));
+      assertEquals("bar", proxyContext.get("foo", String.class));
       return proxyContext.client().request(new RequestOptions().setServer(backend));
     };
     startProxy(proxy -> proxy.origin(provider).addInterceptor(interceptor, true));
@@ -216,7 +210,7 @@ public class WebSocketTest extends ProxyTestBase {
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
+    wsClient.connect(options).onComplete(ctx.succeeding(ws -> {
       ws.write(Buffer.buffer("ping"));
       ws.handler(buff -> {
         ws.close();
@@ -225,18 +219,18 @@ public class WebSocketTest extends ProxyTestBase {
   }
 
   @Test
-  public void testWebSocketExtensionsNegotiatedBetweenClientAndBackend(TestContext ctx) {
-    Async async = ctx.async();
+  public void testWebSocketExtensionsNegotiatedBetweenClientAndBackend(VertxTestContext ctx) {
+    Checkpoint async = ctx.checkpoint();
     HttpServerOptions backendOptions = new HttpServerOptions().setPort(8081).setHost("localhost")
       .setPerFrameWebSocketCompressionSupported(false) // Disable extension in the backend
       .setPerMessageWebSocketCompressionSupported(false); // Disable extension in the backend
-    SocketAddress backend = startHttpBackend(ctx, backendOptions, req -> {
-      ctx.assertTrue(req.headers().contains("sec-websocket-extensions"));
+    SocketAddress backend = startHttpBackend(backendOptions, req -> {
+      assertTrue(req.headers().contains("sec-websocket-extensions"));
       Future<ServerWebSocket> fut = req.toWebSocket();
-      fut.onComplete(ctx.asyncAssertSuccess(ws -> {
+      fut.onComplete(ctx.succeeding(ws -> {
         ws.handler(buff -> ws.writeTextMessage(buff.toString()));
         ws.closeHandler(v -> {
-          async.complete();
+          async.flag();
         });
       }));
     });
@@ -252,10 +246,10 @@ public class WebSocketTest extends ProxyTestBase {
       .setPort(8080)
       .setHost("localhost")
       .setURI("/ws");
-    wsClient.connect(options).onComplete(ctx.asyncAssertSuccess(ws -> {
-      ctx.assertFalse(ws.headers().contains("sec-websocket-extensions"), "Expected extensions to be declined");
+    wsClient.connect(options).onComplete(ctx.succeeding(ws -> {
+      assertFalse(ws.headers().contains("sec-websocket-extensions"), "Expected extensions to be declined");
       ws.textMessageHandler(msg -> {
-        ctx.assertEquals("hello", msg);
+        assertEquals("hello", msg);
         ws.close();
       });
       ws.writeTextMessage("hello");
@@ -277,32 +271,32 @@ public class WebSocketTest extends ProxyTestBase {
     "\r\n");
 
   @Test
-  public void testClientCloseDuringUpgradeClosesBackendConnection(TestContext ctx) {
-    Async backendClosed = ctx.async();
+  public void testClientCloseDuringUpgradeClosesBackendConnection(VertxTestContext ctx) {
+    Checkpoint backendClosed = ctx.checkpoint();
     Promise<Void> upgradeReceived = Promise.promise();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+    SocketAddress backend = startNetBackend(8081, so -> {
       // Never answers the upgrade
       so.handler(buff -> upgradeReceived.tryComplete());
-      so.closeHandler(v -> backendClosed.complete());
+      so.closeHandler(v -> backendClosed.flag());
     });
     startProxy(backend);
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
-      upgradeReceived.future().onComplete(ctx.asyncAssertSuccess(v -> so.close()));
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+      upgradeReceived.future().onComplete(ctx.succeeding(v -> so.close()));
       so.write(UPGRADE);
     }));
   }
 
   @Test
-  public void testClientCloseAfterUpgradeClosesBackendConnection(TestContext ctx) {
-    Async backendClosed = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+  public void testClientCloseAfterUpgradeClosesBackendConnection(VertxTestContext ctx) {
+    Checkpoint backendClosed = ctx.checkpoint();
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> {
         so.write(UPGRADE_RESPONSE);
       });
-      so.closeHandler(v -> backendClosed.complete());
+      so.closeHandler(v -> backendClosed.flag());
     });
     startProxy(backend);
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
       so.handler(buff -> {
         // Upgrade response received by the client side, now close abruptly
         so.close();
@@ -312,9 +306,9 @@ public class WebSocketTest extends ProxyTestBase {
   }
 
   @Test
-  public void testBackendCloseAfterUpgradeClosesClientConnection(TestContext ctx) {
-    Async clientClosed = ctx.async();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
+  public void testBackendCloseAfterUpgradeClosesClientConnection(VertxTestContext ctx) {
+    Checkpoint clientClosed = ctx.checkpoint();
+    SocketAddress backend = startNetBackend(8081, so -> {
       so.handler(buff -> {
         so.write(UPGRADE_RESPONSE);
         // Close the backend side after upgrade completes
@@ -322,19 +316,23 @@ public class WebSocketTest extends ProxyTestBase {
       });
     });
     startProxy(backend);
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
-      so.closeHandler(v -> clientClosed.complete());
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+      so.closeHandler(v -> clientClosed.flag());
       so.write(UPGRADE);
     }));
   }
 
+  // The backend connection is only closed when the proxy's pooled connection expires, which takes the default
+  // 60 s keep-alive timeout: more than the 30 s default of VertxExtension.
+  // See https://github.com/eclipse-vertx/vertx-http-proxy/issues/166
   @Test
-  public void testClientCloseBeforeOriginResolvedSendsNoUpgrade(TestContext ctx) {
-    Async backendClosed = ctx.async();
+  @Timeout(value = 90, timeUnit = TimeUnit.SECONDS)
+  public void testClientCloseBeforeOriginResolvedSendsNoUpgrade(VertxTestContext ctx) {
+    Checkpoint backendClosed = ctx.checkpoint();
     Promise<Void> resolving = Promise.promise();
-    SocketAddress backend = startNetBackend(ctx, 8081, so -> {
-      so.handler(buff -> ctx.fail("Upgrade sent for a client that has gone"));
-      so.closeHandler(v -> backendClosed.complete());
+    SocketAddress backend = startNetBackend(8081, so -> {
+      so.handler(buff -> fail("Upgrade sent for a client that has gone"));
+      so.closeHandler(v -> backendClosed.flag());
     });
     startProxy(proxy -> proxy.origin(OriginRequestProvider.selector(proxyContext -> {
       Promise<SocketAddress> origin = Promise.promise();
@@ -343,8 +341,8 @@ public class WebSocketTest extends ProxyTestBase {
       resolving.complete();
       return origin.future();
     })));
-    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.asyncAssertSuccess(so -> {
-      resolving.future().onComplete(ctx.asyncAssertSuccess(v -> so.close()));
+    vertx.createNetClient().connect(8080, "localhost").onComplete(ctx.succeeding(so -> {
+      resolving.future().onComplete(ctx.succeeding(v -> so.close()));
       so.write(UPGRADE);
     }));
   }

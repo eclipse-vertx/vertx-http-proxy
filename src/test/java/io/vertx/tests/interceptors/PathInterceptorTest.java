@@ -14,27 +14,23 @@ package io.vertx.tests.interceptors;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.ProxyTestBase;
-import org.junit.Test;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.TestBase;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author <a href="mailto:wangzengyi1935@163.com">Zengyi Wang</a>
  */
-public class PathInterceptorTest extends ProxyTestBase {
-
-  public PathInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
+public class PathInterceptorTest extends TestBase {
 
   @Test
-  public void addPrefixTest(TestContext ctx) {
-    Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.uri(), "/prefix/hello");
+  public void addPrefixTest(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      assertEquals(req.uri(), "/prefix/hello");
       req.response().end("Hello");
     });
 
@@ -43,14 +39,14 @@ public class PathInterceptorTest extends ProxyTestBase {
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+      .onComplete(ctx.succeeding(resp -> latch.flag()));
   }
 
   @Test
-  public void removePrefixTest(TestContext ctx) {
-    Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.uri(), "/hello");
+  public void removePrefixTest(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      assertEquals(req.uri(), "/hello");
       req.response().end("Hello");
     });
 
@@ -59,14 +55,14 @@ public class PathInterceptorTest extends ProxyTestBase {
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/prefix/hello")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+      .onComplete(ctx.succeeding(resp -> latch.flag()));
   }
 
   @Test
-  public void absentPrefixTest(TestContext ctx) {
-    Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.uri(), "/hello");
+  public void absentPrefixTest(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      assertEquals(req.uri(), "/hello");
       req.response().end("Hello");
     });
 
@@ -75,6 +71,6 @@ public class PathInterceptorTest extends ProxyTestBase {
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+      .onComplete(ctx.succeeding(resp -> latch.flag()));
   }
 }

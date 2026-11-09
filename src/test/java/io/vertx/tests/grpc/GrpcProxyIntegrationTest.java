@@ -22,10 +22,10 @@ import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.httpproxy.HttpProxy;
 import io.vertx.httpproxy.ProxyOptions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.InternetProtocol;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
@@ -34,8 +34,8 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import java.time.Duration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 public class GrpcProxyIntegrationTest {
 
@@ -48,17 +48,17 @@ public class GrpcProxyIntegrationTest {
   private ServerContainer<?> grpcServerContainer;
   private GenericContainer<?> grpcClientContainer;
 
-  @BeforeClass
+  @BeforeAll
   public static void beforeClass() throws Exception {
-    assumeFalse("Cannot run Linux containers on Windows", PlatformDependent.isWindows());
+    assumeFalse(PlatformDependent.isWindows(), "Cannot run Linux containers on Windows");
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     vertx = Vertx.vertx();
   }
 
-  @After
+  @AfterEach
   public void tearDownContainers() {
     if (grpcClientContainer != null) {
       grpcClientContainer.stop();
@@ -82,7 +82,7 @@ public class GrpcProxyIntegrationTest {
     startGrpcServer();
     startProxy();
     int exitCode = runGrpcClient();
-    assertEquals("gRPC client tests should pass", 0, exitCode);
+    assertEquals(0, exitCode, "gRPC client tests should pass");
   }
 
   private void startProxy() {

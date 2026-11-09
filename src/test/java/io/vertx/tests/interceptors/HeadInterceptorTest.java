@@ -16,35 +16,32 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.httpproxy.ProxyInterceptor;
-import io.vertx.httpproxy.ProxyOptions;
-import io.vertx.tests.ProxyTestBase;
-import org.junit.Test;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.tests.TestBase;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-public class HeadInterceptorTest extends ProxyTestBase {
-
-  public HeadInterceptorTest(ProxyOptions options) {
-    super(options);
-  }
+public class HeadInterceptorTest extends TestBase {
 
   @Test
-  public void testCombined(TestContext ctx) {
-    Async latch = ctx.async();
-    SocketAddress backend = startHttpBackend(ctx, 8081, req -> {
-      ctx.assertEquals(req.path(), "/prefix/hello");
+  public void testCombined(VertxTestContext ctx) {
+    Checkpoint latch = ctx.checkpoint();
+    SocketAddress backend = startHttpBackend(8081, req -> {
+      assertEquals(req.path(), "/prefix/hello");
       QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
       Map<String, List<String>> parameters = decoder.parameters();
-      ctx.assertEquals(parameters.get("k1").get(0), "v1");
-      ctx.assertEquals(parameters.get("k2").get(0), "v2");
+      assertEquals(parameters.get("k1").get(0), "v1");
+      assertEquals(parameters.get("k2").get(0), "v2");
       MultiMap headers = req.headers();
-      ctx.assertEquals(headers.get("k1"), "v2");
-      ctx.assertEquals(headers.get("k2"), null);
+      assertEquals(headers.get("k1"), "v2");
+      assertEquals(headers.get("k2"), null);
       req.response().end("Hello");
     });
 
@@ -54,13 +51,13 @@ public class HeadInterceptorTest extends ProxyTestBase {
         .addingPathPrefix("/prefix")
         .filteringRequestHeaders(Set.of("k2"))
         .transformingRequestHeaders(headers -> {
-          ctx.assertNull(headers.get("k2"));
+          assertNull(headers.get("k2"));
           headers.set("k1", "v2");
         })
         .build()));
 
     vertx.createHttpClient().request(HttpMethod.GET, 8080, "localhost", "/hello?k2=v2")
       .compose(HttpClientRequest::send)
-      .onComplete(ctx.asyncAssertSuccess(resp -> latch.complete()));
+      .onComplete(ctx.succeeding(resp -> latch.flag()));
   }
 }

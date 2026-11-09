@@ -2,11 +2,11 @@ package io.vertx.tests.impl;
 
 import io.vertx.httpproxy.MediaType;
 import io.vertx.httpproxy.impl.MediaTypeImpl;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MediaTypeTest {
 
