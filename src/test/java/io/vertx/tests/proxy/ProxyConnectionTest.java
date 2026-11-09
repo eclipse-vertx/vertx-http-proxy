@@ -30,7 +30,6 @@ import org.junit.jupiter.params.ParameterizedClass;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -188,7 +187,7 @@ public class ProxyConnectionTest extends TestBase {
   }
 
   private void testBackendCloseResponse(VertxTestContext ctx, boolean chunked) {
-    CompletableFuture<Void> closeFuture = new CompletableFuture<>();
+    Promise<Void> closeFuture = Promise.promise();
     SocketAddress backend = startHttpBackend(8081, req -> {
       HttpServerResponse resp = req.response();
       if (chunked) {
@@ -197,7 +196,7 @@ public class ProxyConnectionTest extends TestBase {
         resp.putHeader("content-length", "10000");
       }
       resp.write("part");
-      closeFuture.thenAccept(v -> {
+      closeFuture.future().onSuccess(v -> {
         req.connection().close();
       });
     });
@@ -207,7 +206,7 @@ public class ProxyConnectionTest extends TestBase {
         .onComplete(ctx.succeeding(req -> {
           req.send().onComplete(ctx.succeeding(resp -> {
             resp.handler(buff -> {
-              closeFuture.complete(null);
+              closeFuture.tryComplete();
             });
             resp.exceptionHandler(err -> {
               ctx.completeNow();
